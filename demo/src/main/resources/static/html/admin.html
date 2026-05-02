@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - AoV Tactics & Guides</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'dark-bg': '#0B1120',
+                        'dark-panel': '#111827',
+                        'dark-surface': '#1E293B',
+                        'dark-border': '#1e293b',
+                        'accent-blue': '#60A5FA',
+                        'accent-red': '#FF4757',
+                        'accent-green': '#3AE374',
+                        'accent-yellow': '#FFD32A',
+                        'accent-orange': '#FF8C42',
+                    },
+                    fontFamily: {
+                        'orbitron': ['Orbitron', 'sans-serif'],
+                        'inter': ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #f8fafc; color: #0f172a; font-family: 'Inter', sans-serif; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Sidebar menu item */
+        .nav-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 16px; border-radius: 8px;
+            font-size: 0.875rem; font-weight: 500;
+            color: #64748b;
+            cursor: pointer; text-decoration: none; transition: all 0.2s ease;
+            border: 1px solid transparent;
+            background: transparent;
+            text-align: left;
+            width: 100%;
+        }
+        .nav-item:hover { color: #0f172a; background: #f1f5f9;
+        }
+        .nav-item.active { color: #2563eb; background: #eff6ff; border-color: #bfdbfe;
+            font-weight: 600;
+        }
+        .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.6; }
+        .nav-item.active svg { opacity: 1; color: #60A5FA; }
+
+        /* Section pages */
+        .page-section { display: none; }
+        .page-section.active { display: block; }
+
+        /* Toast */
+        .toast-box {
+            position: fixed; top: 20px; right: 20px; z-index: 9999;
+            padding: 12px 22px; border-radius: 10px; font-weight: 600; font-size: 0.85rem;
+            transform: translateX(130%); transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
+            max-width: 400px;
+        }
+        .toast-box.show { transform: translateX(0); }
+        .toast-ok { background: rgba(58,227,116,0.12); border: 1px solid rgba(58,227,116,0.25); color: #3AE374; }
+        .toast-err { background: rgba(255,71,87,0.12); border: 1px solid rgba(255,71,87,0.25); color: #FF4757; }
+
+        /* Esports-specific styles */
+        textarea:focus, input:focus, select:focus {
+            outline: none;
+            border-color: #60A5FA !important;
+            box-shadow: 0 0 0 3px rgba(96,165,250,0.15);
+        }
+        @keyframes subtleGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(96,165,250,0.05); }
+            50% { box-shadow: 0 0 30px rgba(96,165,250,0.12); }
+        }
+        .card-glow { animation: subtleGlow 4s ease-in-out infinite; }
+        .match-row { transition: background 0.2s ease; }
+        .match-row:hover { background: #f8fafc !important; }
+        .btn-press:active { transform: scale(0.97); }
+        .badge-tier { padding: 2px 10px; border-radius: 4px; font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 0.7rem; letter-spacing: 1px; }
+        .badge-tier-0 { background: rgba(255,71,87,0.15); color: #ff4757; border: 1px solid rgba(255,71,87,0.25); }
+        .badge-tier-1 { background: rgba(255,140,66,0.15); color: #ff8c42; border: 1px solid rgba(255,140,66,0.25); }
+        .badge-tier-2 { background: rgba(255,211,42,0.15); color: #ffd32a; border: 1px solid rgba(255,211,42,0.25); }
+        .badge-stage { padding: 2px 10px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.5px; }
+        .badge-ck { background: rgba(255,71,87,0.12); color: #ff6b81; border: 1px solid rgba(255,71,87,0.2); }
+        .badge-playoff { background: rgba(96,165,250,0.12); color: #93c5fd; border: 1px solid rgba(96,165,250,0.2); }
+        .badge-bang { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+        .badge-vongloai { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.35); border: 1px solid rgba(255,255,255,0.06); }
+        .spinner { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.15); border-top-color: #60A5FA; border-radius: 50%; animation: spin 0.6s linear infinite; display: inline-block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+<!-- Toast -->
+<div id="toast" class="toast-box"></div>
+
+<!-- ==================== SIDEBAR ==================== -->
+<aside class="w-64 flex-shrink-0 h-screen bg-white shadow-lg border-r border-slate-200 flex flex-col fixed left-0 top-0 z-40">
+    <!-- Logo -->
+    <div class="px-5 py-5 border-b border-slate-200">
+        <a href="/html/index.html"
+           class="inline-flex items-center gap-2 text-xs font-semibold text-accent-blue/70 hover:text-accent-blue transition-colors mb-4">
+            <span>←</span>
+            <span>Về trang chủ</span>
+        </a>
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-accent-blue to-blue-700 flex items-center justify-center text-slate-900 text-sm">⚡</div>
+            <div>
+                <div class="font-orbitron text-sm font-bold text-slate-900 tracking-wider">AoV Tactics</div>
+                <div class="text-[0.65rem] text-slate-500 tracking-widest uppercase">Admin Panel</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nav Menu -->
+    <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <div class="text-[0.6rem] text-slate-400 font-bold uppercase tracking-[3px] px-4 mb-3">Menu</div>
+
+        <button type="button" class="nav-item active w-full" data-page="heroes" title="Quản lý Tướng">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 11c1.657 0 3-1.343 3-3S13.657 5 12 5 9 6.343 9 8s1.343 3 3 3zm0 2c-2.761 0-5 1.239-5 4v1h10v-1c0-2.761-2.239-4-5-4z"/></svg>
+            <span>Quản lý Tướng</span>
+        </button>
+
+        <button type="button" class="nav-item w-full" data-page="attributes" title="Đặc điểm tướng">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M3 11l8.586-8.586a2 2 0 012.828 0L21.586 9.586a2 2 0 010 2.828l-9.172 9.172a2 2 0 01-2.828 0L3 15a2 2 0 010-2.828V11z"/></svg>
+            <span>Đặc điểm tướng</span>
+        </button>
+
+        <button type="button" class="nav-item w-full" data-page="guides" title="Cẩm nang">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+            <span>Cẩm nang</span>
+        </button>
+
+        <button type="button" class="nav-item w-full" data-page="users" title="Quản lý người dùng">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m9-4a4 4 0 10-8 0 4 4 0 008 0zm6 4a4 4 0 10-8 0"/></svg>
+            <span>Quản lý người dùng</span>
+        </button>
+
+        <div class="text-[0.6rem] text-slate-400 font-bold uppercase tracking-[3px] px-4 mt-5 mb-3">Esports</div>
+
+        <button type="button" class="nav-item w-full" data-page="teams" title="Quản lý Đội">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m9-4a4 4 0 10-8 0 4 4 0 008 0zm6 4a4 4 0 10-8 0"/></svg>
+            <span>Quản lý Đội</span>
+        </button>
+
+        <button type="button" class="nav-item w-full" data-page="esports" title="Giải đấu AER 2026">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+            <span>Giải đấu AER 2026</span>
+        </button>
+    </nav>
+
+</aside>
+
+<!-- ==================== MAIN CONTENT ==================== -->
+<div class="flex-1 ml-64 flex flex-col h-screen overflow-hidden">
+    <!-- Top Header -->
+    <header class="flex-shrink-0 h-14 bg-white shadow-lg/60 backdrop-blur border-b border-slate-200 flex items-center justify-between px-6">
+        <h2 id="page-title" class="font-orbitron text-sm font-bold text-slate-900 tracking-widest uppercase">Quản lý Tướng</h2>
+        <div class="text-xs text-slate-400" id="header-clock"></div>
+    </header>
+
+    <!-- Content Area -->
+    <div id="main-content" class="flex-1 overflow-y-auto p-6">
+
+        <!-- Page: Heroes -->
+        <section id="page-heroes" class="page-section active space-y-6">
+            <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">⚔</span>
+                        <div>
+                            <h2 class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Quản lý Tướng</h2>
+                            <p class="text-xs text-slate-500 mt-1">Chỉnh sửa lớp tướng, vai trò, đặc điểm và mô tả Wiki tại trang quản lý tướng chuyên biệt.</p>
+                        </div>
+                    </div>
+                    <a href="/html/admin-heroes.html" class="btn-press inline-flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-all">
+                        Mở quản lý tướng
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Page: Hero Attributes -->
+        <section id="page-attributes" class="page-section space-y-6">
+            <div class="flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🏷</span>
+                    <div>
+                        <h2 class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Đặc điểm tướng</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Quản lý danh mục đặc điểm dùng trong Wiki tướng.</p>
+                    </div>
+                </div>
+                <button type="button" onclick="openHeroAttributeModal()" class="btn-press bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-all">
+                    Thêm đặc điểm
+                </button>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-3">
+                    <div>
+                        <h3 class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Danh sách đặc điểm</h3>
+                        <p class="text-xs text-slate-500 mt-1">Thêm, sửa, xóa các đặc điểm dùng cho tướng.</p>
+                    </div>
+                    <button type="button" onclick="loadHeroAttributes()" class="btn-press border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm px-4 py-2.5 rounded-lg transition-all">
+                        Làm mới
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[620px]">
+                        <thead>
+                        <tr class="bg-slate-50">
+                            <th class="text-left px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-24">ID</th>
+                            <th class="text-left px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest">Tên</th>
+                            <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-44">Hành động</th>
+                        </tr>
+                        </thead>
+                        <tbody id="hero-attributes-tbody">
+                        <tr>
+                            <td colspan="3" class="text-center py-16 text-slate-400">
+                                <div class="spinner mx-auto mb-3"></div>
+                                <p class="text-sm">Đang tải danh sách đặc điểm...</p>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+<!-- Page: Guides -->
+        <section id="page-guides" class="page-section">
+            <div class="flex items-center justify-center h-64 rounded-xl border border-dashed border-slate-200">
+                <p class="text-slate-400 text-sm">📚 Quản lý Cẩm nang — Đang phát triển</p>
+            </div>
+        </section>
+
+        <!-- Page: Users -->
+        <section id="page-users" class="page-section space-y-6">
+            <div class="flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">👥</span>
+                    <div>
+                        <h2 class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Quản lý người dùng</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Theo dõi tài khoản Google và phân quyền hệ thống — <span id="user-total-count" class="text-accent-blue">0</span> người dùng</p>
+                    </div>
+                </div>
+                <button onclick="loadUsers(0)" class="btn-press bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-all">
+                    Làm mới
+                </button>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-4">
+                <div class="grid grid-cols-1 md:grid-cols-[1fr_160px_160px_auto] gap-3">
+                    <input id="user-search" type="search" placeholder="Tìm theo tên hoặc email" onkeydown="if(event.key === 'Enter') loadUsers(0)"
+                        class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 transition-all">
+                    <select id="user-role-filter" onchange="loadUsers(0)" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 transition-all cursor-pointer">
+                        <option value="">Tất cả vai trò</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Staff">Staff</option>
+                        <option value="User">User</option>
+                        <option value="Custom">Custom</option>
+                    </select>
+                    <select id="user-status-filter" onchange="loadUsers(0)" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 transition-all cursor-pointer">
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="ACTIVE">Đang hoạt động</option>
+                        <option value="LOCKED">Đã khóa</option>
+                    </select>
+                    <button onclick="loadUsers(0)" class="btn-press bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-all">
+                        Tìm kiếm
+                    </button>
+                </div>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[920px]">
+                        <thead>
+                            <tr class="bg-slate-50">
+                                <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-20">Avatar</th>
+                                <th class="text-left px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest">Tên</th>
+                                <th class="text-left px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest">Email</th>
+                                <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-28">Vai trò</th>
+                                <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-32">Trạng thái</th>
+                                <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-40">Ngày tạo</th>
+                                <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-28">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-tbody">
+                            <tr>
+                                <td colspan="7" class="text-center py-16 text-slate-400">
+                                    <div class="spinner mx-auto mb-3"></div>
+                                    <p class="text-sm">Đang tải danh sách người dùng...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-slate-500">
+                <div id="users-page-meta">Trang 1 / 1</div>
+                <div class="flex items-center gap-2">
+                    <button id="btn-users-prev" onclick="loadUsers(usersPage - 1)" class="btn-press border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold px-3 py-2 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed">
+                        Trước
+                    </button>
+                    <button id="btn-users-next" onclick="loadUsers(usersPage + 1)" class="btn-press border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold px-3 py-2 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed">
+                        Sau
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Page: Teams Management -->
+        <section id="page-teams" class="page-section space-y-6">
+
+            <!-- Add Team Button -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🛡️</span>
+                    <div>
+                        <h2 class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Team Roster</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Quản lý đội tuyển tham gia hệ thống — <span id="team-count" class="text-accent-blue">0</span> đội</p>
+                    </div>
+                </div>
+                <button onclick="openTeamModal()" class="btn-press bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold text-sm px-5 py-2.5 rounded-lg transition-all shadow-lg shadow-blue-900/30 flex items-center gap-2">
+                    ➕ Thêm đội mới
+                </button>
+            </div>
+
+            <!-- Teams Table -->
+            <div class="rounded-xl border border-slate-200 bg-white shadow-sm backdrop-blur-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[700px]">
+                        <thead>
+                            <tr class="bg-slate-50">
+                                <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-16">Logo</th>
+                                <th class="text-left px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest">Tên Đội</th>
+                                <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-24">Mã</th>
+                                <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-28">Khu Vực</th>
+                                <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-24">Elo</th>
+                                <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-32">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teams-tbody">
+                            <tr>
+                                <td colspan="6" class="text-center py-16 text-slate-400">
+                                    <div class="spinner mx-auto mb-3"></div>
+                                    <p class="text-sm">Đang tải danh sách đội...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Page: Esports -->
+        <section id="page-esports" class="page-section space-y-6">
+
+            <!-- Bulk Import -->
+            <div class="card-glow rounded-xl border border-slate-200 bg-white shadow-sm backdrop-blur-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 flex items-center gap-3">
+                    <span class="text-xl">📦</span>
+                    <div>
+                        <h2 class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Bulk Import</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Nhập liệu hàng loạt từ dữ liệu raw text</p>
+                    </div>
+                </div>
+                <div class="p-6 space-y-4">
+                    <label for="bulk-textarea" class="sr-only">Dữ liệu import trận đấu hàng loạt</label>
+                    <textarea id="bulk-textarea" rows="6"
+                        class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-900 font-mono resize-y placeholder-slate-400 transition-all"
+                        placeholder="Nhập dữ liệu raw, mỗi dòng 1 trận:&#10;FS BAC 3 1 1 bang&#10;SGP FPT 2 3 0 playoff&#10;FW HKA 4 1 1 ck"
+                    ></textarea>
+                    <div class="flex items-center justify-between">
+                        <p class="text-xs text-slate-500">Format: Team1 Team2 Score1 Score2 Tier Stage</p>
+                        <button onclick="bulkImport()" id="btn-bulk"
+                            class="btn-press bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold text-sm px-6 py-2.5 rounded-lg transition-all shadow-lg shadow-blue-900/30 flex items-center gap-2">
+                            🚀 Import &amp; Chạy lại Elo
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Single Match -->
+            <div class="rounded-xl border border-slate-200 bg-white shadow-sm backdrop-blur-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 flex items-center gap-3">
+                    <span class="text-xl">🎮</span>
+                    <div>
+                        <h2 class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Add Single Match</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Thêm một trận đấu đơn lẻ vào hệ thống</p>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <form id="add-match-form" onsubmit="addSingleMatch(event)" class="flex flex-wrap items-end gap-3">
+                        <div class="flex flex-col gap-1.5">
+                            <label for="f-team1" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Đội 1</label>
+                            <input type="text" id="f-team1" required placeholder="VD: FS"
+                                class="w-24 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 font-semibold text-center uppercase transition-all">
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label for="f-score1" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Tỷ số đội 1</label>
+                            <input type="number" id="f-score1" required min="0" max="9" value="3"
+                                class="w-16 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-accent-green font-bold text-center transition-all">
+                        </div>
+                        <div class="flex items-center pb-1">
+                            <span class="text-slate-400 font-orbitron text-xs font-bold tracking-widest">VS</span>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label for="f-score2" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Tỷ số đội 2</label>
+                            <input type="number" id="f-score2" required min="0" max="9" value="1"
+                                class="w-16 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-accent-red font-bold text-center transition-all">
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label for="f-team2" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Đội 2</label>
+                            <input type="text" id="f-team2" required placeholder="VD: BAC"
+                                class="w-24 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 font-semibold text-center uppercase transition-all">
+                        </div>
+                        <div class="w-px h-8 bg-dark-border hidden md:block"></div>
+                        <div class="flex flex-col gap-1.5">
+                            <label for="f-tier" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Tier</label>
+                            <select id="f-tier" class="w-28 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 transition-all cursor-pointer">
+                                <option value="0">0 — Quốc tế</option>
+                                <option value="1" selected>1 — Khu vực</option>
+                                <option value="2">2 — Nhỏ</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label for="f-stage" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Stage</label>
+                            <select id="f-stage" class="w-32 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 transition-all cursor-pointer">
+                                <option value="bang" selected>Vòng bảng</option>
+                                <option value="playoff">Playoff</option>
+                                <option value="ck">Chung kết</option>
+                                <option value="vongloai">Vòng loại</option>
+                            </select>
+                        </div>
+                        <button type="submit" id="btn-add"
+                            class="btn-press bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-semibold text-sm px-5 py-2.5 rounded-lg transition-all shadow-lg shadow-emerald-900/30 flex items-center gap-2">
+                            ➕ Thêm trận đấu
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Match History Table -->
+            <div class="rounded-xl border border-slate-200 bg-white shadow-sm backdrop-blur-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xl">📋</span>
+                        <div>
+                            <h2 class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Match History</h2>
+                            <p class="text-xs text-slate-500 mt-0.5">Lịch sử các trận đấu — <span id="match-count" class="text-accent-blue">0</span> trận</p>
+                        </div>
+                    </div>
+                    <button onclick="resetMatchHistory()" id="btn-reset-matches" class="btn-press text-xs text-accent-red/70 hover:text-accent-red border border-accent-red/20 hover:border-accent-red/40 hover:bg-accent-red/5 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5">
+                        <span class="text-xs">Reset dữ liệu</span>
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[800px]">
+                        <thead>
+                            <tr class="bg-slate-50">
+                                <th class="text-left px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest">Thời gian</th>
+                                <th class="text-left px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest">Trận đấu</th>
+                                <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-28">Tỷ số</th>
+                                <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-20">Tier</th>
+                                <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-28">Stage</th>
+                                <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-24">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="match-tbody">
+                            <tr>
+                                <td colspan="6" class="text-center py-16 text-slate-400">
+                                    <div class="spinner mx-auto mb-3"></div>
+                                    <p class="text-sm">Đang tải dữ liệu...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+    </div>
+</div>
+<!-- ==================== HERO ATTRIBUTE MODAL ==================== -->
+<div id="hero-attribute-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" style="display:none">
+    <div class="bg-white shadow-lg border border-slate-200 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+            <div>
+                <h3 id="hero-attribute-modal-title" class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Thêm đặc điểm</h3>
+                <p class="text-xs text-slate-500 mt-1">Cập nhật danh mục đặc điểm tướng.</p>
+            </div>
+            <button type="button" onclick="closeHeroAttributeModal()" class="text-slate-500 hover:text-slate-900 text-xl transition-colors">&times;</button>
+        </div>
+        <form id="hero-attribute-form" onsubmit="submitHeroAttributeForm(event)" class="p-6 space-y-4">
+            <input type="hidden" id="haf-id">
+            <div class="flex flex-col gap-1.5">
+                <label for="haf-name" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Tên đặc điểm *</label>
+                <input type="text" id="haf-name" required maxlength="50" placeholder="VD: Cơ động"
+                       class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 transition-all">
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="closeHeroAttributeModal()" class="flex-1 btn-press bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 font-semibold text-sm py-2.5 rounded-lg transition-all">Hủy</button>
+                <button type="submit" id="btn-hero-attribute-submit" class="flex-1 btn-press bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold text-sm py-2.5 rounded-lg transition-all shadow-lg shadow-blue-900/30">Lưu</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ==================== USER MODAL ==================== -->
+<div id="user-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" style="display:none">
+    <div class="bg-white shadow-lg border border-slate-200 rounded-2xl shadow-2xl w-full max-w-xl mx-4 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+            <div>
+                <h3 id="user-modal-title" class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Sửa người dùng</h3>
+                <p id="uf-email-readonly" class="text-xs text-slate-500 mt-1"></p>
+            </div>
+            <button onclick="closeEditUserModal()" class="text-slate-500 hover:text-slate-900 text-xl transition-colors">&times;</button>
+        </div>
+        <form id="user-form" onsubmit="saveUserChanges(event)" class="p-6 space-y-4">
+            <input type="hidden" id="uf-id">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1.5">
+                    <label for="uf-name" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Tên hiển thị *</label>
+                    <input type="text" id="uf-name" required
+                        class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 transition-all">
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label for="uf-role" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Vai trò *</label>
+                    <select id="uf-role" required class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 transition-all cursor-pointer">
+                        <option value="Admin">Admin</option>
+                        <option value="Staff">Staff</option>
+                        <option value="User">User</option>
+                        <option value="Custom">Custom</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1.5">
+                    <label for="uf-status" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Trạng thái *</label>
+                    <select id="uf-status" required class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 transition-all cursor-pointer">
+                        <option value="ACTIVE">Đang hoạt động</option>
+                        <option value="LOCKED">Đã khóa</option>
+                    </select>
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label for="uf-avatar" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Avatar URL</label>
+                    <input type="url" id="uf-avatar" placeholder="https://..."
+                        class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-600 transition-all">
+                </div>
+            </div>
+            <div class="flex flex-col gap-1.5">
+                <label for="uf-note" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Ghi chú nội bộ</label>
+                <textarea id="uf-note" rows="4" placeholder="Ghi chú chỉ dành cho admin"
+                    class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 resize-y transition-all"></textarea>
+            </div>
+            <div class="rounded-lg bg-slate-50 border border-slate-200 px-4 py-3 text-xs text-slate-500 leading-relaxed">
+                Không thể chỉnh sửa ID, Google ID, email và ngày tạo. Hệ thống cũng chặn admin tự gỡ vai trò Admin hoặc tự khóa tài khoản.
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="closeEditUserModal()" class="flex-1 btn-press bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 font-semibold text-sm py-2.5 rounded-lg transition-all">Hủy</button>
+                <button type="submit" id="btn-user-submit" class="flex-1 btn-press bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold text-sm py-2.5 rounded-lg transition-all shadow-lg shadow-blue-900/30">Lưu thay đổi</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ==================== TEAM MODAL ==================== -->
+<div id="team-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" style="display:none">
+    <div class="bg-white shadow-lg border border-slate-200 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+            <h3 id="team-modal-title" class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Thêm đội mới</h3>
+            <button onclick="closeTeamModal()" class="text-slate-500 hover:text-slate-900 text-xl transition-colors">&times;</button>
+        </div>
+        <form id="team-form" onsubmit="submitTeamForm(event)" class="p-6 space-y-4">
+            <input type="hidden" id="tf-id">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1.5">
+                    <label for="tf-code" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Mã Đội *</label>
+                    <input type="text" id="tf-code" required placeholder="VD: SGP"
+                        class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 font-semibold uppercase transition-all">
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label for="tf-region" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Khu Vực *</label>
+                    <select id="tf-region" required class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 transition-all cursor-pointer">
+                        <option value="RPL">RPL — Thái Lan</option>
+                        <option value="AOG">AOG — Việt Nam</option>
+                        <option value="GCS">GCS — Đài Loan</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex flex-col gap-1.5">
+                <label for="tf-name" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Tên đầy đủ</label>
+                <input type="text" id="tf-name" placeholder="VD: Saigon Phantom"
+                    class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 transition-all">
+            </div>
+            <div class="flex flex-col gap-1.5">
+                <label for="tf-logo" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Logo URL</label>
+                <input type="text" id="tf-logo" placeholder="VD: /images/teams/SGP.png"
+                    class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-600 transition-all">
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="closeTeamModal()" class="flex-1 btn-press bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 font-semibold text-sm py-2.5 rounded-lg transition-all">Hủy</button>
+                <button type="submit" id="btn-team-submit" class="flex-1 btn-press bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold text-sm py-2.5 rounded-lg transition-all shadow-lg shadow-blue-900/30">💾 Lưu</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="/js/auth.js?v=20260424-account-profile"></script>
+<script>
+    requireRoleAccess('Admin', '/html/index.html');
+
+    document.addEventListener('authExpired', function () {
+        window.location.replace('/html/index.html');
+    });
+</script>
+<script>
+    // ==================== PAGE CONFIG ====================
+    var PAGES = {
+        heroes: { title: 'Quản lý Tướng' },
+        attributes: {
+            title: 'Đặc điểm tướng',
+            onEnter: function () {
+                if (typeof loadHeroAttributes === 'function') {
+                    loadHeroAttributes();
+                }
+            }
+        },
+        guides: { title: 'Quản lý Cẩm nang' },
+        users: { title: 'Quản lý người dùng', onEnter: function () { loadUsers(0); } },
+        teams: { title: 'Quản lý Đội Tuyển', onEnter: loadTeams },
+        esports: { title: 'Giải đấu AER 2026', onEnter: loadMatches }
+    };
+
+    // ==================== SWITCH PAGE ====================
+    function switchPage(pageId) {
+        var page = PAGES[pageId];
+        if (!page) return;
+
+        document.querySelectorAll('.page-section').forEach(function(section) {
+            section.classList.toggle('active', section.id === 'page-' + pageId);
+        });
+
+        document.querySelectorAll('.nav-item[data-page]').forEach(function(item) {
+            item.classList.toggle('active', item.dataset.page === pageId);
+        });
+
+        document.getElementById('page-title').textContent = page.title;
+
+        if (typeof page.onEnter === 'function') {
+            page.onEnter();
+        }
+    }
+
+    document.querySelector('nav').addEventListener('click', function(event) {
+        var item = event.target.closest('.nav-item[data-page]');
+        if (item) {
+            switchPage(item.dataset.page);
+        }
+    });
+
+    // ==================== TOAST ====================
+    function showToast(msg, type) {
+        var t = document.getElementById('toast');
+        t.textContent = (type === 'ok' ? '✅ ' : '❌ ') + msg;
+        t.className = 'toast-box ' + (type === 'ok' ? 'toast-ok' : 'toast-err');
+        setTimeout(function() { t.classList.add('show'); }, 30);
+        setTimeout(function() { t.classList.remove('show'); }, 3500);
+    }
+
+    // ==================== CLOCK ====================
+    function updateClock() {
+        document.getElementById('header-clock').textContent = new Date().toLocaleString('vi-VN');
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // ==================== ESPORTS: SET BUTTON LOADING ====================
+    function setBtnLoading(btnId, loading) {
+        var btn = document.getElementById(btnId);
+        if (!btn) return;
+        if (loading) {
+            btn.dataset.originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner"></span> Đang xử lý...';
+            btn.disabled = true;
+            btn.style.opacity = '0.6';
+        } else {
+            btn.innerHTML = btn.dataset.originalText || btn.innerHTML;
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        }
+    }
+
+    // ==================== USERS: HELPERS ====================
+    var usersPage = 0;
+    var usersSize = 20;
+
+    function escapeAdminHtml(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    async function readAdminApiError(response) {
+        var fallback = 'Thao tác thất bại';
+        try {
+            var text = await response.text();
+            if (!text) return fallback;
+            var json = JSON.parse(text);
+            return json.error || json.detail || json.message || json.title || fallback;
+        } catch (ignored) {
+            return fallback;
+        }
+    }
+    function formatUserDate(value) {
+        if (!value) return '—';
+        var date = new Date(value);
+        if (Number.isNaN(date.getTime())) return escapeAdminHtml(value);
+        return date.toLocaleDateString('vi-VN') + ' ' + date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function roleBadge(role) {
+        var value = role || 'User';
+        var badgeClass = value === 'Admin'
+            ? 'bg-red-50 text-red-600 border-red-200'
+            : value === 'Staff'
+                ? 'bg-blue-50 text-blue-600 border-blue-200'
+                : value === 'Custom'
+                    ? 'bg-violet-50 text-violet-600 border-violet-200'
+                    : 'bg-slate-50 text-slate-600 border-slate-200';
+        return '<span class="inline-flex items-center justify-center min-w-20 px-2.5 py-1 rounded-md border text-[0.7rem] font-bold uppercase tracking-wider ' + badgeClass + '">' + escapeAdminHtml(value) + '</span>';
+    }
+
+    function statusBadge(status) {
+        if (status === 'LOCKED') {
+            return '<span class="inline-flex items-center justify-center min-w-24 px-2.5 py-1 rounded-md border border-red-200 bg-red-50 text-red-600 text-[0.7rem] font-bold uppercase tracking-wider">Đã khóa</span>';
+        }
+        return '<span class="inline-flex items-center justify-center min-w-24 px-2.5 py-1 rounded-md border border-green-200 bg-green-50 text-green-700 text-[0.7rem] font-bold uppercase tracking-wider">Hoạt động</span>';
+    }
+
+    function userAvatarHtml(user) {
+        var label = (user.name || user.email || '?').trim();
+        var initial = escapeAdminHtml((label.charAt(0) || '?').toUpperCase());
+        var fallback = '<div class="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 mx-auto">' + initial + '</div>';
+        if (!user.avatarUrl) return fallback;
+        var src = escapeAdminHtml(normalizeAssetUrl(user.avatarUrl));
+        var alt = escapeAdminHtml(label);
+        return '<div class="relative w-10 h-10 mx-auto">' +
+            '<img src="' + src + '" alt="' + alt + '" class="w-10 h-10 rounded-full object-cover bg-slate-50 border border-slate-200" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\'">' +
+            '<div style="display:none" class="absolute inset-0 rounded-full bg-slate-100 border border-slate-200 items-center justify-center text-xs font-bold text-slate-500">' + initial + '</div>' +
+        '</div>';
+    }
+
+    function renderUsersPage(payload) {
+        var tbody = document.getElementById('users-tbody');
+        var users = payload.content || [];
+        usersPage = payload.page || 0;
+        document.getElementById('user-total-count').textContent = payload.totalElements || 0;
+        document.getElementById('users-page-meta').textContent = 'Trang ' + ((payload.page || 0) + 1) + ' / ' + Math.max(payload.totalPages || 1, 1);
+        document.getElementById('btn-users-prev').disabled = !!payload.first;
+        document.getElementById('btn-users-next').disabled = !!payload.last;
+
+        if (users.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-16 text-slate-400 text-sm">Không tìm thấy người dùng phù hợp.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = users.map(function(user) {
+            return '<tr class="match-row border-b border-slate-200">' +
+                '<td class="px-4 py-3 text-center">' + userAvatarHtml(user) + '</td>' +
+                '<td class="px-4 py-3"><div class="text-sm font-semibold text-slate-900">' + escapeAdminHtml(user.name || 'Chưa đặt tên') + '</div>' +
+                    '<div class="text-[0.7rem] text-slate-400">ID #' + escapeAdminHtml(user.id) + '</div></td>' +
+                '<td class="px-4 py-3 text-sm text-slate-600">' + escapeAdminHtml(user.email || '—') + '</td>' +
+                '<td class="px-4 py-3 text-center">' + roleBadge(user.role) + '</td>' +
+                '<td class="px-4 py-3 text-center">' + statusBadge(user.status) + '</td>' +
+                '<td class="px-4 py-3 text-center text-xs text-slate-500">' + formatUserDate(user.createdAt) + '</td>' +
+                '<td class="px-4 py-3 text-center"><button onclick="openEditUserModal(' + Number(user.id) + ')" class="btn-press text-[0.7rem] text-accent-blue/70 hover:text-accent-blue border border-accent-blue/20 hover:border-accent-blue/40 px-2.5 py-1 rounded-md transition-all">Sửa</button></td>' +
+            '</tr>';
+        }).join('');
+    }
+
+    // ==================== USERS: LOAD ====================
+    async function loadUsers(page) {
+        if (typeof page === 'number') usersPage = Math.max(0, page);
+        var tbody = document.getElementById('users-tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-16 text-slate-400"><div class="spinner mx-auto mb-3"></div><p class="text-sm">Đang tải danh sách người dùng...</p></td></tr>';
+
+        var params = new URLSearchParams();
+        params.set('page', usersPage);
+        params.set('size', usersSize);
+        var search = document.getElementById('user-search').value.trim();
+        var role = document.getElementById('user-role-filter').value;
+        var status = document.getElementById('user-status-filter').value;
+        if (search) params.set('search', search);
+        if (role) params.set('role', role);
+        if (status) params.set('status', status);
+
+        try {
+            var response = await fetch('/api/admin/users?' + params.toString());
+            if (!response.ok) throw new Error(await readAdminApiError(response));
+            renderUsersPage(await response.json());
+        } catch (error) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-16 text-accent-red/70 text-sm">⚠ ' + escapeAdminHtml(error.message) + '</td></tr>';
+            showToast(error.message, 'err');
+        }
+    }
+
+    // ==================== USERS: EDIT MODAL ====================
+    async function openEditUserModal(userId) {
+        try {
+            var response = await fetch('/api/admin/users/' + userId);
+            if (!response.ok) throw new Error(await readAdminApiError(response));
+            var user = await response.json();
+            document.getElementById('uf-id').value = user.id;
+            document.getElementById('uf-name').value = user.name || '';
+            document.getElementById('uf-avatar').value = user.avatarUrl || '';
+            document.getElementById('uf-role').value = user.role || 'User';
+            document.getElementById('uf-status').value = user.status || 'ACTIVE';
+            document.getElementById('uf-note').value = user.note || '';
+            document.getElementById('uf-email-readonly').textContent = user.email || '';
+            document.getElementById('user-modal-title').textContent = 'Sửa người dùng';
+            document.getElementById('user-modal').style.display = 'flex';
+        } catch (error) {
+            showToast(error.message, 'err');
+        }
+    }
+
+    function closeEditUserModal() {
+        document.getElementById('user-modal').style.display = 'none';
+    }
+
+    async function saveUserChanges(event) {
+        event.preventDefault();
+        var id = document.getElementById('uf-id').value;
+        var body = {
+            name: document.getElementById('uf-name').value.trim(),
+            avatarUrl: document.getElementById('uf-avatar').value.trim() || null,
+            role: document.getElementById('uf-role').value,
+            status: document.getElementById('uf-status').value,
+            note: document.getElementById('uf-note').value.trim() || null
+        };
+        if (!body.name) {
+            showToast('Vui lòng nhập tên hiển thị', 'err');
+            return;
+        }
+        setBtnLoading('btn-user-submit', true);
+        try {
+            var response = await fetch('/api/admin/users/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (!response.ok) throw new Error(await readAdminApiError(response));
+            closeEditUserModal();
+            showToast('Đã cập nhật người dùng', 'ok');
+            loadUsers(usersPage);
+        } catch (error) {
+            showToast(error.message, 'err');
+        } finally {
+            setBtnLoading('btn-user-submit', false);
+        }
+    }
+
+    // ==================== ESPORTS: BULK IMPORT ====================
+    async function bulkImport() {
+        var textarea = document.getElementById('bulk-textarea');
+        var rawData = textarea.value.trim();
+        if (!rawData) { showToast('Vui lòng nhập dữ liệu trước khi import!', 'err'); return; }
+        if (!confirm('Bulk Import sẽ xóa toàn bộ Match History hiện tại và thay bằng dữ liệu trong ô nhập. Tiếp tục?')) return;
+        setBtnLoading('btn-bulk', true);
+        try {
+            var response = await fetch('/api/admin/esports/teams/matches/bulk-import', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: rawData });
+            if (!response.ok) { var err = await response.json(); throw new Error(err.error || 'Import thất bại'); }
+            var result = await response.json();
+            showToast(result.message || 'Import thành công!', 'ok');
+            textarea.value = '';
+            loadMatches();
+            loadTeams();
+        } catch (error) { showToast(error.message, 'err'); }
+        finally { setBtnLoading('btn-bulk', false); }
+    }
+
+    // ==================== ESPORTS: ADD SINGLE MATCH ====================
+    async function addSingleMatch(event) {
+        event.preventDefault();
+        var team1Code = document.getElementById('f-team1').value.trim().toUpperCase();
+        var team2Code = document.getElementById('f-team2').value.trim().toUpperCase();
+        var score1 = parseInt(document.getElementById('f-score1').value);
+        var score2 = parseInt(document.getElementById('f-score2').value);
+        var tier = document.getElementById('f-tier').value;
+        var stage = document.getElementById('f-stage').value;
+        if (!team1Code || !team2Code) { showToast('Vui lòng nhập mã cả 2 đội!', 'err'); return; }
+        if (team1Code === team2Code) { showToast('Hai đội không được trùng nhau!', 'err'); return; }
+        setBtnLoading('btn-add', true);
+        try {
+            var response = await fetch('/api/admin/esports/matches', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ team1Code: team1Code, team2Code: team2Code, score1: score1, score2: score2, tier: tier, stage: stage }) });
+            if (!response.ok) { var err = await response.json(); throw new Error(err.error || 'Thêm trận đấu thất bại'); }
+            showToast('Đã thêm trận: ' + team1Code + ' ' + score1 + '-' + score2 + ' ' + team2Code, 'ok');
+            document.getElementById('f-team1').value = '';
+            document.getElementById('f-team2').value = '';
+            document.getElementById('f-score1').value = '3';
+            document.getElementById('f-score2').value = '1';
+            document.getElementById('f-tier').value = '1';
+            document.getElementById('f-stage').value = 'bang';
+            loadMatches();
+        } catch (error) { showToast(error.message, 'err'); }
+        finally { setBtnLoading('btn-add', false); }
+    }
+
+    // ==================== ESPORTS: LOAD MATCH HISTORY ====================
+    async function loadMatches() {
+        var tbody = document.getElementById('match-tbody');
+        try {
+            var response = await fetch('/api/admin/esports/matches');
+            if (!response.ok) throw new Error('Không thể tải danh sách trận đấu');
+            var matches = await response.json();
+            document.getElementById('match-count').textContent = matches.length;
+            if (matches.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-16 text-slate-400 text-sm">Chưa có trận đấu nào trong hệ thống.</td></tr>'; return; }
+            tbody.innerHTML = matches.map(function(m) {
+                var team1Class = m.score1 > m.score2 ? 'text-accent-green font-bold' : 'text-slate-600';
+                var team2Class = m.score2 > m.score1 ? 'text-accent-green font-bold' : 'text-slate-600';
+                var score1Class = m.score1 > m.score2 ? 'text-accent-green' : 'text-accent-red';
+                var score2Class = m.score2 > m.score1 ? 'text-accent-green' : 'text-accent-red';
+                var dateStr = '';
+                if (m.matchDate) { var d = new Date(m.matchDate); dateStr = d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }); }
+                var tierBadge = '<span class="badge-tier badge-tier-' + m.tier + '">T' + m.tier + '</span>';
+                var stageBadge = '<span class="badge-stage badge-' + m.stage + '">' + getStageName(m.stage) + '</span>';
+                return '<tr class="match-row border-b border-slate-200">' +
+                    '<td class="px-4 py-3 text-xs text-slate-500">' + dateStr + '</td>' +
+                    '<td class="px-4 py-3"><span class="' + team1Class + ' text-sm">' + m.team1Code + '</span><span class="text-slate-900/15 mx-2 text-xs font-orbitron">VS</span><span class="' + team2Class + ' text-sm">' + m.team2Code + '</span></td>' +
+                    '<td class="px-4 py-3 text-center font-orbitron text-sm font-bold"><span class="' + score1Class + '">' + m.score1 + '</span><span class="text-slate-900/15 mx-1">-</span><span class="' + score2Class + '">' + m.score2 + '</span></td>' +
+                    '<td class="px-4 py-3 text-center">' + tierBadge + '</td>' +
+                    '<td class="px-4 py-3 text-center">' + stageBadge + '</td>' +
+                    '<td class="px-4 py-3 text-center"><button onclick="deleteMatch(' + m.id + ')" class="btn-press text-[0.7rem] text-accent-red/60 hover:text-accent-red border border-accent-red/20 hover:border-accent-red/40 hover:bg-accent-red/5 px-2.5 py-1 rounded-md transition-all">🗑 Xóa</button></td>' +
+                '</tr>';
+            }).join('');
+        } catch (error) { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-16 text-accent-red/60 text-sm">⚠ ' + error.message + '</td></tr>'; }
+    }
+
+    async function resetMatchHistory() {
+        if (!confirm('Reset dữ liệu sẽ xóa toàn bộ Match History hiện tại và đưa Elo về trạng thái không có trận. Tiếp tục?')) return;
+        setBtnLoading('btn-reset-matches', true);
+        try {
+            var response = await fetch('/api/admin/esports/matches', { method: 'DELETE' });
+            if (!response.ok) { var err = await response.json(); throw new Error(err.error || 'Reset dữ liệu thất bại'); }
+            var result = await response.json();
+            showToast(result.message || 'Đã reset dữ liệu Match History.', 'ok');
+            loadMatches();
+            loadTeams();
+        } catch (error) {
+            showToast(error.message, 'err');
+        } finally {
+            setBtnLoading('btn-reset-matches', false);
+        }
+    }
+
+    function getStageName(stage) {
+        var map = { 'ck': 'Chung kết', 'playoff': 'Playoff', 'bang': 'Vòng bảng', 'vongloai': 'Vòng loại' };
+        return map[stage] || stage;
+    }
+
+    // ==================== ESPORTS: DELETE MATCH ====================
+    async function deleteMatch(id) {
+        if (!confirm('Bạn có chắc chắn muốn xóa trận đấu #' + id + '?\nĐiểm Elo sẽ được tính lại sau khi xóa.')) return;
+        try {
+            var response = await fetch('/api/admin/esports/matches/' + id, { method: 'DELETE' });
+            if (!response.ok) { var err = await response.json(); throw new Error(err.error || 'Xóa thất bại'); }
+            showToast('Đã xóa trận đấu #' + id + ' và tính lại Elo.', 'ok');
+            loadMatches();
+        } catch (error) { showToast(error.message, 'err'); }
+    }
+
+    // ==================== TEAMS: LOAD ====================
+    function normalizeAssetUrl(url) {
+        if (!url) return '';
+        if (/^(https?:)?\/\//i.test(url) || url.startsWith('data:') || url.startsWith('/')) {
+            return url;
+        }
+        return '/' + url.replace(/^\.?\//, '');
+    }
+
+    async function loadTeams() {
+        var tbody = document.getElementById('teams-tbody');
+        if (!tbody) return;
+        try {
+            var response = await fetch('/api/admin/esports/teams');
+            if (!response.ok) throw new Error('Không thể tải danh sách đội');
+            var teams = await response.json();
+            document.getElementById('team-count').textContent = teams.length;
+            if (teams.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-16 text-slate-400 text-sm">Chưa có đội tuyển nào.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = teams.map(function(t) {
+                var logoSrc = normalizeAssetUrl(t.logoUrl) || ('/images/teams/' + t.teamCode + '.png');
+                var regionBadge = '<span class="badge-stage badge-' + (t.region === 'RPL' ? 'ck' : t.region === 'AOG' ? 'playoff' : 'bang') + '">' + t.region + '</span>';
+                return '<tr class="match-row border-b border-slate-200">' +
+                    '<td class="px-4 py-3 text-center"><img src="' + logoSrc + '" alt="' + t.teamCode + '" class="w-8 h-8 rounded-md object-contain mx-auto bg-slate-50 border border-slate-200 p-0.5" onerror="this.style.display=\'none\'"></td>' +
+                    '<td class="px-4 py-3"><span class="text-sm text-slate-900 font-semibold">' + (t.teamName || '—') + '</span></td>' +
+                    '<td class="px-4 py-3 text-center"><span class="font-orbitron text-xs font-bold text-accent-blue tracking-wider">' + t.teamCode + '</span></td>' +
+                    '<td class="px-4 py-3 text-center">' + regionBadge + '</td>' +
+                    '<td class="px-4 py-3 text-center"><span class="text-sm font-bold text-accent-yellow">' + Math.round(t.score) + '</span></td>' +
+                    '<td class="px-4 py-3 text-center"><div class="flex items-center justify-center gap-2">' +
+                        '<button onclick="editTeam(' + t.id + ')" class="btn-press text-[0.7rem] text-accent-blue/60 hover:text-accent-blue border border-accent-blue/20 hover:border-accent-blue/40 px-2.5 py-1 rounded-md transition-all">✏️ Sửa</button>' +
+                        '<button onclick="deleteTeam(' + t.id + ', \'' + t.teamCode + '\')" class="btn-press text-[0.7rem] text-accent-red/60 hover:text-accent-red border border-accent-red/20 hover:border-accent-red/40 hover:bg-accent-red/5 px-2.5 py-1 rounded-md transition-all">🗑 Xóa</button>' +
+                    '</div></td>' +
+                '</tr>';
+            }).join('');
+        } catch (error) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-16 text-accent-red/60 text-sm">⚠ ' + error.message + '</td></tr>';
+        }
+    }
+
+    // ==================== TEAMS: MODAL ====================
+    function openTeamModal(team) {
+        document.getElementById('team-modal').style.display = 'flex';
+        document.getElementById('tf-id').value = '';
+        document.getElementById('tf-code').value = '';
+        document.getElementById('tf-name').value = '';
+        document.getElementById('tf-region').value = 'RPL';
+        document.getElementById('tf-logo').value = '';
+        document.getElementById('team-modal-title').textContent = 'Thêm đội mới';
+        if (team) {
+            document.getElementById('team-modal-title').textContent = 'Sửa đội: ' + team.teamCode;
+            document.getElementById('tf-id').value = team.id;
+            document.getElementById('tf-code').value = team.teamCode || '';
+            document.getElementById('tf-name').value = team.teamName || '';
+            document.getElementById('tf-region').value = team.region || 'RPL';
+            document.getElementById('tf-logo').value = team.logoUrl || '';
+        }
+    }
+    function closeTeamModal() {
+        document.getElementById('team-modal').style.display = 'none';
+    }
+
+    // ==================== TEAMS: ADD / UPDATE ====================
+    async function submitTeamForm(event) {
+        event.preventDefault();
+        var id = document.getElementById('tf-id').value;
+        var body = {
+            teamCode: document.getElementById('tf-code').value.trim().toUpperCase(),
+            teamName: document.getElementById('tf-name').value.trim() || null,
+            region: document.getElementById('tf-region').value,
+            logoUrl: normalizeAssetUrl(document.getElementById('tf-logo').value.trim()) || null
+        };
+        if (!body.teamCode) { showToast('Vui lòng nhập mã đội!', 'err'); return; }
+        setBtnLoading('btn-team-submit', true);
+        try {
+            var url = id ? ('/api/admin/esports/teams/' + id) : '/api/admin/esports/teams';
+            var method = id ? 'PUT' : 'POST';
+            var response = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            if (!response.ok) { var err = await response.json(); throw new Error(err.error || 'Thao tác thất bại'); }
+            showToast(id ? 'Đã cập nhật đội ' + body.teamCode : 'Đã thêm đội mới ' + body.teamCode, 'ok');
+            closeTeamModal();
+            loadTeams();
+        } catch (error) { showToast(error.message, 'err'); }
+        finally { setBtnLoading('btn-team-submit', false); }
+    }
+
+    // ==================== TEAMS: EDIT (fetch then open modal) ====================
+    async function editTeam(id) {
+        try {
+            var response = await fetch('/api/admin/esports/teams/' + id);
+            if (!response.ok) throw new Error('Không tìm thấy đội');
+            var team = await response.json();
+            openTeamModal(team);
+        } catch (error) { showToast(error.message, 'err'); }
+    }
+
+    // ==================== TEAMS: DELETE ====================
+    async function deleteTeam(id, code) {
+        if (!confirm('Bạn có chắc chắn muốn xóa đội "' + code + '"?\nHành động này không thể hoàn tác!')) return;
+        try {
+            var response = await fetch('/api/admin/esports/teams/' + id, { method: 'DELETE' });
+            if (!response.ok) { var err = await response.json(); throw new Error(err.error || 'Xóa thất bại'); }
+            showToast('Đã xóa đội ' + code, 'ok');
+            loadTeams();
+        } catch (error) { showToast(error.message, 'err'); }
+    }
+</script>
+<script src="/js/admin.js"></script>
+</body>
+</html>

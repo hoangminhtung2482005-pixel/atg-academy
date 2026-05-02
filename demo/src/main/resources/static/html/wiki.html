@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wiki - ATG Academy</title>
+    <meta name="description" content="Thư viện Wiki Liên Quân Mobile — tra cứu thông tin Tướng, Trang bị, Ngọc, Phù hiệu và Bổ trợ.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        /* ===== Wiki Layout ===== */
+        .wiki-root { min-height: 100vh; background: #f8fafc; }
+        .wiki-container { max-width: 1280px; margin: 0 auto; padding: 24px 16px 48px; }
+
+        /* ===== Tab Navigation ===== */
+        .wiki-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; border-bottom: 2px solid #e2e8f0; margin-bottom: 28px; }
+        .wiki-tab {
+            flex-shrink: 0; padding: 10px 20px; border-radius: 10px 10px 0 0;
+            font-size: 0.875rem; font-weight: 600; cursor: pointer;
+            color: #64748b; background: transparent; border: 2px solid transparent; border-bottom: none;
+            transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;
+        }
+        .wiki-tab:hover { color: #334155; background: #f1f5f9; }
+        .wiki-tab.active { color: #2563eb; background: #eff6ff; border-color: #bfdbfe; }
+        .wiki-tab-icon { font-size: 1.1rem; }
+
+        /* ===== Search Bar ===== */
+        .wiki-search-bar {
+            position: relative; max-width: 480px; margin-bottom: 14px;
+        }
+        .wiki-search-bar input {
+            width: 100%; padding: 10px 14px 10px 42px; border-radius: 12px;
+            border: 2px solid #e2e8f0; background: #fff; font-size: 0.9rem; color: #0f172a;
+            outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .wiki-search-bar input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+        .wiki-search-bar .search-icon {
+            position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+            color: #94a3b8; pointer-events: none;
+        }
+
+        /* ===== Hero Filters ===== */
+        .wiki-filter-panel {
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+            display: grid; gap: 14px; margin-bottom: 18px; padding: 14px;
+        }
+        .wiki-filter-group { display: grid; gap: 8px; }
+        .wiki-filter-label {
+            color: #475569; font-size: 0.74rem; font-weight: 800;
+            letter-spacing: 0.02em; text-transform: uppercase;
+        }
+        .wiki-filter-options { display: flex; flex-wrap: wrap; gap: 8px; }
+        .wiki-filter-btn,
+        .wiki-filter-reset {
+            align-items: center; background: #f8fafc; border: 1px solid #cbd5e1;
+            border-radius: 999px; color: #334155; cursor: pointer; display: inline-flex;
+            font: inherit; font-size: 0.82rem; font-weight: 750; gap: 7px;
+            min-height: 34px; padding: 0 12px; transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+        }
+        .wiki-filter-btn:hover,
+        .wiki-filter-reset:hover { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+        .wiki-filter-btn.active {
+            background: #2563eb; border-color: #2563eb; box-shadow: 0 8px 18px rgba(37,99,235,0.18);
+            color: #fff;
+        }
+        .wiki-filter-btn img {
+            height: 20px; object-fit: contain; width: 20px;
+        }
+        .wiki-filter-btn.active img { filter: brightness(0) invert(1); }
+        .wiki-role-filter small { color: inherit; font-size: 0.72rem; font-weight: 650; }
+        .wiki-filter-footer { align-items: center; display: flex; justify-content: flex-end; }
+        .wiki-filter-reset {
+            background: #fff; border-color: #fecaca; color: #b91c1c; font-weight: 800;
+        }
+        .wiki-filter-reset:hover { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
+
+        @media (min-width: 860px) {
+            .wiki-filter-panel { grid-template-columns: 1fr 1.15fr auto; align-items: end; }
+            .wiki-filter-footer { justify-content: flex-start; }
+        }
+
+        /* ===== Hero Grid ===== */
+        .wiki-hero-grid {
+            display: grid; gap: 16px;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        }
+        @media (min-width: 640px) { .wiki-hero-grid { grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); } }
+
+        .wiki-hero-card {
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+            padding: 16px 10px 14px; text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; cursor: default;
+        }
+        .wiki-hero-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(15,23,42,0.1); border-color: #93c5fd; }
+
+        .wiki-hero-avatar-wrap {
+            width: 72px; height: 72px; margin: 0 auto 10px; border-radius: 50%;
+            overflow: hidden; border: 3px solid #e2e8f0; background: #f1f5f9;
+            display: flex; align-items: center; justify-content: center;
+            transition: border-color 0.2s;
+        }
+        .wiki-hero-card:hover .wiki-hero-avatar-wrap { border-color: #60a5fa; }
+        .wiki-hero-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
+        .wiki-hero-avatar-wrap .avatar-fallback {
+            font-size: 1.6rem; font-weight: 800; color: #94a3b8;
+        }
+        .wiki-hero-name { font-size: 0.82rem; font-weight: 700; color: #0f172a; line-height: 1.2; margin-bottom: 4px; }
+        .wiki-hero-roles { font-size: 0.7rem; color: #64748b; line-height: 1.3; }
+        .wiki-hero-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 8px; }
+        .wiki-badge {
+            display: inline-flex; max-width: 100%; border-radius: 999px; padding: 3px 7px;
+            font-size: 0.65rem; font-weight: 700; line-height: 1.1; overflow-wrap: anywhere;
+            border: 1px solid transparent;
+        }
+        .wiki-badge.class { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+        .wiki-badge.lane { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+        .wiki-badge.attr { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+
+        /* ===== States ===== */
+        .wiki-state { text-align: center; padding: 60px 20px; color: #64748b; }
+        .wiki-state-icon { font-size: 3.5rem; margin-bottom: 12px; opacity: 0.6; }
+        .wiki-state-title { font-size: 1.1rem; font-weight: 700; color: #334155; margin-bottom: 6px; }
+        .wiki-state-text { font-size: 0.9rem; max-width: 400px; margin: 0 auto; }
+
+        /* ===== Placeholder (Coming Soon) ===== */
+        .wiki-placeholder {
+            background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 50%, #ecfeff 100%);
+            border: 2px dashed #bfdbfe; border-radius: 20px; padding: 64px 24px;
+            text-align: center;
+        }
+        .wiki-placeholder-icon { font-size: 4rem; margin-bottom: 16px; filter: grayscale(0.2); }
+        .wiki-placeholder-title { font-size: 1.2rem; font-weight: 800; color: #1e40af; margin-bottom: 8px; }
+        .wiki-placeholder-text { font-size: 0.9rem; color: #3b82f6; max-width: 360px; margin: 0 auto; }
+        .wiki-placeholder-badge {
+            display: inline-block; margin-top: 18px; padding: 6px 18px;
+            background: #dbeafe; color: #1d4ed8; border-radius: 999px;
+            font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+
+        /* ===== Skeleton loading ===== */
+        .skeleton { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 10px; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        /* ===== Hero count badge ===== */
+        .wiki-hero-count {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;
+            padding: 4px 12px; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="header-placeholder"></div>
+
+    <div class="wiki-root">
+        <div class="wiki-container">
+            <!-- Page Header -->
+            <div class="mb-2">
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">📖 Wiki</h1>
+                <p class="text-slate-500 text-sm mt-1">Thư viện tra cứu thông tin Liên Quân Mobile</p>
+            </div>
+
+            <!-- Tab Navigation -->
+            <nav class="wiki-tabs" id="wiki-tabs" role="tablist" aria-label="Danh mục Wiki">
+                <button class="wiki-tab active" data-tab="heroes" role="tab" aria-selected="true">
+                    <span class="wiki-tab-icon">⚔️</span> Tướng
+                </button>
+                <button class="wiki-tab" data-tab="spells" role="tab" aria-selected="false">
+                    <span class="wiki-tab-icon">✨</span> Bổ trợ
+                </button>
+                <button class="wiki-tab" data-tab="items" role="tab" aria-selected="false">
+                    <span class="wiki-tab-icon">🛡️</span> Trang bị
+                </button>
+                <button class="wiki-tab" data-tab="arcana" role="tab" aria-selected="false">
+                    <span class="wiki-tab-icon">💎</span> Ngọc
+                </button>
+                <button class="wiki-tab" data-tab="enchantments" role="tab" aria-selected="false">
+                    <span class="wiki-tab-icon">🔮</span> Phù hiệu
+                </button>
+            </nav>
+
+            <!-- Tab Content -->
+            <div id="wiki-content"></div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        'use strict';
+
+        const HERO_API = '/api/wiki/heroes';
+
+        let heroesData = [];
+        let activeTab = 'heroes';
+        let activeClassFilter = 'all';
+        let activeRoleFilter = 'all';
+
+        const HERO_CLASS_FILTERS = ['Đấu sĩ', 'Sát thủ', 'Pháp sư', 'Xạ thủ', 'Đỡ đòn', 'Trợ thủ'];
+        const ROLE_FILTERS = [
+            { code: 'DSL', label: 'Đường Tà Thần', icon: '/images/ui/top.png' },
+            { code: 'JGL', label: 'Đi Rừng', icon: '/images/ui/jungle.png' },
+            { code: 'MID', label: 'Đường Giữa', icon: '/images/ui/mid.png' },
+            { code: 'ADL', label: 'Đường Rồng', icon: '/images/ui/adc.png' },
+            { code: 'SUP', label: 'Trợ Thủ', icon: '/images/ui/support.png' }
+        ];
+
+        // ==================== TAB MANAGEMENT ====================
+
+        function initTabs() {
+            const tabContainer = document.getElementById('wiki-tabs');
+            if (!tabContainer) return;
+
+            tabContainer.addEventListener('click', function (event) {
+                const tabButton = event.target.closest('.wiki-tab');
+                if (!tabButton) return;
+
+                const tabId = tabButton.getAttribute('data-tab');
+                if (tabId === activeTab) return;
+
+                activeTab = tabId;
+                tabContainer.querySelectorAll('.wiki-tab').forEach(function (btn) {
+                    const isActive = btn.getAttribute('data-tab') === tabId;
+                    btn.classList.toggle('active', isActive);
+                    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                });
+
+                renderActiveTab();
+            });
+        }
+
+        function renderActiveTab() {
+            if (activeTab === 'heroes') {
+                renderHeroesTab();
+            } else {
+                renderPlaceholderTab(activeTab);
+            }
+        }
+
+        // ==================== HEROES TAB ====================
+
+        function renderHeroesTab() {
+            const content = document.getElementById('wiki-content');
+            if (!content) return;
+
+            if (heroesData.length === 0) {
+                content.innerHTML = buildSkeletonGrid();
+                fetchHeroes();
+                return;
+            }
+
+            content.innerHTML = buildHeroSearchBar() + buildHeroFilters() + buildHeroCountBadge(heroesData.length) + '<div class="wiki-hero-grid" id="hero-grid"></div>';
+            applyHeroFilters();
+            attachHeroFilterListeners();
+        }
+
+        async function fetchHeroes() {
+            const content = document.getElementById('wiki-content');
+            try {
+                const response = await fetch(HERO_API, { headers: { 'Accept': 'application/json' } });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+
+                const heroes = await response.json();
+                if (!Array.isArray(heroes)) throw new Error('Invalid payload');
+
+                heroesData = heroes;
+
+                if (activeTab !== 'heroes') return;
+
+                if (heroesData.length === 0) {
+                    content.innerHTML = buildEmptyState('⚔️', 'Chưa có dữ liệu tướng', 'Danh sách tướng sẽ xuất hiện khi database có dữ liệu.');
+                    return;
+                }
+
+                content.innerHTML = buildHeroSearchBar() + buildHeroFilters() + buildHeroCountBadge(heroesData.length) + '<div class="wiki-hero-grid" id="hero-grid"></div>';
+                applyHeroFilters();
+                attachHeroFilterListeners();
+
+            } catch (error) {
+                console.error('Wiki hero fetch error:', error);
+                if (activeTab === 'heroes' && content) {
+                    content.innerHTML = buildEmptyState('❌', 'Không thể tải dữ liệu', 'Vui lòng kiểm tra kết nối server và thử tải lại trang.');
+                }
+            }
+        }
+
+        function renderHeroGrid(heroes) {
+            const grid = document.getElementById('hero-grid');
+            if (!grid) return;
+
+            if (heroes.length === 0) {
+                grid.innerHTML = '<div class="wiki-state" style="grid-column:1/-1"><div class="wiki-state-icon">🔍</div><div class="wiki-state-title">Không tìm thấy tướng nào</div><div class="wiki-state-text">Thử tìm kiếm với từ khóa khác.</div></div>';
+                return;
+            }
+
+            grid.innerHTML = heroes.map(function (hero) {
+                var avatarHtml;
+                if (hero.avatarUrl) {
+                    avatarHtml = '<img src="' + escapeHtml(hero.avatarUrl) + '" alt="' + escapeHtml(hero.name) + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
+                                 '<span class="avatar-fallback" style="display:none">' + escapeHtml((hero.name || '?').charAt(0)) + '</span>';
+                } else {
+                    avatarHtml = '<span class="avatar-fallback">' + escapeHtml((hero.name || '?').charAt(0)) + '</span>';
+                }
+
+                var roleCodes = getHeroRoleCodes(hero);
+                var roleLabels = getHeroLaneRoleLabels(hero);
+                var rolesArr = roleCodes.length ? roleCodes : roleLabels;
+                // heroClass (Chất tướng)
+                var heroClasses = Array.isArray(hero.classes) && hero.classes.length
+                    ? hero.classes
+                    : (hero.heroClass ? [hero.heroClass] : []);
+                // attributes is an array
+                var attrsArr = Array.isArray(hero.attributes) ? hero.attributes : [];
+
+                var metaLines = '<div class="wiki-hero-badges">';
+                heroClasses.forEach(function (heroClass) {
+                    metaLines += '<span class="wiki-badge class">' + escapeHtml(heroClass) + '</span>';
+                });
+                rolesArr.forEach(function (role) {
+                    var roleLabel = getRoleLabel(role) || role;
+                    metaLines += '<span class="wiki-badge lane" title="' + escapeHtml(roleLabel) + '">' + escapeHtml(role) + '</span>';
+                });
+                attrsArr.forEach(function (attribute) { metaLines += '<span class="wiki-badge attr">' + escapeHtml(attribute) + '</span>'; });
+                metaLines += '</div>';
+
+                return '<div class="wiki-hero-card">' +
+                    '<div class="wiki-hero-avatar-wrap">' + avatarHtml + '</div>' +
+                    '<div class="wiki-hero-name">' + escapeHtml(hero.name || 'Unknown') + '</div>' +
+                    metaLines +
+                '</div>';
+            }).join('');
+        }
+
+        function attachHeroFilterListeners() {
+            var input = document.getElementById('wiki-hero-search');
+            if (input) {
+                input.addEventListener('input', applyHeroFilters);
+            }
+
+            document.querySelectorAll('[data-class-filter]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    activeClassFilter = button.getAttribute('data-class-filter') || 'all';
+                    updateHeroFilterButtons();
+                    applyHeroFilters();
+                });
+            });
+
+            document.querySelectorAll('[data-role-filter]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    activeRoleFilter = button.getAttribute('data-role-filter') || 'all';
+                    updateHeroFilterButtons();
+                    applyHeroFilters();
+                });
+            });
+
+            var resetButton = document.getElementById('wiki-filter-reset');
+            if (resetButton) {
+                resetButton.addEventListener('click', function () {
+                    activeClassFilter = 'all';
+                    activeRoleFilter = 'all';
+                    if (input) input.value = '';
+                    updateHeroFilterButtons();
+                    applyHeroFilters();
+                });
+            }
+
+            updateHeroFilterButtons();
+        }
+
+        function applyHeroFilters() {
+            var input = document.getElementById('wiki-hero-search');
+            var keyword = normalize(input ? input.value : '');
+            var filtered = heroesData.filter(function (hero) {
+                var roleCodes = getHeroRoleCodes(hero);
+                var laneRoles = getHeroLaneRoleLabels(hero);
+                var attrsStr = Array.isArray(hero.attributes) ? hero.attributes.join(' ') : '';
+                var classNames = Array.isArray(hero.classes) && hero.classes.length
+                    ? hero.classes
+                    : (hero.heroClass ? [hero.heroClass] : []);
+                var classStr = classNames.join(' ');
+
+                var matchesSearch = !keyword ||
+                    normalize(hero.name || '').includes(keyword) ||
+                    normalize(roleCodes.join(' ')).includes(keyword) ||
+                    normalize(laneRoles.join(' ')).includes(keyword) ||
+                    normalize(classStr).includes(keyword) ||
+                    normalize(attrsStr).includes(keyword);
+
+                var matchesClass = activeClassFilter === 'all' || classNames.some(function (heroClass) {
+                    return normalize(heroClass) === normalize(activeClassFilter);
+                });
+                var matchesRole = activeRoleFilter === 'all' || roleCodes.includes(activeRoleFilter);
+
+                return matchesSearch && matchesClass && matchesRole;
+            });
+
+            renderHeroGrid(filtered);
+            updateHeroCount(filtered.length);
+        }
+
+        function updateHeroFilterButtons() {
+            document.querySelectorAll('[data-class-filter]').forEach(function (button) {
+                button.classList.toggle('active', button.getAttribute('data-class-filter') === activeClassFilter);
+            });
+            document.querySelectorAll('[data-role-filter]').forEach(function (button) {
+                button.classList.toggle('active', button.getAttribute('data-role-filter') === activeRoleFilter);
+            });
+        }
+
+        function updateHeroCount(count) {
+            var countEl = document.getElementById('wiki-hero-count');
+            if (countEl) countEl.textContent = '⚔️ ' + count + ' tướng';
+        }
+
+        // ==================== PLACEHOLDER TAB ====================
+
+        var placeholderConfig = {
+            spells:       { icon: '✨', label: 'Bổ trợ' },
+            items:        { icon: '🛡️', label: 'Trang bị' },
+            arcana:       { icon: '💎', label: 'Ngọc' },
+            enchantments: { icon: '🔮', label: 'Phù hiệu' }
+        };
+
+        function renderPlaceholderTab(tabId) {
+            var content = document.getElementById('wiki-content');
+            if (!content) return;
+
+            var config = placeholderConfig[tabId] || { icon: '📦', label: tabId };
+
+            content.innerHTML =
+                '<div class="wiki-placeholder">' +
+                    '<div class="wiki-placeholder-icon">' + config.icon + '</div>' +
+                    '<div class="wiki-placeholder-title">Danh mục ' + escapeHtml(config.label) + '</div>' +
+                    '<div class="wiki-placeholder-text">Tính năng đang được cập nhật...<br>Dữ liệu ' + escapeHtml(config.label) + ' sẽ sớm có mặt trên Wiki.</div>' +
+                    '<span class="wiki-placeholder-badge">🚧 Coming Soon</span>' +
+                '</div>';
+        }
+
+        // ==================== HTML BUILDERS ====================
+
+        function buildHeroSearchBar() {
+            return '<div class="wiki-search-bar">' +
+                '<svg class="search-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>' +
+                '<input type="text" id="wiki-hero-search" placeholder="Tìm kiếm tướng theo tên, class hoặc vị trí..." autocomplete="off">' +
+            '</div>';
+        }
+
+        function buildHeroFilters() {
+            var classButtons = '<button class="wiki-filter-btn active" type="button" data-class-filter="all">Tất cả class</button>';
+            HERO_CLASS_FILTERS.forEach(function (heroClass) {
+                classButtons += '<button class="wiki-filter-btn" type="button" data-class-filter="' + escapeHtml(heroClass) + '">' + escapeHtml(heroClass) + '</button>';
+            });
+
+            var roleButtons = '<button class="wiki-filter-btn active" type="button" data-role-filter="all">Tất cả vị trí</button>';
+            ROLE_FILTERS.forEach(function (role) {
+                roleButtons += '<button class="wiki-filter-btn wiki-role-filter" type="button" data-role-filter="' + escapeHtml(role.code) + '" title="' + escapeHtml(role.label) + '">' +
+                    '<img src="' + escapeHtml(role.icon) + '" alt="">' +
+                    '<span>' + escapeHtml(role.code) + '</span>' +
+                    '<small>' + escapeHtml(role.label) + '</small>' +
+                '</button>';
+            });
+
+            return '<div class="wiki-filter-panel">' +
+                '<div class="wiki-filter-group">' +
+                    '<div class="wiki-filter-label">Class</div>' +
+                    '<div class="wiki-filter-options">' + classButtons + '</div>' +
+                '</div>' +
+                '<div class="wiki-filter-group">' +
+                    '<div class="wiki-filter-label">Vị trí đi đường</div>' +
+                    '<div class="wiki-filter-options">' + roleButtons + '</div>' +
+                '</div>' +
+                '<div class="wiki-filter-footer">' +
+                    '<button class="wiki-filter-reset" id="wiki-filter-reset" type="button">Xóa lọc</button>' +
+                '</div>' +
+            '</div>';
+        }
+
+        function buildHeroCountBadge(count) {
+            return '<div class="wiki-hero-count" id="wiki-hero-count">⚔️ ' + count + ' tướng</div>';
+        }
+
+        function buildSkeletonGrid() {
+            var cards = '';
+            for (var i = 0; i < 12; i++) {
+                cards += '<div class="wiki-hero-card"><div class="skeleton" style="width:72px;height:72px;border-radius:50%;margin:0 auto 10px"></div><div class="skeleton" style="height:14px;width:70%;margin:0 auto 6px"></div><div class="skeleton" style="height:10px;width:50%;margin:0 auto"></div></div>';
+            }
+            return '<div class="wiki-hero-grid">' + cards + '</div>';
+        }
+
+        function buildEmptyState(icon, title, text) {
+            return '<div class="wiki-state"><div class="wiki-state-icon">' + icon + '</div><div class="wiki-state-title">' + escapeHtml(title) + '</div><div class="wiki-state-text">' + escapeHtml(text) + '</div></div>';
+        }
+
+        // ==================== UTILITIES ====================
+
+        function getHeroLaneRoleLabels(hero) {
+            if (Array.isArray(hero.laneRoles) && hero.laneRoles.length) {
+                return hero.laneRoles;
+            }
+            if (Array.isArray(hero.roles)) {
+                return hero.roles.map(function (role) {
+                    return getRoleLabel(role) || role;
+                });
+            }
+            return [];
+        }
+
+        function getHeroRoleCodes(hero) {
+            var codes = [];
+            function addCode(value) {
+                var code = normalizeRoleCode(value);
+                if (code && codes.indexOf(code) === -1) codes.push(code);
+            }
+
+            if (Array.isArray(hero.roles)) {
+                hero.roles.forEach(addCode);
+            }
+            if (Array.isArray(hero.laneRoles)) {
+                hero.laneRoles.forEach(addCode);
+            }
+            return codes;
+        }
+
+        function normalizeRoleCode(value) {
+            var raw = String(value || '').trim().toUpperCase();
+            if (ROLE_FILTERS.some(function (role) { return role.code === raw; })) {
+                return raw;
+            }
+
+            var text = normalize(value);
+            if (!text) return '';
+            if (text.includes('dsl') || text.includes('ta than') || text.includes('solo') || text.includes('top')) return 'DSL';
+            if (text.includes('jgl') || text.includes('rung') || text.includes('jungle')) return 'JGL';
+            if (text.includes('mid') || text.includes('giua')) return 'MID';
+            if (text.includes('adl') || text.includes('rong') || text.includes('xa thu') || text.includes('marksman')) return 'ADL';
+            if (text.includes('sup') || text.includes('tro thu') || text.includes('ho tro') || text.includes('support')) return 'SUP';
+            return '';
+        }
+
+        function getRoleLabel(value) {
+            var code = normalizeRoleCode(value);
+            var role = ROLE_FILTERS.find(function (item) { return item.code === code; });
+            return role ? role.label : '';
+        }
+
+        function escapeHtml(value) {
+            return String(value || '').replace(/[&<>"']/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+            });
+        }
+
+        function normalize(value) {
+            return (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+        }
+
+        // ==================== INIT ====================
+
+        function init() {
+            initTabs();
+            renderActiveTab();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
+    </script>
+    <script src="/js/auth.js?v=20260424-account-profile"></script>
+    <script src="/js/header-loader.js?v=20260424-account-profile"></script>
+</body>
+</html>

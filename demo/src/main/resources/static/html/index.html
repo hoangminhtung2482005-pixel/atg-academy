@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATG Academy</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background:
+                radial-gradient(circle at 50% -12%, rgba(219, 234, 254, 0.72), transparent 38%),
+                #f8fbff;
+        }
+        .home-banner-section {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .home-banner-main {
+            background: #f8fbff;
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            border-radius: 24px;
+            box-shadow: 0 30px 90px rgba(15, 23, 42, 0.12);
+            height: 460px;
+            margin-left: auto;
+            margin-right: auto;
+            max-width: 1200px;
+            overflow: hidden;
+            position: relative;
+            width: 100%;
+        }
+
+        .home-banner-slide,
+        .home-banner-panel {
+            height: 100%;
+        }
+
+        .home-banner-panel {
+            animation: bannerFadeIn 0.5s ease both;
+            isolation: isolate;
+            position: relative;
+        }
+
+        .home-banner-image {
+            height: 100%;
+            inset: 0;
+            object-fit: cover;
+            object-position: center right;
+            position: absolute;
+            filter: saturate(1.04) contrast(1.02);
+            transition: transform 0.8s ease;
+            width: 100%;
+            z-index: -2;
+        }
+
+        .home-banner-panel::before {
+            background:
+                linear-gradient(90deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.78) 29%, rgba(255, 255, 255, 0.42) 47%, rgba(255, 255, 255, 0.08) 68%, rgba(255, 255, 255, 0) 100%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(239, 246, 255, 0.16));
+            content: "";
+            inset: 0;
+            position: absolute;
+            z-index: -1;
+        }
+
+        .home-banner-panel::after {
+            background:
+                radial-gradient(circle at 17% 20%, rgba(37, 99, 235, 0.05), transparent 26%),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.16), transparent 58%);
+            content: "";
+            inset: 0;
+            opacity: 0.62;
+            pointer-events: none;
+            position: absolute;
+        }
+
+        .home-banner-content {
+            align-items: flex-start;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            justify-content: center;
+            max-width: 540px;
+            padding: 48px 0 48px 76px;
+            position: relative;
+            width: 45%;
+            z-index: 1;
+        }
+
+        .home-banner-kicker {
+            align-items: center;
+            background: rgba(239, 246, 255, 0.86);
+            border: 1px solid rgba(191, 219, 254, 0.95);
+            border-radius: 999px;
+            color: #2563eb;
+            display: inline-flex;
+            font-size: 0.82rem;
+            font-weight: 800;
+            gap: 8px;
+            padding: 10px 16px;
+            text-transform: uppercase;
+        }
+
+        .home-banner-kicker::before {
+            animation: bannerPulse 2.8s ease-in-out infinite;
+            background: #38bdf8;
+            border-radius: 999px;
+            content: "";
+            height: 8px;
+            width: 8px;
+        }
+
+        .home-banner-title {
+            color: #061845;
+            font-size: 3.55rem;
+            font-weight: 800;
+            line-height: 1.04;
+            margin-top: 22px;
+            max-width: 12ch;
+            text-shadow: 0 14px 34px rgba(255, 255, 255, 0.68);
+        }
+
+        .home-banner-title .home-banner-title-accent {
+            color: #2563eb;
+            display: block;
+        }
+
+        .home-banner-description {
+            color: #64748b;
+            font-size: 1rem;
+            line-height: 1.65;
+            margin-top: 14px;
+            max-width: 100%;
+        }
+
+        .home-banner-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 18px;
+        }
+
+        .home-banner-chip {
+            background: rgba(255, 255, 255, 0.74);
+            border: 1px solid rgba(203, 213, 225, 0.9);
+            border-radius: 999px;
+            color: #64748b;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 8px 12px;
+        }
+
+        .home-banner-cta {
+            align-items: center;
+            background: #2563eb;
+            border-radius: 16px;
+            box-shadow: 0 16px 36px rgba(37, 99, 235, 0.34);
+            color: #ffffff;
+            display: inline-flex;
+            font-size: 1rem;
+            font-weight: 800;
+            gap: 10px;
+            margin-top: 26px;
+            min-height: 52px;
+            padding: 14px 22px;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+        }
+
+        .home-banner-cta:hover {
+            background: #1d4ed8;
+            box-shadow: 0 20px 44px rgba(37, 99, 235, 0.42);
+            transform: translateY(-1px);
+        }
+
+        .home-banner-arrow {
+            align-items: center;
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid rgba(226, 232, 240, 0.96);
+            border-radius: 999px;
+            box-shadow: 0 14px 34px rgba(15, 23, 42, 0.12);
+            color: #0f172a;
+            display: inline-flex;
+            height: 52px;
+            justify-content: center;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: background-color 0.2s ease, transform 0.2s ease;
+            width: 52px;
+            z-index: 5;
+        }
+
+        .home-banner-arrow:hover {
+            background: #ffffff;
+            transform: translateY(-50%) scale(1.04);
+        }
+
+        .home-banner-arrow.prev {
+            left: 24px;
+        }
+
+        .home-banner-arrow.next {
+            right: 24px;
+        }
+
+        .home-banner-dots {
+            bottom: 36px;
+            display: flex;
+            gap: 8px;
+            position: absolute;
+            right: 42px;
+            z-index: 6;
+        }
+
+        .home-banner-dot {
+            background: rgba(148, 163, 184, 0.38);
+            border-radius: 999px;
+            height: 8px;
+            transition: background-color 0.2s ease, width 0.2s ease;
+            width: 8px;
+        }
+
+        .home-banner-dot.is-active {
+            background: #2563eb;
+            width: 36px;
+        }
+
+        .home-banner-card-list {
+            display: none;
+            gap: 12px;
+        }
+
+        .home-banner-side-card {
+            align-items: center;
+            background: rgba(255, 255, 255, 0.86);
+            border: 1px solid rgba(226, 232, 240, 0.95);
+            border-radius: 1rem;
+            box-shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
+            cursor: pointer;
+            display: grid;
+            gap: 12px;
+            grid-template-columns: 94px minmax(0, 1fr);
+            min-height: 96px;
+            overflow: hidden;
+            padding: 10px;
+            text-align: left;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+        }
+
+        .home-banner-side-card:hover,
+        .home-banner-side-card.is-active {
+            border-color: rgba(37, 99, 235, 0.54);
+            box-shadow: 0 18px 42px rgba(37, 99, 235, 0.16);
+            transform: translateY(-2px);
+        }
+
+        .home-banner-side-card.is-active {
+            background: linear-gradient(135deg, rgba(239, 246, 255, 0.96), rgba(255, 255, 255, 0.92));
+        }
+
+        .home-banner-thumb {
+            aspect-ratio: 16 / 10;
+            border-radius: 12px;
+            display: block;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .home-banner-thumb img {
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.28s ease;
+            width: 100%;
+        }
+
+        .home-banner-side-card:hover .home-banner-thumb img,
+        .home-banner-side-card.is-active .home-banner-thumb img {
+            transform: scale(1.07);
+        }
+
+        .home-banner-card-label {
+            color: #2563eb;
+            display: block;
+            font-size: 0.68rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .home-banner-card-title {
+            color: #0f172a;
+            display: -webkit-box;
+            font-size: 0.92rem;
+            font-weight: 800;
+            line-height: 1.35;
+            overflow: hidden;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+        }
+
+        .home-banner-loading {
+            align-items: center;
+            background:
+                linear-gradient(90deg, rgba(255, 255, 255, 0.95), rgba(239, 246, 255, 0.78)),
+                url('/images/backgrounds/home-bg-1.jpg');
+            background-position: center right;
+            background-size: cover;
+            color: #64748b;
+            display: flex;
+            font-weight: 700;
+            height: 100%;
+            justify-content: center;
+        }
+
+        @keyframes bannerFadeIn {
+            from { opacity: 0; transform: translateX(14px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes bannerPulse {
+            0%, 100% { opacity: 0.56; box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.42); }
+            50% { opacity: 1; box-shadow: 0 0 0 7px rgba(56, 189, 248, 0); }
+        }
+
+        @media (max-width: 1023px) {
+            .home-banner-main {
+                height: 400px;
+            }
+
+            .home-banner-content {
+                max-width: 560px;
+                padding: 42px 0 42px 64px;
+                width: 52%;
+            }
+
+            .home-banner-title {
+                font-size: 3rem;
+            }
+
+            .home-banner-card-list {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 640px) {
+            .home-banner-main {
+                height: auto;
+                max-height: 520px;
+            }
+
+            .home-banner-content {
+                justify-content: flex-start;
+                max-width: none;
+                min-height: 500px;
+                padding: 30px 22px 84px;
+                width: 100%;
+            }
+
+            .home-banner-panel::before {
+                background:
+                    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.93) 58%, rgba(255, 255, 255, 0.54) 100%),
+                    linear-gradient(90deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.18));
+            }
+
+            .home-banner-image {
+                object-position: 66% center;
+            }
+
+            .home-banner-title {
+                max-width: 13ch;
+                font-size: 2.35rem;
+                margin-top: 18px;
+            }
+
+            .home-banner-description {
+                font-size: 0.95rem;
+                line-height: 1.6;
+            }
+
+            .home-banner-chip {
+                font-size: 0.78rem;
+                padding: 8px 11px;
+            }
+
+            .home-banner-cta {
+                font-size: 0.95rem;
+                min-height: 48px;
+                padding: 12px 18px;
+            }
+
+            .home-banner-card-list {
+                grid-template-columns: 1fr;
+            }
+
+            .home-banner-side-card {
+                grid-template-columns: 88px minmax(0, 1fr);
+            }
+
+            .home-banner-arrow {
+                height: 36px;
+                top: auto;
+                bottom: 22px;
+                transform: none;
+                width: 36px;
+            }
+
+            .home-banner-arrow:hover {
+                transform: scale(1.04);
+            }
+
+            .home-banner-arrow.prev {
+                left: 22px;
+            }
+
+            .home-banner-arrow.next {
+                right: 22px;
+            }
+
+            .home-banner-dots {
+                bottom: 36px;
+                left: 50%;
+                right: auto;
+                transform: translateX(-50%);
+            }
+        }
+    </style>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body class="text-slate-900 font-sans antialiased flex flex-col min-h-screen">
+    
+    <div id="header-placeholder"></div>
+
+    <!-- ================= MAIN CONTENT ================= -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8">
+        
+        <!-- Top Banner Carousel -->
+        <section class="home-banner-section" aria-label="Nội dung nổi bật ATG Academy">
+            <div class="home-banner-main" id="home-banner-carousel">
+                <div class="home-banner-slide" id="home-banner-slide">
+                    <div class="home-banner-loading">Đang tải điểm nóng ATG Academy...</div>
+                </div>
+                <button type="button" class="home-banner-arrow prev" id="home-banner-prev" aria-label="Banner trước">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </button>
+                <button type="button" class="home-banner-arrow next" id="home-banner-next" aria-label="Banner tiếp theo">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
+                <div class="home-banner-dots" id="home-banner-dots" aria-label="Chọn banner"></div>
+            </div>
+
+            <aside class="home-banner-card-list" id="home-banner-card-list" aria-label="Danh sách nội dung nổi bật">
+                <div class="home-banner-side-card">
+                    <span class="home-banner-thumb bg-slate-100"></span>
+                    <span>
+                        <span class="home-banner-card-label">Đang tải</span>
+                        <span class="home-banner-card-title">Đồng bộ dữ liệu nổi bật...</span>
+                    </span>
+                </div>
+            </aside>
+        </section>
+
+        <!-- Middle Grid Section (Leaderboard & Tier List) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- Left: Leaderboard (1/3) -->
+            <section class="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col hover:shadow-md transition-shadow">
+                <div class="flex items-center justify-between px-6 pt-5 pb-4">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        </div>
+                        <h2 class="text-lg font-bold text-slate-900">Bảng xếp hạng AER 2026</h2>
+                    </div>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-50 text-green-600 border border-green-200">● TRỰC TIẾP</span>
+                </div>
+                <div class="overflow-x-auto flex-1 px-3">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-[10px] text-slate-400 uppercase tracking-wider">
+                            <tr class="border-b border-slate-100">
+                                <th class="px-3 py-2.5 font-semibold w-10 text-center">#</th>
+                                <th class="px-3 py-2.5 font-semibold">Đội tuyển</th>
+                                <th class="px-3 py-2.5 font-semibold text-center">Khu vực</th>
+                                <th class="px-3 py-2.5 font-semibold text-right">Elo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="home-leaderboard-container" class="divide-y divide-slate-50">
+                            <tr>
+                                <td colspan="4" class="px-3 py-10 text-center text-slate-400 text-xs">
+                                    <svg class="animate-spin h-5 w-5 mx-auto mb-2 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                    Đang tải bảng xếp hạng...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Footer link -->
+                <a href="/html/esports.html" class="block text-center py-3.5 border-t border-slate-100 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50/50 transition-colors rounded-b-xl">
+                    Xem bảng xếp hạng đầy đủ →
+                </a>
+            </section>
+
+            <!-- Tier List Preview -->
+            <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+                        <h2 class="text-xl font-bold text-slate-900">Tier List nổi bật</h2>
+                    </div>
+                    <span id="home-tier-badge" class="px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-500">Đang đồng bộ</span>
+                </div>
+                <div id="home-tier-preview" class="space-y-3">
+                    <div class="border border-slate-200 rounded-lg bg-slate-50/50 px-4 py-10 text-center text-sm text-slate-400">
+                        Đang tải Tier List chính...
+                    </div>
+                </div>
+                <a href="/html/tier-list.html" class="block text-center mt-4 py-3 border-t border-slate-100 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50/50 transition-colors rounded-b-xl">
+                    Xem đầy đủ Tier List &rarr;
+                </a>
+            </section>
+
+        </div>
+
+        <!-- Community Feed Section -->
+        <section id="home-community-feed-section" class="mt-4">
+            <div class="flex justify-between items-end gap-4 mb-6">
+                <h2 class="text-2xl font-bold text-slate-900">Chiến thuật & Giáo án</h2>
+                <a href="/tier-list" class="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1">
+                    Xem tất cả
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </a>
+            </div>
+            
+            <div id="home-community-feed" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                
+                <!-- Card 1 -->
+                <div onclick="window.location.href='/html/giao-an.html'" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group cursor-pointer hover:shadow-md transition-shadow">
+                    <img src="https://via.placeholder.com/600x300/f1f5f9/94a3b8?text=Di+chuyen+ban+do" alt="Ảnh minh họa" class="w-full h-48 object-cover">
+                    <div class="p-5 flex flex-col flex-grow">
+                        <div class="flex items-center gap-3 mb-3">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">Chiến thuật vĩ mô</span>
+                            <div class="flex items-center text-xs text-slate-500 gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span>8 phút đọc</span>
+                            </div>
+                        </div>
+                        <h3 class="font-bold text-lg text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">Làm chủ di chuyển bản đồ trong AER 2026</h3>
+                        <p class="text-sm text-slate-500 leading-relaxed line-clamp-2">
+                            Cách tiếp cận dựa trên dữ liệu để tối ưu di chuyển bản đồ và thời điểm kiểm soát mục tiêu từ các đội hàng đầu khu vực.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div onclick="window.location.href='/html/giao-an.html'" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group cursor-pointer hover:shadow-md transition-shadow">
+                    <img src="https://via.placeholder.com/600x300/fffbeb/fcd34d?text=Thong+ke+kinh+te" alt="Ảnh minh họa" class="w-full h-48 object-cover">
+                    <div class="p-5 flex flex-col flex-grow">
+                        <div class="flex items-center gap-3 mb-3">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">Phân tích</span>
+                            <div class="flex items-center text-xs text-slate-500 gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span>12 phút đọc</span>
+                            </div>
+                        </div>
+                        <h3 class="font-bold text-lg text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">Quản lý kinh tế V2</h3>
+                        <p class="text-sm text-slate-500 leading-relaxed line-clamp-2">
+                            Phân tích thống kê xu hướng phân bổ tài nguyên của 10 đội tuyển hàng đầu thế giới trong meta hiện tại.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div onclick="window.location.href='/html/giao-an.html'" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group cursor-pointer hover:shadow-md transition-shadow">
+                    <img src="https://via.placeholder.com/600x300/fef2f2/fca5a5?text=Khac+che+tuong" alt="Ảnh minh họa" class="w-full h-48 object-cover">
+                    <div class="p-5 flex flex-col flex-grow">
+                        <div class="flex items-center gap-3 mb-3">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">Cấm/chọn</span>
+                            <div class="flex items-center text-xs text-slate-500 gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span>5 phút đọc</span>
+                            </div>
+                        </div>
+                        <h3 class="font-bold text-lg text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">Khắc chế các tướng bậc S</h3>
+                        <p class="text-sm text-slate-500 leading-relaxed line-clamp-2">
+                            Phân tích các lựa chọn khắc chế hiệu quả trước những tướng áp đảo nhất ở phiên bản 14.2.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ================= FOOTER ================= -->
+    <footer class="bg-white border-t border-slate-200 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="font-bold text-slate-900">
+                ATG Academy
+            </div>
+            <div class="text-xs text-slate-500">
+                © 2026 ATG Academy. Nền tảng esports chuyên sâu.
+            </div>
+            <div class="flex flex-wrap justify-center gap-4 text-xs font-medium text-slate-500">
+                <a href="#" class="hover:text-slate-900 hover:underline transition-colors">Chính sách bảo mật</a>
+                <a href="#" class="hover:text-slate-900 hover:underline transition-colors">Điều khoản dịch vụ</a>
+                <a href="#" class="hover:text-slate-900 hover:underline transition-colors">Liên hệ</a>
+                <a href="#" class="hover:text-slate-900 hover:underline transition-colors">Về chúng tôi</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/js/tier-list-data.js?v=20260426-home-tier-sync"></script>
+
+    <!-- Home widgets: Fetch Top 3 leaderboard and Tier List from API -->
+    <script>
+        (function() {
+            // Map region code → logo file name
+            var REGION_LOGOS = {
+                'RPL': 'RPL_logo.png',
+                'AOG': 'AOG_logo.png',
+                'GCS': 'GCS_logo.png'
+            };
+
+            function getRankBadge(rank) {
+                if (rank === 1) return '<div class="w-6 h-6 rounded-full bg-amber-400 text-white text-xs font-bold flex items-center justify-center shadow-sm">1</div>';
+                if (rank === 2) return '<div class="w-6 h-6 rounded-full bg-slate-400 text-white text-xs font-bold flex items-center justify-center shadow-sm">2</div>';
+                if (rank === 3) return '<div class="w-6 h-6 rounded-full bg-amber-700 text-white text-xs font-bold flex items-center justify-center shadow-sm">3</div>';
+                return '<div class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 text-xs font-semibold flex items-center justify-center">' + rank + '</div>';
+            }
+
+            function getHomeEloScore(team) {
+                var score = Number(team?.eloScore ?? team?.score ?? 0);
+                return Number.isFinite(score) ? score : 0;
+            }
+
+            function escapeHomeHtml(value) {
+                return String(value || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function parseHomeTierData(contentData) {
+                if (!contentData) return null;
+                if (typeof contentData === 'string') {
+                    try {
+                        return JSON.parse(contentData);
+                    } catch (error) {
+                        return null;
+                    }
+                }
+                return contentData;
+            }
+
+            function getHomeTierRows(contentData) {
+                var data = parseHomeTierData(contentData);
+                if (!data) return [];
+
+                if (Array.isArray(data.rows)) {
+                    return data.rows;
+                }
+                if (Array.isArray(data.tiers)) {
+                    return data.tiers;
+                }
+                return [];
+            }
+
+            function isHomePreviewTierLabel(label) {
+                var normalized = String(label || '').trim().toUpperCase();
+                return normalized === 'S' || normalized === 'A';
+            }
+
+            function getHomePreviewRows(contentData) {
+                return getHomeTierRows(contentData)
+                    .filter(function(row) {
+                        return row && isHomePreviewTierLabel(row.label || row.tier);
+                    })
+                    .slice(0, 2);
+            }
+
+            function normalizeHomeTierColor(color, fallback) {
+                return /^#[0-9a-f]{6}$/i.test(color || '') ? color : (fallback || '#64748b');
+            }
+
+            function getTierColorByLabel(label, fallback) {
+                var normalized = String(label || '').trim().toUpperCase();
+                var colors = {
+                    S: '#ef4444',
+                    A: '#8b5cf6',
+                    B: '#2563eb',
+                    C: '#10b981',
+                    D: '#94a3b8'
+                };
+                return colors[normalized] || fallback || '#64748b';
+            }
+
+            function getHomeHeroImage(heroName) {
+                if (typeof getHeroImgUrl === 'function') {
+                    return getHeroImgUrl(heroName);
+                }
+                return '/images/heroes/' + encodeURIComponent(heroName) + '.jpg';
+            }
+
+            function getContentDataFromPayload(payload) {
+                return payload?.contentData || payload?.content_json || payload?.contentJson || payload;
+            }
+
+            var HOME_BANNER_BACKGROUND = '/images/backgrounds/home-bg-1.jpg';
+            var HOME_BANNER_ESPORTS_BACKGROUND = '/images/leagues/aer-logo-bg.png';
+            var HOME_BANNER_INTERVAL = 5000;
+            var homeBannerState = {
+                index: 0,
+                items: [],
+                paused: false,
+                timer: null,
+                touchStartX: 0
+            };
+
+            function createHomeBannerFallbackItems() {
+                return [
+                    {
+                        cta: 'Xem Tier List',
+                        description: 'Theo dõi các lựa chọn mạnh nhất theo từng bậc, từng vai trò và cập nhật nhanh khi sức mạnh tướng thay đổi.',
+                        href: '/html/tier-list.html',
+                        id: 'tier-list-fallback',
+                        image: HOME_BANNER_BACKGROUND,
+                        kicker: 'Tier List',
+                        shortTitle: 'Tier List Chính Thức',
+                        thumbnail: HOME_BANNER_BACKGROUND,
+                        title: 'Tier List',
+                        titleAccent: 'Chính Thức',
+                        chips: ['Official', 'Tier S', 'Cập nhật liên tục']
+                    },
+                    {
+                        cta: 'Xem giáo án',
+                        description: 'Giáo án chiến thuật giúp bạn đọc thế trận, kiểm soát mục tiêu và phối hợp đội hình hiệu quả hơn.',
+                        href: '/html/giao-an.html',
+                        id: 'guide-fallback',
+                        image: HOME_BANNER_BACKGROUND,
+                        kicker: 'Giáo án',
+                        shortTitle: 'Nâng tầm kỹ năng macro',
+                        thumbnail: HOME_BANNER_BACKGROUND,
+                        title: 'Nâng tầm kỹ năng macro',
+                        chips: ['Chiến thuật', 'Bản đồ', 'Mục tiêu lớn']
+                    },
+                    {
+                        cta: 'Khám phá phân tích',
+                        description: 'Bảng Elo và chỉ số đội tuyển giúp bạn nắm nhanh cục diện AER 2026 trước mỗi vòng đấu.',
+                        href: '/html/esports.html',
+                        id: 'esports-fallback',
+                        image: HOME_BANNER_ESPORTS_BACKGROUND,
+                        kicker: 'Esports Data',
+                        shortTitle: 'AoV Esports Ranking 2026',
+                        thumbnail: '/images/teams/SGP.png',
+                        title: 'AoV Esports Ranking 2026',
+                        chips: ['Elo', 'Khu vực', 'Phong độ']
+                    },
+                    {
+                        cta: 'Mở ban/pick',
+                        description: 'Luyện tư duy cấm chọn với các cặp khắc chế, power pick và nhịp draft quen thuộc trong meta hiện tại.',
+                        href: '/html/ban-pick.html',
+                        id: 'banpick-fallback',
+                        image: HOME_BANNER_BACKGROUND,
+                        kicker: 'Ban/Pick Lab',
+                        shortTitle: 'Khắc chế tướng bậc S',
+                        thumbnail: getHomeHeroImage('Florentino'),
+                        title: 'Khắc chế tướng bậc S',
+                        chips: ['Draft', 'Counter pick', 'Power pick']
+                    }
+                ];
+            }
+
+            function formatBannerDate(value) {
+                if (!value) return '';
+                var date = new Date(value);
+                if (Number.isNaN(date.getTime())) return '';
+                return 'Cập nhật ' + date.toLocaleDateString('vi-VN');
+            }
+
+            function buildTierListBannerItem(payload) {
+                if (!payload || payload.exists === false) return null;
+
+                var rows = getHomeTierRows(getContentDataFromPayload(payload));
+                if (rows.length === 0) return null;
+
+                var sRow = rows.find(function(row) {
+                    return String(row?.label || row?.tier || '').trim().toUpperCase() === 'S';
+                }) || rows[0];
+                var heroNames = getHomeTierHeroNames(sRow);
+                var highlighted = heroNames.slice(0, 4);
+                var updatedLabel = formatBannerDate(payload.updatedAt) || 'Official Tier List';
+
+                return {
+                    cta: 'Xem Tier List',
+                    description: highlighted.length
+                        ? 'Tier S nổi bật: ' + highlighted.join(', ') + '. Theo dõi bảng Tier List chính để chọn bài chuẩn hơn trong từng trận đấu.'
+                        : 'Tier List chính đã sẵn sàng để bạn theo dõi sức mạnh tướng theo từng bậc và vai trò.',
+                    href: '/html/tier-list.html',
+                    id: 'tier-list-official',
+                    image: HOME_BANNER_BACKGROUND,
+                    kicker: 'Tier List',
+                    shortTitle: 'Tier List Chính Thức',
+                    thumbnail: HOME_BANNER_BACKGROUND,
+                    title: 'Tier List',
+                    titleAccent: 'Chính Thức',
+                    chips: [updatedLabel].concat(highlighted.slice(0, 3).map(function(name) {
+                        return 'Tier S: ' + name;
+                    }))
+                };
+            }
+
+            function buildEsportsBannerItem(teams) {
+                if (!Array.isArray(teams) || teams.length === 0) return null;
+
+                var topTeams = teams.slice()
+                    .sort(function(a, b) {
+                        return getHomeEloScore(b) - getHomeEloScore(a);
+                    })
+                    .slice(0, 3);
+                var leader = topTeams[0] || {};
+                var leaderName = leader.teamName || leader.teamCode || 'Đội dẫn đầu';
+                var leaderCode = leader.teamCode || '';
+
+                return {
+                    cta: 'Khám phá phân tích',
+                    description: leaderName + ' đang dẫn đầu bảng Elo. Mở dashboard esports để xem thứ hạng, khu vực và điểm số mới nhất.',
+                    href: '/html/esports.html',
+                    id: 'esports-live',
+                    image: HOME_BANNER_ESPORTS_BACKGROUND,
+                    kicker: 'Esports Data',
+                    shortTitle: 'AoV Esports Ranking 2026',
+                    thumbnail: leaderCode ? '/images/teams/' + encodeURIComponent(leaderCode) + '.png' : '/images/backgrounds/bg-map.jpg',
+                    title: 'AoV Esports Ranking 2026',
+                    chips: topTeams.map(function(team, index) {
+                        var score = getHomeEloScore(team) > 0 ? Math.round(getHomeEloScore(team)).toLocaleString('vi-VN') : 'Elo';
+                        return (index + 1) + '. ' + (team.teamCode || team.teamName || 'Team') + ' ' + score;
+                    })
+                };
+            }
+
+            async function fetchHomeJson(url) {
+                var response = await fetch(url, { headers: { Accept: 'application/json' } });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                return response.json();
+            }
+
+            function renderHomeBannerLoading() {
+                var slide = document.getElementById('home-banner-slide');
+                if (!slide) return;
+                slide.innerHTML = '<div class="home-banner-loading">Đang tải điểm nóng ATG Academy...</div>';
+            }
+
+            function renderHomeBannerTitle(item) {
+                var title = escapeHomeHtml(item.title);
+                if (!item.titleAccent) return title;
+                return title + '<span class="home-banner-title-accent">' + escapeHomeHtml(item.titleAccent) + '</span>';
+            }
+
+            function renderHomeBannerSlide(index) {
+                var slide = document.getElementById('home-banner-slide');
+                if (!slide || homeBannerState.items.length === 0) return;
+
+                var item = homeBannerState.items[index];
+                var chips = Array.isArray(item.chips) ? item.chips.slice(0, 4) : [];
+                var chipsHtml = chips.map(function(chip) {
+                    return '<span class="home-banner-chip">' + escapeHomeHtml(chip) + '</span>';
+                }).join('');
+
+                slide.innerHTML =
+                    '<article class="home-banner-panel">' +
+                        '<img class="home-banner-image" src="' + escapeHomeHtml(item.image || HOME_BANNER_BACKGROUND) + '" alt="' + escapeHomeHtml(item.shortTitle || item.title) + '" onerror="this.src=\'' + HOME_BANNER_BACKGROUND + '\'">' +
+                        '<div class="home-banner-content">' +
+                            '<span class="home-banner-kicker">' + escapeHomeHtml(item.kicker || 'ATG Academy') + '</span>' +
+                            '<h1 class="home-banner-title">' + renderHomeBannerTitle(item) + '</h1>' +
+                            '<p class="home-banner-description">' + escapeHomeHtml(item.description) + '</p>' +
+                            (chipsHtml ? '<div class="home-banner-chips">' + chipsHtml + '</div>' : '') +
+                            '<a class="home-banner-cta" href="' + escapeHomeHtml(item.href || '#') + '">' +
+                                escapeHomeHtml(item.cta || 'Xem chi tiết') +
+                                '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">' +
+                                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>' +
+                                '</svg>' +
+                            '</a>' +
+                        '</div>' +
+                    '</article>';
+            }
+
+            function renderHomeBannerDots() {
+                var dots = document.getElementById('home-banner-dots');
+                if (!dots) return;
+                dots.innerHTML = homeBannerState.items.map(function(item, index) {
+                    return '<button type="button" class="home-banner-dot ' + (index === homeBannerState.index ? 'is-active' : '') + '" data-banner-index="' + index + '" aria-label="Mở banner ' + (index + 1) + '"></button>';
+                }).join('');
+
+                dots.querySelectorAll('[data-banner-index]').forEach(function(dot) {
+                    dot.addEventListener('click', function() {
+                        goHomeBannerSlide(Number(dot.getAttribute('data-banner-index')), true);
+                    });
+                });
+            }
+
+            function renderHomeBannerCards() {
+                var list = document.getElementById('home-banner-card-list');
+                if (!list) return;
+
+                list.innerHTML = homeBannerState.items.map(function(item, index) {
+                    return '<button type="button" class="home-banner-side-card ' + (index === homeBannerState.index ? 'is-active' : '') + '" data-banner-index="' + index + '">' +
+                        '<span class="home-banner-thumb">' +
+                            '<img src="' + escapeHomeHtml(item.thumbnail || item.image || HOME_BANNER_BACKGROUND) + '" alt="' + escapeHomeHtml(item.shortTitle || item.title) + '" onerror="this.src=\'' + HOME_BANNER_BACKGROUND + '\'">' +
+                        '</span>' +
+                        '<span class="min-w-0">' +
+                            '<span class="home-banner-card-label">' + escapeHomeHtml(item.kicker || 'ATG Academy') + '</span>' +
+                            '<span class="home-banner-card-title">' + escapeHomeHtml(item.shortTitle || item.title) + '</span>' +
+                        '</span>' +
+                    '</button>';
+                }).join('');
+
+                list.querySelectorAll('[data-banner-index]').forEach(function(card) {
+                    card.addEventListener('click', function() {
+                        goHomeBannerSlide(Number(card.getAttribute('data-banner-index')), true);
+                    });
+                });
+            }
+
+            function renderHomeBannerCarousel() {
+                renderHomeBannerSlide(homeBannerState.index);
+                renderHomeBannerDots();
+                renderHomeBannerCards();
+            }
+
+            function pauseHomeBannerAutoSlide() {
+                if (homeBannerState.timer) {
+                    clearInterval(homeBannerState.timer);
+                    homeBannerState.timer = null;
+                }
+            }
+
+            function startHomeBannerAutoSlide() {
+                pauseHomeBannerAutoSlide();
+                if (homeBannerState.paused || homeBannerState.items.length <= 1) return;
+                homeBannerState.timer = setInterval(function() {
+                    goHomeBannerSlide(homeBannerState.index + 1, false);
+                }, HOME_BANNER_INTERVAL);
+            }
+
+            function goHomeBannerSlide(nextIndex, resetTimer) {
+                if (homeBannerState.items.length === 0) return;
+                homeBannerState.index = (nextIndex + homeBannerState.items.length) % homeBannerState.items.length;
+                renderHomeBannerCarousel();
+                if (resetTimer) startHomeBannerAutoSlide();
+            }
+
+            function initHomeBannerCarousel(items) {
+                var carousel = document.getElementById('home-banner-carousel');
+                if (!carousel) return;
+
+                homeBannerState.items = items && items.length ? items : createHomeBannerFallbackItems();
+                homeBannerState.index = 0;
+                homeBannerState.paused = false;
+                renderHomeBannerCarousel();
+
+                var prev = document.getElementById('home-banner-prev');
+                var next = document.getElementById('home-banner-next');
+                if (prev) prev.onclick = function() { goHomeBannerSlide(homeBannerState.index - 1, true); };
+                if (next) next.onclick = function() { goHomeBannerSlide(homeBannerState.index + 1, true); };
+
+                carousel.onmouseenter = function() {
+                    homeBannerState.paused = true;
+                    pauseHomeBannerAutoSlide();
+                };
+                carousel.onmouseleave = function() {
+                    homeBannerState.paused = false;
+                    startHomeBannerAutoSlide();
+                };
+                carousel.ontouchstart = function(event) {
+                    homeBannerState.touchStartX = event.changedTouches?.[0]?.screenX || 0;
+                };
+                carousel.ontouchend = function(event) {
+                    var endX = event.changedTouches?.[0]?.screenX || 0;
+                    var delta = endX - homeBannerState.touchStartX;
+                    if (Math.abs(delta) < 48) return;
+                    goHomeBannerSlide(delta > 0 ? homeBannerState.index - 1 : homeBannerState.index + 1, true);
+                };
+
+                startHomeBannerAutoSlide();
+            }
+
+            async function loadHomeBannerCarousel() {
+                renderHomeBannerLoading();
+
+                var items = createHomeBannerFallbackItems();
+                var tierRequest = fetchHomeJson('/api/tier-lists/official');
+                var teamsRequest = fetchHomeJson('/api/esports/teams');
+                var results = await Promise.allSettled([tierRequest, teamsRequest]);
+
+                if (results[0].status === 'fulfilled') {
+                    var tierListItem = buildTierListBannerItem(results[0].value);
+                    if (tierListItem) items[0] = tierListItem;
+                } else {
+                    console.error('Home banner tier load error:', results[0].reason);
+                }
+
+                if (results[1].status === 'fulfilled') {
+                    var esportsItem = buildEsportsBannerItem(results[1].value);
+                    if (esportsItem) items[2] = esportsItem;
+                } else {
+                    console.error('Home banner esports load error:', results[1].reason);
+                }
+
+                initHomeBannerCarousel(items);
+            }
+
+            window.loadHomeBannerCarousel = loadHomeBannerCarousel;
+            window.initHomeBannerCarousel = initHomeBannerCarousel;
+
+            function getHomeTierHeroNames(row) {
+                var names = [];
+
+                function pushHeroName(value) {
+                    if (!value) return;
+                    if (typeof value === 'object') {
+                        names.push(value.name || value.heroName || value.title || value.label || '');
+                        return;
+                    }
+                    names.push(value);
+                }
+
+                if (Array.isArray(row.cells)) {
+                    row.cells.forEach(function(cell) {
+                        if (Array.isArray(cell)) {
+                            cell.forEach(pushHeroName);
+                        } else if (cell) {
+                            pushHeroName(cell);
+                        }
+                    });
+                }
+
+                if (Array.isArray(row.heroes)) {
+                    row.heroes.forEach(pushHeroName);
+                }
+
+                if (Array.isArray(row.items)) {
+                    row.items.forEach(pushHeroName);
+                }
+
+                var seen = new Set();
+                return names
+                    .map(function(name) {
+                        return typeof normalizeHeroName === 'function' ? normalizeHeroName(name) : String(name || '').trim();
+                    })
+                    .filter(function(name) {
+                        if (!name || seen.has(name)) return false;
+                        seen.add(name);
+                        return true;
+                    });
+            }
+
+            function renderHomeTierHero(heroName) {
+                var safeName = escapeHomeHtml(heroName);
+                var safeSrc = escapeHomeHtml(getHomeHeroImage(heroName));
+                return '<img src="' + safeSrc + '" alt="' + safeName + '" title="' + safeName + '"' +
+                    ' class="w-11 h-11 rounded shadow-sm border border-slate-300 object-cover bg-slate-100"' +
+                    ' onerror="this.src=\'https://via.placeholder.com/48/2f3640/ffffff?text=?\'">';
+            }
+
+            function renderHomeTierRow(row) {
+                var labelValue = row.label || row.tier || 'Tier';
+                var label = escapeHomeHtml(labelValue);
+                var color = normalizeHomeTierColor(row.color, getTierColorByLabel(labelValue));
+                var heroes = getHomeTierHeroNames(row);
+                var visibleHeroes = heroes.slice(0, 6);
+                var remainingCount = heroes.length - visibleHeroes.length;
+                var heroHtml = visibleHeroes.map(renderHomeTierHero).join('');
+
+                if (remainingCount > 0) {
+                    heroHtml += '<div class="w-11 h-11 rounded shadow-sm border border-slate-300 bg-slate-100 text-slate-500 text-xs font-bold flex items-center justify-center">+' + remainingCount + '</div>';
+                }
+                if (!heroHtml) {
+                    heroHtml = '<span class="text-xs text-slate-400 px-2">Chưa có tướng</span>';
+                }
+
+                return '<div class="flex border border-slate-200 rounded-lg bg-slate-50/50">' +
+                    '<div class="w-16 flex-shrink-0 flex items-center justify-center rounded-l-lg" style="background-color:' + color + '">' +
+                        '<span class="text-white font-bold text-2xl">' + label + '</span>' +
+                    '</div>' +
+                    '<div class="flex-1 p-2.5 flex flex-wrap gap-2 items-center">' + heroHtml + '</div>' +
+                '</div>';
+            }
+
+            function formatHomeFeedDate(value) {
+                if (!value) return '';
+                var date = new Date(value);
+                if (Number.isNaN(date.getTime())) return '';
+                return date.toLocaleDateString('vi-VN');
+            }
+
+            function homeFeedDetailHref(item) {
+                if (item.type === 'tier') {
+                    return '/tier-list/' + encodeURIComponent(item.id);
+                }
+                return '/guides/' + encodeURIComponent(item.id);
+            }
+
+            function getHomeFeedGuideBadgeClasses(category) {
+                var normalized = String(category || '').toLowerCase();
+                if (normalized.includes('cấm') || normalized.includes('cam') || normalized.includes('chọn') || normalized.includes('chon')) {
+                    return 'bg-red-100 text-red-700';
+                }
+                if (normalized.includes('phân') || normalized.includes('phan')) {
+                    return 'bg-slate-100 text-slate-600';
+                }
+                if (normalized.includes('macro') || normalized.includes('vĩ mô') || normalized.includes('vi mo')) {
+                    return 'bg-blue-100 text-blue-700';
+                }
+                return 'bg-emerald-100 text-emerald-700';
+            }
+
+            function renderHomeCompactTierPreview(row) {
+                var labelValue = row.label || row.tier || 'Tier';
+                var label = escapeHomeHtml(labelValue);
+                var color = normalizeHomeTierColor(row.color, getTierColorByLabel(labelValue));
+                var heroes = getHomeTierHeroNames(row);
+                var visibleHeroes = heroes.slice(0, 4);
+                var remainingCount = heroes.length - visibleHeroes.length;
+                var heroHtml = visibleHeroes.map(function(heroName) {
+                    var safeName = escapeHomeHtml(heroName);
+                    var safeSrc = escapeHomeHtml(getHomeHeroImage(heroName));
+                    return '<img src="' + safeSrc + '" alt="' + safeName + '" title="' + safeName + '"' +
+                        ' class="w-8 h-8 rounded-md border border-slate-300 object-cover bg-slate-100"' +
+                        ' onerror="this.src=\'https://via.placeholder.com/40/2f3640/ffffff?text=?\'">';
+                }).join('');
+
+                if (remainingCount > 0) {
+                    heroHtml += '<div class="w-8 h-8 rounded-md border border-slate-300 bg-slate-100 text-slate-500 text-[10px] font-bold flex items-center justify-center">+' + remainingCount + '</div>';
+                }
+                if (!heroHtml) {
+                    heroHtml = '<span class="text-xs text-slate-400">Chưa có tướng</span>';
+                }
+
+                return '<div class="flex items-stretch border border-slate-200 rounded-lg bg-white/80 overflow-hidden">' +
+                    '<div class="w-12 flex-shrink-0 flex items-center justify-center" style="background-color:' + color + '">' +
+                        '<span class="text-white font-bold text-sm">' + label + '</span>' +
+                    '</div>' +
+                    '<div class="flex-1 p-2 flex flex-wrap gap-1.5 items-center">' + heroHtml + '</div>' +
+                '</div>';
+            }
+
+            function renderHomeTierFeedCard(item) {
+                var previewRows = Array.isArray(item.preview) ? item.preview.slice(0, 2) : [];
+                var previewHtml = previewRows.length
+                    ? previewRows.map(renderHomeCompactTierPreview).join('')
+                    : '<div class="border border-dashed border-slate-300 rounded-lg px-4 py-8 text-sm text-slate-400 text-center">Tier List chưa có preview.</div>';
+                var rating = Number(item.rating || 0).toFixed(1);
+                var ratingCount = Number(item.ratingCount || 0).toLocaleString('vi-VN');
+                var createdAt = formatHomeFeedDate(item.createdAt) || 'Mới cập nhật';
+
+                return '<a href="' + escapeHomeHtml(homeFeedDetailHref(item)) + '" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group hover:shadow-md transition-shadow">' +
+                    '<div class="p-4 bg-slate-50/80 border-b border-slate-100 space-y-2 min-h-48">' +
+                        previewHtml +
+                    '</div>' +
+                    '<div class="p-5 flex flex-col flex-grow">' +
+                        '<div class="flex items-center justify-between gap-3 mb-3">' +
+                            '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">Tier List</span>' +
+                            '<span class="text-xs text-slate-500">' + escapeHomeHtml(createdAt) + '</span>' +
+                        '</div>' +
+                        '<h3 class="font-bold text-lg text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">' + escapeHomeHtml(item.title || 'Tier List') + '</h3>' +
+                        '<p class="text-sm text-slate-500 leading-relaxed" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">Tạo bởi ' + escapeHomeHtml(item.author || 'ATG Member') + '</p>' +
+                        '<div class="mt-auto pt-4 flex items-center justify-between text-xs text-slate-500 gap-3">' +
+                            '<span class="font-semibold text-amber-600">' + escapeHomeHtml(rating) + ' ★</span>' +
+                            '<span>' + ratingCount + ' lượt đánh giá</span>' +
+                        '</div>' +
+                    '</div>' +
+                '</a>';
+            }
+
+            function renderHomeGuideFeedCard(item) {
+                var badge = item.category || 'Chiến thuật';
+                var readTime = Number(item.readTime || 5).toLocaleString('vi-VN');
+                var createdAt = formatHomeFeedDate(item.createdAt) || 'Mới cập nhật';
+                var image = item.image || '/images/backgrounds/bg-map.jpg';
+
+                return '<a href="' + escapeHomeHtml(homeFeedDetailHref(item)) + '" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group hover:shadow-md transition-shadow">' +
+                    '<img src="' + escapeHomeHtml(image) + '" alt="' + escapeHomeHtml(item.title || 'Guide') + '" class="w-full h-48 object-cover" onerror="this.src=\'/images/backgrounds/bg-map.jpg\'">' +
+                    '<div class="p-5 flex flex-col flex-grow">' +
+                        '<div class="flex items-center justify-between gap-3 mb-3">' +
+                            '<span class="px-2 py-0.5 rounded text-[10px] font-bold ' + getHomeFeedGuideBadgeClasses(badge) + '">' + escapeHomeHtml(badge) + '</span>' +
+                            '<span class="text-xs text-slate-500">' + readTime + ' phút đọc</span>' +
+                        '</div>' +
+                        '<h3 class="font-bold text-lg text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">' + escapeHomeHtml(item.title || 'Giáo án') + '</h3>' +
+                        '<p class="text-sm text-slate-500 leading-relaxed" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">' + escapeHomeHtml(item.description || 'Giáo án cộng đồng với các ghi chú chiến thuật và cách vận hành trong trận.') + '</p>' +
+                        '<div class="mt-auto pt-4 text-xs text-slate-500">' + escapeHomeHtml(createdAt) + '</div>' +
+                    '</div>' +
+                '</a>';
+            }
+
+            function setHomeCommunityFeedTitle() {
+                var section = document.getElementById('home-community-feed-section');
+                if (!section) return;
+                var heading = section.querySelector('h2');
+                if (heading) {
+                    heading.innerHTML = 'Tier List &amp; Giáo án cộng đồng';
+                }
+            }
+
+            function renderHomeCommunityFeedState(message, isError) {
+                var container = document.getElementById('home-community-feed');
+                if (!container) return;
+                container.innerHTML = '<div class="md:col-span-2 xl:col-span-3 bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-12 text-center text-sm ' +
+                    (isError ? 'text-red-400' : 'text-slate-400') + '">' + escapeHomeHtml(message) + '</div>';
+            }
+
+            function renderHomeCommunityFeed(items) {
+                var container = document.getElementById('home-community-feed');
+                if (!container) return;
+
+                if (!Array.isArray(items) || items.length === 0) {
+                    renderHomeCommunityFeedState('Chưa có Tier List hoặc giáo án cộng đồng để hiển thị.', false);
+                    return;
+                }
+
+                container.innerHTML = items.map(function(item) {
+                    return item.type === 'tier'
+                        ? renderHomeTierFeedCard(item)
+                        : renderHomeGuideFeedCard(item);
+                }).join('');
+            }
+
+            async function fetchHomeCommunityFeed() {
+                setHomeCommunityFeedTitle();
+                try {
+                    var response = await fetch('/api/home/feed', { headers: { Accept: 'application/json' } });
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    var items = await response.json();
+                    renderHomeCommunityFeed(Array.isArray(items) ? items : []);
+                } catch (error) {
+                    console.error('Home community feed load error:', error);
+                    renderHomeCommunityFeedState('Không thể tải feed cộng đồng. Vui lòng thử lại sau.', true);
+                }
+            }
+
+            function renderHomeTierMessage(message, isError) {
+                var container = document.getElementById('home-tier-preview');
+                var badge = document.getElementById('home-tier-badge');
+                if (!container) return;
+                container.innerHTML = '<div class="border border-slate-200 rounded-lg bg-slate-50/50 px-4 py-10 text-center text-sm ' +
+                    (isError ? 'text-red-400' : 'text-slate-400') + '">' + escapeHomeHtml(message) + '</div>';
+                if (badge) {
+                    badge.textContent = isError ? 'Lỗi dữ liệu' : 'Chưa có dữ liệu';
+                }
+            }
+
+            function renderHomeTierList(payload) {
+                var container = document.getElementById('home-tier-preview');
+                var badge = document.getElementById('home-tier-badge');
+                if (!container) return;
+
+                var rows = getHomePreviewRows(getContentDataFromPayload(payload));
+
+                if (rows.length === 0) {
+                    renderHomeTierMessage('Tier List chính chưa có dữ liệu S/A.', false);
+                    return;
+                }
+
+                container.innerHTML = rows.map(renderHomeTierRow).join('');
+                if (badge) {
+                    badge.textContent = payload.updatedAt ? 'Đã đồng bộ' : 'Tier List chính';
+                }
+            }
+
+            async function fetchHomeTierList() {
+                try {
+                    var response = await fetch('/api/tier-lists/official', { headers: { Accept: 'application/json' } });
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+
+                    var payload = await response.json();
+                    if (payload.exists === false) {
+                        renderHomeTierMessage('Chưa có Tier List chính. Hãy lưu Tier List ở trang Tier List trước.', false);
+                        return;
+                    }
+
+                    renderHomeTierList(payload);
+                } catch (error) {
+                    console.error('Home tier list load error:', error);
+                    renderHomeTierMessage('Không thể tải Tier List chính. Vui lòng thử lại sau.', true);
+                }
+            }
+
+            async function fetchHomeLeaderboard() {
+                var container = document.getElementById('home-leaderboard-container');
+                if (!container) return;
+
+                try {
+                    var response = await fetch('/api/esports/teams');
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+
+                    var teams = await response.json();
+                    var top3 = Array.isArray(teams) ? teams.slice()
+                        .sort(function(a, b) {
+                            return getHomeEloScore(b) - getHomeEloScore(a);
+                        })
+                        .slice(0, 3) : [];
+
+                    if (top3.length === 0) {
+                        container.innerHTML = '<tr><td colspan="4" class="px-3 py-10 text-center text-slate-400 text-sm">Chưa có dữ liệu đội tuyển.</td></tr>';
+                        return;
+                    }
+
+                    container.innerHTML = top3.map(function(team, index) {
+                        var rank = index + 1;
+                        var teamName = team.teamName || team.teamCode || 'Team';
+                        var teamCode = team.teamCode || '';
+                        var region = team.region || '—';
+                        var score = Math.round(getHomeEloScore(team)).toLocaleString('vi-VN');
+                        var regionLogo = REGION_LOGOS[region] || '';
+
+                        // Team logo: use teamCode.png
+                        var teamLogoHtml = '<img src="/images/teams/' + encodeURIComponent(teamCode) + '.png" alt="' + escapeHomeHtml(teamCode) + '"' +
+                            ' class="w-7 h-7 rounded-md object-contain bg-slate-50 border border-slate-200 p-0.5"' +
+                            ' onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">' +
+                            '<div class="w-7 h-7 rounded-md bg-slate-100 items-center justify-center text-[10px] font-bold text-slate-400" style="display:none">' + escapeHomeHtml(teamCode.charAt(0) || '?') + '</div>';
+
+                        // Region logo: use RPL_logo.png etc.
+                        var regionHtml;
+                        if (regionLogo) {
+                            regionHtml = '<div class="flex items-center justify-center gap-1">' +
+                                '<img src="/images/leagues/' + escapeHomeHtml(regionLogo) + '" alt="' + escapeHomeHtml(region) + '" class="w-4 h-4 rounded-sm object-contain" onerror="this.style.display=\'none\'">' +
+                                '<span class="text-[10px] font-semibold text-slate-500">' + escapeHomeHtml(region) + '</span>' +
+                            '</div>';
+                        } else {
+                            regionHtml = '<span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-500">' + escapeHomeHtml(region) + '</span>';
+                        }
+
+                        return '<tr class="hover:bg-blue-50/40 transition-colors group">' +
+                            '<td class="px-3 py-3 text-center">' + getRankBadge(rank) + '</td>' +
+                            '<td class="px-3 py-3">' +
+                                '<div class="flex items-center gap-2.5">' +
+                                    teamLogoHtml +
+                                    '<div>' +
+                                        '<div class="font-semibold text-slate-900 text-sm leading-tight">' + escapeHomeHtml(teamName) + '</div>' +
+                                        '<div class="text-[10px] text-slate-400">' + escapeHomeHtml(teamCode) + '</div>' +
+                                    '</div>' +
+                                '</div>' +
+                            '</td>' +
+                            '<td class="px-3 py-3 text-center">' + regionHtml + '</td>' +
+                            '<td class="px-3 py-3 text-right">' +
+                                '<span class="font-bold text-blue-600 text-sm">' + score + '</span>' +
+                            '</td>' +
+                        '</tr>';
+                    }).join('');
+
+                } catch (error) {
+                    console.error('Leaderboard load error:', error);
+                    container.innerHTML = '<tr><td colspan="4" class="px-3 py-10 text-center text-red-400 text-xs">⚠ Không thể tải dữ liệu. Vui lòng thử lại sau.</td></tr>';
+                }
+            }
+
+            // Gọi ngay khi DOM sẵn sàng
+            function initHomeWidgets() {
+                fetchHomeLeaderboard();
+                fetchHomeTierList();
+                fetchHomeCommunityFeed();
+                loadHomeBannerCarousel();
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initHomeWidgets);
+            } else {
+                initHomeWidgets();
+            }
+        })();
+    </script>
+    <script src="/js/auth.js?v=20260424-account-profile"></script>
+    <script src="/js/header-loader.js?v=20260424-account-profile"></script>
+</body>
+</html>

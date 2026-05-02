@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kết quả Ban/Pick - ATG Academy</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 45%, #f8fafc 45%, #eef2ff 100%); min-height: 100vh; }
+        .result-shell { max-width: 1120px; margin: 0 auto; padding: 42px 18px 80px; }
+        .result-hero { color: #fff; margin-bottom: 24px; }
+        .result-hero span { color: #facc15; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
+        .result-hero h1 { font-size: clamp(2rem, 5vw, 4.2rem); font-weight: 950; line-height: .95; margin: 8px 0; }
+        .result-card { background: rgba(255,255,255,.96); border: 1px solid rgba(148,163,184,.35); border-radius: 24px; box-shadow: 0 24px 70px rgba(15,23,42,.28); overflow: hidden; }
+        .result-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); }
+        .team-result { padding: 26px; }
+        .team-result.blue { border-right: 1px solid #e2e8f0; }
+        .team-title { align-items: center; display: flex; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+        .team-title h2 { color: #0f172a; font-size: 1.35rem; font-weight: 950; margin: 0; }
+        .team-title span { border-radius: 999px; color: #fff; font-size: .76rem; font-weight: 900; padding: 6px 10px; }
+        .blue .team-title span { background: #2563eb; }
+        .red .team-title span { background: #dc2626; }
+        .result-section { margin-top: 18px; }
+        .result-section strong { color: #475569; display: block; font-size: .78rem; letter-spacing: .08em; margin-bottom: 8px; text-transform: uppercase; }
+        .hero-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .hero-pill { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 999px; color: #0f172a; font-weight: 850; padding: 8px 11px; }
+        .ban-pill { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+        .result-meta { align-items: center; background: #0f172a; color: #e2e8f0; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; padding: 18px 26px; }
+        .result-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+        .result-btn { background: #fff; border: 0; border-radius: 999px; color: #0f172a; cursor: pointer; font-weight: 900; padding: 10px 14px; }
+        .result-btn.primary { background: #facc15; }
+        .result-btn:disabled { cursor: not-allowed; opacity: .55; }
+        .result-message { color: #fde68a; font-weight: 800; margin-left: auto; }
+        @media (max-width: 760px) { .result-grid { grid-template-columns: 1fr; } .team-result.blue { border-right: 0; border-bottom: 1px solid #e2e8f0; } }
+    </style>
+</head>
+<body>
+<div id="header-placeholder"></div>
+<main class="result-shell">
+    <section class="result-hero">
+        <span>ATG Academy Draft Result</span>
+        <h1>Kết quả Solo Ban/Pick</h1>
+        <p id="result-subtitle">Đang tải dữ liệu draft...</p>
+    </section>
+    <section class="result-card" id="result-root">
+        <div class="result-meta">Đang tải...</div>
+    </section>
+</main>
+
+<script src="/js/auth.js?v=30260429-banpick-product"></script>
+<script src="/js/header-loader.js?v=30260429-banpick-product"></script>
+<script>
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, char => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+        }[char]));
+    }
+
+    function resultIdFromPath() {
+        const match = window.location.pathname.match(/\/ban-pick\/result\/(\d+)/);
+        return match ? match[1] : new URLSearchParams(window.location.search).get('id');
+    }
+
+    function renderList(items, ban) {
+        const values = Array.isArray(items) ? items : [];
+        if (!values.length) return '<span class="hero-pill">Chưa có</span>';
+        return values.map(item => `<span class="hero-pill ${ban ? 'ban-pill' : ''}">${escapeHtml(item)}</span>`).join('');
+    }
+
+    function currentUserCanRecord(history) {
+        const user = getAuthUser?.();
+        if (!user || history.winnerSide) return false;
+        return [history.blueUser?.email, history.redUser?.email].includes(user.email);
+    }
+
+    async function recordWinner(id, winnerSide) {
+        const response = await fetch(`/api/ban-pick/history/${id}/winner`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ winnerSide })
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(payload?.message || 'Không thể ghi nhận kết quả.');
+        renderResult(payload);
+    }
+
+    function renderResult(history) {
+        const root = document.getElementById('result-root');
+        const winner = history.winnerSide === 'BLUE'
+            ? history.blueUser?.name
+            : history.winnerSide === 'RED'
+                ? history.redUser?.name
+                : null;
+        document.getElementById('result-subtitle').textContent = `Room ${history.roomCode} · ${new Date(history.createdAt).toLocaleString('vi-VN')}`;
+        root.innerHTML = `
+            <div class="result-grid">
+                <article class="team-result blue">
+                    <div class="team-title">
+                        <h2>${escapeHtml(history.blueUser?.name || 'Blue')}</h2>
+                        <span>Bên Xanh</span>
+                    </div>
+                    <div class="result-section"><strong>Picks</strong><div class="hero-list">${renderList(history.bluePicks, false)}</div></div>
+                    <div class="result-section"><strong>Bans</strong><div class="hero-list">${renderList(history.blueBans, true)}</div></div>
+                </article>
+                <article class="team-result red">
+                    <div class="team-title">
+                        <h2>${escapeHtml(history.redUser?.name || 'Red')}</h2>
+                        <span>Bên Đỏ</span>
+                    </div>
+                    <div class="result-section"><strong>Picks</strong><div class="hero-list">${renderList(history.redPicks, false)}</div></div>
+                    <div class="result-section"><strong>Bans</strong><div class="hero-list">${renderList(history.redBans, true)}</div></div>
+                </article>
+            </div>
+            <div class="result-meta">
+                <span>${winner ? `Người thắng: ${escapeHtml(winner)}` : 'Chưa ghi nhận người thắng'}</span>
+                <div class="result-actions">
+                    <button class="result-btn primary" onclick="copyResultLink()">Copy link</button>
+                    <button class="result-btn" ${currentUserCanRecord(history) ? '' : 'disabled'} onclick="recordWinner(${history.id}, 'BLUE').catch(showResultError)">Xanh thắng</button>
+                    <button class="result-btn" ${currentUserCanRecord(history) ? '' : 'disabled'} onclick="recordWinner(${history.id}, 'RED').catch(showResultError)">Đỏ thắng</button>
+                    <a class="result-btn" href="/ban-pick/leaderboard">BXH</a>
+                </div>
+                <span class="result-message" id="result-message"></span>
+            </div>
+        `;
+    }
+
+    function showResultError(error) {
+        const message = document.getElementById('result-message');
+        if (message) message.textContent = error.message || 'Có lỗi xảy ra.';
+    }
+
+    function copyResultLink() {
+        navigator.clipboard?.writeText(window.location.href).then(() => {
+            const message = document.getElementById('result-message');
+            if (message) message.textContent = 'Đã copy link.';
+        });
+    }
+
+    async function loadResult() {
+        const id = resultIdFromPath();
+        if (!id) {
+            document.getElementById('result-root').innerHTML = '<div class="result-meta">Thiếu mã kết quả draft.</div>';
+            return;
+        }
+        const response = await fetch(`/api/ban-pick/history/${id}`);
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+            document.getElementById('result-root').innerHTML = `<div class="result-meta">${escapeHtml(payload?.message || 'Không tìm thấy kết quả draft.')}</div>`;
+            return;
+        }
+        renderResult(payload);
+    }
+
+    document.addEventListener('authChanged', loadResult);
+    loadResult();
+</script>
+</body>
+</html>

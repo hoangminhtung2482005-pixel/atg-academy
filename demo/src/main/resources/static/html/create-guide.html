@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tạo giáo án - ATG Academy</title>
+    <link rel="stylesheet" href="/css/style.css?v=20260426-create-guide">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+    <div id="header-placeholder"></div>
+    
+    <main class="builder-container">
+        <div class="builder-header">
+            <h1>TẠO BÀI VIẾT HƯỚNG DẪN</h1>
+            <p>Cách chơi, mẹo, lối lên đồ và chiến thuật cộng đồng.</p>
+        </div>
+
+        <div data-show-custom-only="true" style="text-align: center; padding: 50px; color: var(--text-color, #2f3640); font-size: 1.2rem; background: rgba(255, 255, 255, 0.85); border: 1px solid rgba(0, 0, 0, 0.1); box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-radius: 8px; margin: 20px auto; max-width: 900px;">
+            <i style="font-size: 2rem; color: var(--gold-color, #d4af37); margin-bottom: 10px; display: block;">🔒</i>
+            Vui lòng <b>đăng nhập</b> ở góc phải trên cùng để bắt đầu tạo giáo án của riêng bạn.
+        </div>
+
+        <div class="builder-body" data-require-role="Admin,Staff,User" style="display:none;">
+            
+            <!-- Block 1: Tiêu đề -->
+            <div class="builder-block">
+                <div class="block-content">
+                    <span class="block-title">1. Tiêu đề (bắt buộc):</span>
+                    <input type="text" class="block-input" id="guide-title" placeholder="Ví dụ: Hướng dẫn Florentino đi Top mùa 26">
+                </div>
+            </div>
+
+            <!-- Block 2: Tác giả -->
+            <div class="builder-block">
+                <div class="block-content">
+                    <span class="block-title">2. Tên tác giả (bắt buộc):</span>
+                    <input type="text" class="block-input" id="guide-author" placeholder="Nhập tên của bạn...">
+                </div>
+            </div>
+
+            <!-- Metadata xuất bản -->
+            <div class="builder-block">
+                <div class="block-content">
+                    <span class="block-title">Thông tin xuất bản:</span>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 10px;">
+                        <select id="guide-category" class="block-input">
+                            <option value="Chiến thuật">Chiến thuật</option>
+                            <option value="Chiến thuật vĩ mô">Chiến thuật vĩ mô</option>
+                            <option value="Phân tích">Phân tích</option>
+                            <option value="Cấm/chọn">Cấm/chọn</option>
+                            <option value="Tướng">Tướng</option>
+                            <option value="Đội hình">Đội hình</option>
+                        </select>
+                        <input type="text" class="block-input" id="guide-excerpt" placeholder="Mô tả ngắn hiển thị ở trang danh sách...">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block 3: Tướng áp dụng -->
+            <div class="builder-block">
+                <div class="block-content">
+                    <span class="block-title">3. Tướng áp dụng (bắt buộc):</span>
+                    <div id="selected-hero-display" style="display: flex; align-items: center; gap: 15px; margin-top: 10px;">
+                        <div id="target-hero-drop" style="width: 60px; height: 60px; border: 2px dashed rgba(0,0,0,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #a4b0be; cursor: pointer; background-size: cover; background-position: center; font-size: 24px;" onclick="toggleHeroPool()">
+                            +
+                        </div>
+                        <span id="selected-hero-name" style="color: var(--text-color, #2f3640); font-weight: bold; font-size: 1.1rem;">Chưa chọn tướng (Bấm dấu + để chọn)</span>
+                    </div>
+                    
+                    <!-- Hero Pool Inline -->
+                    <div class="hero-pool-container tier-pool" id="giao-an-hero-pool" style="display: none; margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.5); border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="margin: 0; font-size: 1rem; color: var(--text-color, #2f3640);">Chọn Tướng</h3>
+                            <button onclick="toggleHeroPool()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-color, #2f3640); line-height: 1;">×</button>
+                        </div>
+                        <input type="text" id="searchInput" placeholder="Tìm kiếm tướng..." oninput="filterHeroes()" style="width: 100%; padding: 10px; border: 1px solid rgba(0,0,0,0.1); border-radius: 4px; margin-bottom: 15px; background: rgba(255,255,255,0.8); color: var(--text-color, #2f3640); outline: none;">
+                        <div class="role-filters" id="role-filters" style="margin-bottom: 15px; flex-wrap: wrap;">
+                            <button class="role-btn active" onclick="setRoleFilter('Tất cả')"><div class="role-icon"></div><span>Tất cả</span></button>
+                            <button class="role-btn" onclick="setRoleFilter('Sát thủ')"><div class="role-icon"></div><span>Sát thủ</span></button>
+                            <button class="role-btn" onclick="setRoleFilter('Xạ thủ')"><div class="role-icon"></div><span>Xạ thủ</span></button>
+                            <button class="role-btn" onclick="setRoleFilter('Đấu sĩ')"><div class="role-icon"></div><span>Đấu sĩ</span></button>
+                            <button class="role-btn" onclick="setRoleFilter('Pháp sư')"><div class="role-icon"></div><span>Pháp sư</span></button>
+                            <button class="role-btn" onclick="setRoleFilter('Trợ thủ')"><div class="role-icon"></div><span>Trợ thủ</span></button>
+                            <button class="role-btn" onclick="setRoleFilter('Đỡ đòn')"><div class="role-icon"></div><span>Đỡ đòn</span></button>
+                        </div>
+                        <div class="hero-grid" id="hero-grid" style="max-height: 300px; overflow-y: auto; padding-right: 10px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block 4: Thể loại / Vị trí -->
+            <div class="builder-block">
+                <div class="block-content">
+                    <span class="block-title">4. Vị trí đi đường (bắt buộc):</span>
+                    <div id="selected-role-display" style="display: flex; align-items: center; gap: 15px; margin-top: 10px;">
+                        <div id="target-role-drop" style="width: 60px; height: 60px; border: 2px dashed rgba(0,0,0,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #a4b0be; cursor: pointer; background-size: cover; background-position: center; font-size: 24px;" onclick="toggleRolePool()">
+                            +
+                        </div>
+                        <span id="selected-role-name" style="color: var(--text-color, #2f3640); font-weight: bold; font-size: 1.1rem;">Chưa chọn vị trí (Bấm dấu + để chọn)</span>
+                    </div>
+                    
+                    <!-- Role Pool Inline -->
+                    <div class="hero-pool-container tier-pool" id="giao-an-role-pool" style="display: none; margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.5); border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="margin: 0; font-size: 1rem; color: var(--text-color, #2f3640);">Chọn Vị Trí Đi Đường</h3>
+                            <button onclick="toggleRolePool()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-color, #2f3640); line-height: 1;">×</button>
+                        </div>
+                        <div style="display: flex; gap: 20px; flex-wrap: wrap;" id="role-options-grid">
+                            <!-- Role options will be generated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block 5: Phép bổ trợ -->
+            <div class="builder-block">
+                <div class="block-delete">X</div>
+                <div class="block-content">
+                    <span class="block-title">5. Phép bổ trợ:</span>
+                    <div id="selected-spell-display" style="display: flex; align-items: center; gap: 15px; margin-top: 10px;">
+                        <div id="target-spell-drop" style="width: 60px; height: 60px; border: 2px dashed rgba(0,0,0,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #a4b0be; cursor: pointer; background-size: cover; background-position: center; font-size: 24px;" onclick="toggleSpellPool()">
+                            +
+                        </div>
+                        <span id="selected-spell-name" style="color: var(--text-color, #2f3640); font-weight: bold; font-size: 1.1rem;">Chưa chọn phép bổ trợ (Bấm dấu + để chọn)</span>
+                    </div>
+                    
+                    <!-- Spell Pool Inline -->
+                    <div class="hero-pool-container tier-pool" id="giao-an-spell-pool" style="display: none; margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.5); border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="margin: 0; font-size: 1rem; color: var(--text-color, #2f3640);">Chọn Phép Bổ Trợ</h3>
+                            <button onclick="toggleSpellPool()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-color, #2f3640); line-height: 1;">×</button>
+                        </div>
+                        <div style="display: flex; gap: 15px; flex-wrap: wrap;" id="spell-options-grid">
+                            <!-- Spell options will be generated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block 6: Rich Text Giới thiệu -->
+            <div class="builder-block">
+                <div class="block-delete">X</div>
+                <div class="block-content">
+                    <span class="block-title">6. Giới thiệu tổng quan:</span>
+                    <div class="rich-toolbar">
+                        <span class="rich-tool">B</span>
+                        <span class="rich-tool">I</span>
+                        <span class="rich-tool">U</span>
+                        <span class="rich-tool">List</span>
+                    </div>
+                    <div class="rich-editor" contenteditable="true" data-placeholder="Nhập giới thiệu về giáo án này..."></div>
+                </div>
+            </div>
+
+            <!-- Block 7: Trang bị -->
+            <div class="builder-block">
+                <div class="block-delete">X</div>
+                <div class="block-content">
+                    <span class="block-title">7. Lối lên trang bị:</span>
+                    <div class="equip-list">
+                        <div class="add-square">+</div>
+                        <div class="add-square">+</div>
+                        <div class="add-square">+</div>
+                        <div class="add-square">+</div>
+                        <div class="add-square">+</div>
+                        <div class="add-square">+</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block 8: Rich Text Phân tích trang bị -->
+            <div class="builder-block">
+                <div class="block-delete">X</div>
+                <div class="block-content">
+                    <span class="block-title">8. Phân tích lối lên đồ:</span>
+                    <div class="rich-toolbar">
+                        <span class="rich-tool">B</span>
+                        <span class="rich-tool">I</span>
+                        <span class="rich-tool">U</span>
+                        <span class="rich-tool">List</span>
+                    </div>
+                    <div class="rich-editor" contenteditable="true" data-placeholder="Vì sao lại chọn bộ trang bị này?"></div>
+                </div>
+            </div>
+
+            <!-- Block 9: Ngọc (Arcana) -->
+            <div class="builder-block">
+                <div class="block-delete">X</div>
+                <div class="block-content">
+                    <span class="block-title">9. Bảng Ngọc:</span>
+                    <div class="arcana-wrapper">
+                        <!-- Vòng ngọc -->
+                        <div class="arcana-ring">
+                            <div class="arcana-center">0</div>
+                            <!-- Red dots (Top right quadrant) -->
+                            <div class="arcana-dot red" style="top: 15%; left: 85%;"></div>
+                            <div class="arcana-dot red" style="top: 25%; left: 95%;"></div>
+                            <div class="arcana-dot red" style="top: 40%; left: 100%;"></div>
+                            <!-- Purple dots (Bottom quadrant) -->
+                            <div class="arcana-dot purple" style="top: 85%; left: 85%;"></div>
+                            <div class="arcana-dot purple" style="top: 95%; left: 70%;"></div>
+                            <div class="arcana-dot purple" style="top: 100%; left: 50%;"></div>
+                            <!-- Green dots (Top left quadrant) -->
+                            <div class="arcana-dot green" style="top: 40%; left: 0%;"></div>
+                            <div class="arcana-dot green" style="top: 25%; left: 5%;"></div>
+                            <div class="arcana-dot green" style="top: 15%; left: 15%;"></div>
+                        </div>
+                        <!-- Chỉ số -->
+                        <div class="arcana-stats">
+                            <div class="stat-item">⚔️ Công vật lý +25</div>
+                            <div class="stat-item">🛡️ Xuyên giáp +100</div>
+                            <div class="stat-item">⚡ Tốc đánh +10%</div>
+                            <div class="stat-item">👟 Tốc chạy +10%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block 10: Rich Text Phân tích Ngọc -->
+            <div class="builder-block">
+                <div class="block-delete">X</div>
+                <div class="block-content">
+                    <span class="block-title">10. Phân tích ngọc:</span>
+                    <div class="rich-toolbar">
+                        <span class="rich-tool">B</span>
+                        <span class="rich-tool">I</span>
+                        <span class="rich-tool">U</span>
+                        <span class="rich-tool">List</span>
+                    </div>
+                    <div class="rich-editor" contenteditable="true" data-placeholder="Lý giải việc chọn ngọc..."></div>
+                </div>
+            </div>
+
+            <!-- Block 11: Phù hiệu (Enchantment) -->
+            <div class="builder-block">
+                <div class="block-delete">X</div>
+                <div class="block-content">
+                    <span class="block-title">11. Phù hiệu:</span>
+                    <div class="enchantment-tree">
+                        <!-- Main Path -->
+                        <div class="enchant-path">
+                            <div class="enchant-node circle"></div>
+                            <div class="enchant-line"></div>
+                            <div class="enchant-node circle"></div>
+                            <div class="enchant-line"></div>
+                            <div class="enchant-node diamond"><div class="diamond-inner">✧</div></div>
+                        </div>
+                        <!-- Sub Path -->
+                        <div class="enchant-path">
+                            <div class="enchant-node circle"></div>
+                            <div class="enchant-line"></div>
+                            <div class="enchant-node circle"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block 12: Rich Text Phân tích Phù hiệu -->
+            <div class="builder-block">
+                <div class="block-delete">X</div>
+                <div class="block-content">
+                    <span class="block-title">12. Phân tích phù hiệu:</span>
+                    <div class="rich-toolbar">
+                        <span class="rich-tool">B</span>
+                        <span class="rich-tool">I</span>
+                        <span class="rich-tool">U</span>
+                        <span class="rich-tool">List</span>
+                    </div>
+                    <div class="rich-editor" contenteditable="true" data-placeholder="Vì sao phù hiệu này lại mạnh?"></div>
+                </div>
+            </div>
+
+            <!-- Nút Lưu & Nút Thêm -->
+            <div style="display: flex; gap: 15px; margin-top: 30px;">
+                <div class="add-block-btn" style="flex: 1; margin-top: 0;">+ Thêm Nội Dung</div>
+                <button class="add-block-btn" id="save-guide-btn" onclick="saveGuide()" style="flex: 1; margin-top: 0; background: var(--gold-color, #d4af37); color: #ffffff; font-weight: bold; border-style: solid; border-color: var(--gold-color, #d4af37);">Lưu Giáo Án</button>
+            </div>
+            
+        </div>
+    </main>
+
+    <footer>
+        © 2026 ATG Academy. Nền tảng esports chuyên sâu.
+    </footer>
+    <script>
+        const heroes = [
+            {name: "Toro", role: "\u0110\u1ee1 \u0111\u00f2n"},
+            {name: "Hayate", role: "X\u1ea1 th\u1ee7"},
+            {name: "Marja", role: "Ph\u00e1p s\u01b0"},
+            {name: "Zata", role: "S\u00e1t th\u1ee7"},
+            {name: "Y'bneth", role: "\u0110\u1ee1 \u0111\u00f2n"},
+            {name: "Wisp", role: "X\u1ea1 th\u1ee7"},
+            {name: "Billow", role: "S\u00e1t th\u1ee7"},
+            {name: "Sinestrea", role: "S\u00e1t th\u1ee7"},
+            {name: "Lorion", role: "Ph\u00e1p s\u01b0"},
+            {name: "Ryoma", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Dolia", role: "Tr\u1ee3 th\u1ee7"},
+            {name: "Qi", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Aya", role: "Tr\u1ee3 th\u1ee7"},
+            {name: "Violet", role: "X\u1ea1 th\u1ee7"},
+            {name: "Yue", role: "Ph\u00e1p s\u01b0"},
+            {name: "Volkath", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Enzo", role: "S\u00e1t th\u1ee7"},
+            {name: "Murad", role: "S\u00e1t th\u1ee7"},
+            {name: "Gildur", role: "Ph\u00e1p s\u01b0"},
+            {name: "Moren", role: "X\u1ea1 th\u1ee7"},
+            {name: "Florentino", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Aleister", role: "Ph\u00e1p s\u01b0"},
+            {name: "Annette", role: "Tr\u1ee3 th\u1ee7"},
+            {name: "Zephys", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Elsu", role: "X\u1ea1 th\u1ee7"},
+            {name: "Airi", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Nakroth", role: "S\u00e1t th\u1ee7"},
+            {name: "Fennik", role: "X\u1ea1 th\u1ee7"},
+            {name: "Liliana", role: "Ph\u00e1p s\u01b0"},
+            {name: "Tachi", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Preyta", role: "Ph\u00e1p s\u01b0"},
+            {name: "Taara", role: "\u0110\u1ee1 \u0111\u00f2n"},
+            {name: "Dyadia", role: "Tr\u1ee3 th\u1ee7"},
+            {name: "Quillen", role: "S\u00e1t th\u1ee7"},
+            {name: "Capheny", role: "X\u1ea1 th\u1ee7"},
+            {name: "Iggy", role: "Ph\u00e1p s\u01b0"},
+            {name: "Veera", role: "Ph\u00e1p s\u01b0"},
+            {name: "Stuart", role: "X\u1ea1 th\u1ee7"},
+            {name: "Keera", role: "S\u00e1t th\u1ee7"},
+            {name: "Skud", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Azzen'Ka", role: "Ph\u00e1p s\u01b0"},
+            {name: "Yena", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Mina", role: "\u0110\u1ee1 \u0111\u00f2n"},
+            {name: "Tel'Annas", role: "X\u1ea1 th\u1ee7"},
+            {name: "Goverra", role: "Ph\u00e1p s\u01b0"},
+            {name: "TeeMee", role: "Tr\u1ee3 th\u1ee7"},
+            {name: "Aoi", role: "S\u00e1t th\u1ee7"},
+            {name: "Rourka", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Bolt Baron", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Rouie", role: "Tr\u1ee3 th\u1ee7"},
+            {name: "Eland'orr", role: "X\u1ea1 th\u1ee7"},
+            {name: "Lumburr", role: "Tr\u1ee3 th\u1ee7"},
+            {name: "Heino", role: "Ph\u00e1p s\u01b0"},
+            {name: "Arthur", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Flowborn (Marksman)", role: "X\u1ea1 th\u1ee7"},
+            {name: "Edras", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Grakk", role: "Tr\u1ee3 th\u1ee7"},
+            {name: "Jinna", role: "Ph\u00e1p s\u01b0"},
+            {name: "Mganga", role: "Ph\u00e1p s\u01b0"},
+            {name: "Natalya", role: "Ph\u00e1p s\u01b0"},
+            {name: "Kaine", role: "S\u00e1t th\u1ee7"},
+            {name: "Omen", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Dirak", role: "Ph\u00e1p s\u01b0"},
+            {name: "Butterfly", role: "S\u00e1t th\u1ee7"},
+            {name: "Wukong", role: "S\u00e1t th\u1ee7"},
+            {name: "Diaochan", role: "Ph\u00e1p s\u01b0"},
+            {name: "Xeniel", role: "\u0110\u1ee1 \u0111\u00f2n"},
+            {name: "Zanis", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Ming", role: "Tr\u1ee3 th\u1ee7"},
+            {name: "Chaugnar", role: "\u0110\u1ee1 \u0111\u00f2n"},
+            {name: "Astrid", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Biron", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Roxie", role: "\u0110\u1ee1 \u0111\u00f2n"},
+            {name: "Lauriel", role: "Ph\u00e1p s\u01b0"},
+            {name: "Thorne", role: "X\u1ea1 th\u1ee7"},
+            {name: "Zuka", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Tulen", role: "Ph\u00e1p s\u01b0"},
+            {name: "Valhein", role: "X\u1ea1 th\u1ee7"},
+            {name: "Zip", role: "Tr\u1ee3 th\u1ee7"},
+            {name: "Max", role: "\u0110\u1ee1 \u0111\u00f2n"},
+            {name: "Sephera", role: "Ph\u00e1p s\u01b0"},
+            {name: "Maloch", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Riktor", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Thane", role: "\u0110\u1ee1 \u0111\u00f2n"},
+            {name: "Yan", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Yorn", role: "X\u1ea1 th\u1ee7"},
+            {name: "Slimz", role: "X\u1ea1 th\u1ee7"},
+            {name: "Laville", role: "X\u1ea1 th\u1ee7"},
+            {name: "Ignis", role: "Ph\u00e1p s\u01b0"},
+            {name: "Ilumia", role: "Ph\u00e1p s\u01b0"},
+            {name: "Krizzix", role: "Tr\u1ee3 th\u1ee7"},
+            {name: "Krixi", role: "Ph\u00e1p s\u01b0"},
+            {name: "Raz", role: "S\u00e1t th\u1ee7"},
+            {name: "Allain", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Cresht", role: "Tr\u1ee3 th\u1ee7"},
+            {name: "Omega", role: "\u0110\u1ee1 \u0111\u00f2n"},
+            {name: "Kahli", role: "Ph\u00e1p s\u01b0"},
+            {name: "Arduin", role: "\u0110\u1ee1 \u0111\u00f2n"},
+            {name: "Erin", role: "X\u1ea1 th\u1ee7"},
+            {name: "Kil'Groth", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Veres", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Arum", role: "Tr\u1ee3 th\u1ee7"},
+            {name: "Bijan", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Bonnie", role: "Ph\u00e1p s\u01b0"},
+            {name: "Teeri", role: "X\u1ea1 th\u1ee7"},
+            {name: "Baldum", role: "\u0110\u1ee1 \u0111\u00f2n"},
+            {name: "Errol", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Helen", role: "Tr\u1ee3 th\u1ee7"},
+            {name: "Amily", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Wonder Woman", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Kriknak", role: "S\u00e1t th\u1ee7"},
+            {name: "Lindis", role: "X\u1ea1 th\u1ee7"},
+            {name: "Lu Bu", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Wiro", role: "\u0110\u1ee1 \u0111\u00f2n"},
+            {name: "Zill", role: "S\u00e1t th\u1ee7"},
+            {name: "Charlotte", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Ata", role: "\u0110\u1ee1 \u0111\u00f2n"},
+            {name: "Alice", role: "Tr\u1ee3 th\u1ee7"},
+            {name: "Dextra", role: "\u0110\u1ea5u s\u0129"},
+            {name: "Paine", role: "S\u00e1t th\u1ee7"},
+            {name: "Ormarr", role: "\u0110\u1ee1 \u0111\u00f2n"},
+            {name: "Bright", role: "S\u00e1t th\u1ee7"},
+            {name: "D'Arcy", role: "Ph\u00e1p s\u01b0"},
+            {name: "Celica", role: "X\u1ea1 th\u1ee7"},
+            {name: "The Flash", role: "S\u00e1t th\u1ee7"},
+            {name: "Ishar", role: "Ph\u00e1p s\u01b0"},
+            {name: "Superman", role: "\u0110\u1ea5u s\u0129"}
+        ];
+
+                let currentRoleFilter = 'Tất cả';
+        let selectedGuideHeroName = '';
+        let selectedGuideHeroImage = '';
+        let selectedGuideLane = '';
+        let selectedGuideSpell = '';
+
+        const heroImageMap = {
+            "Aoi": "Aoi.jpeg",
+            "Iggy": "Iggy.jpeg",
+            "Arthur": "Athur.jpg",
+            "Grakk": "Grakk.png",
+            "Alice": "Alice.png",
+            "Kahli": "Kahlii.png",
+            "Kriknak": "Kriknak.png",
+            "Krixi": "Krixi.png",
+            "Krizzix": "Krizzix.png",
+            "Mina": "Mina.png",
+            "Slimz": "Slimz.png",
+            "Thane": "Thane.png",
+            "Kil'Groth": "Kil'Groth.gif",
+            "Lu Bu": "L\u1eef B\u1ed1.jpg",
+            "Wukong": "Ng\u1ed9 Kh\u00f4ng.jpg",
+            "Zanis": "Tri\u1ec7u V\u00e2n.jpg",
+            "Diaochan": "\u0110i\u00eau Thuy\u1ec1n.jpg",
+            "Ormarr": "Omarr.jpg",
+            "Rourka": "Rourke.jpg",
+            "Thorne": "Thorn.jpg",
+            "Wonder Woman": "Wonder Women.jpg",
+            "Zephys": "Zephis.jpg",
+            "Riktor": "Richter.jpg",
+            "Flowborn (Marksman)": "Flowborn (ADL).jpg",
+            "D'Arcy": "D'Arcy.jpg",
+            "Flowborn": "Flowborn (ADL).jpg",
+            "Flowborn ADL": "Flowborn (ADL).jpg",
+            "Flowborn MID": "Flowborn (MID).jpg",
+            "Ngo Khong": "Ng\u1ed9 Kh\u00f4ng.jpg",
+            "Trieu Van": "Tri\u1ec7u V\u00e2n.jpg",
+            "Dieu Thuyen": "\u0110i\u00eau Thuy\u1ec1n.jpg",
+            "Lu Bo": "L\u1eef B\u1ed1.jpg",
+            "Roule": "Rouie.jpg",
+            "Governa": "Goverra.jpg",
+            "Tochi": "Tachi.jpg",
+            "Richter": "Richter.jpg",
+            "KilGroth": "Kil'Groth.gif"
+        };
+
+                function normalizeHeroName(name) {
+            const aliases = {"Flowborn":"Flowborn (Marksman)","Flowborn ADL":"Flowborn (Marksman)","Flowborn MID":"Flowborn (Marksman)","Ngo Khong":"Wukong","Trieu Van":"Zanis","Dieu Thuyen":"Diaochan","Lu Bo":"Lu Bu","Roule":"Rouie","Governa":"Goverra","Tochi":"Tachi","Richter":"Riktor","KilGroth":"Kil'Groth"};
+            const trimmed = String(name || '').trim();
+            return aliases[trimmed] || trimmed;
+        }
+
+                function getHeroImage(name) {
+            const heroName = normalizeHeroName(name);
+            const imgFilename = heroImageMap[heroName] || `${heroName}.jpg`;
+            return `/images/heroes/${encodeURI(imgFilename).replace(/'/g, "%27")}?v=3`;
+        }
+
+        function initHeroPool() {
+            const grid = document.getElementById('hero-grid');
+            grid.innerHTML = '';
+            heroes.forEach(hero => {
+                const btn = document.createElement('button');
+                btn.className = 'hero-btn';
+                btn.innerText = hero.name;
+                btn.id = `hero-${hero.name}`;
+                btn.setAttribute('data-role', hero.role);
+                
+                const imgUrl = getHeroImage(hero.name.trim());
+                const img = new Image();
+                img.onload = () => {
+                    btn.style.backgroundImage = `url("${imgUrl}")`;
+                    btn.style.color = 'transparent';
+                    btn.style.textShadow = 'none';
+                };
+                img.src = imgUrl;
+
+                // On click, select the hero
+                btn.onclick = () => selectHero(hero.name, imgUrl);
+                grid.appendChild(btn);
+            });
+        }
+
+        function toggleHeroPool() {
+            const pool = document.getElementById('giao-an-hero-pool');
+            if (pool.style.display === 'none') {
+                pool.style.display = 'block';
+                if (document.getElementById('hero-grid').children.length === 0) {
+                    initHeroPool();
+                }
+            } else {
+                pool.style.display = 'none';
+            }
+        }
+
+        function selectHero(heroName, imgUrl) {
+            const dropZone = document.getElementById('target-hero-drop');
+            const nameLabel = document.getElementById('selected-hero-name');
+            
+            dropZone.style.backgroundImage = `url("${imgUrl}")`;
+            dropZone.innerText = '';
+            dropZone.style.border = '2px solid var(--gold-color, #d4af37)';
+            
+            nameLabel.innerText = heroName;
+            selectedGuideHeroName = heroName;
+            selectedGuideHeroImage = imgUrl;
+            
+            // Hide pool after selection
+            toggleHeroPool();
+        }
+
+        function setRoleFilter(role) {
+            currentRoleFilter = role;
+            document.querySelectorAll('#giao-an-hero-pool .role-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.trim() === role);
+            });
+            filterHeroes();
+        }
+
+        function filterHeroes() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            document.querySelectorAll('#giao-an-hero-pool .hero-btn').forEach(btn => {
+                const heroRole = btn.getAttribute('data-role');
+                const matchesRole = (currentRoleFilter === 'Tất cả' || heroRole === currentRoleFilter);
+                const matchesSearch = btn.innerText.toLowerCase().includes(query);
+                
+                if (matchesRole && matchesSearch) {
+                    btn.style.display = 'flex';
+                } else {
+                    btn.style.display = 'none';
+                }
+            });
+        }
+
+        // --- Role Selection Pool ---
+        const rolesList = [
+            { id: "DSL", name: "Đường Tà Thần (DSL)", icon: "/images/ui/top.png" },
+            { id: "JGL", name: "Đi Rừng (JGL)", icon: "/images/ui/jungle.png" },
+            { id: "MID", name: "Đường Giữa (MID)", icon: "/images/ui/mid.png" },
+            { id: "ADL", name: "Xạ Thủ (ADL)", icon: "/images/ui/adc.png" },
+            { id: "SUP", name: "Trợ Thủ (SUP)", icon: "/images/ui/support.png" }
+        ];
+
+        function initRolePool() {
+            const grid = document.getElementById('role-options-grid');
+            grid.innerHTML = '';
+            rolesList.forEach(role => {
+                const btn = document.createElement('div');
+                btn.style.display = 'flex';
+                btn.style.flexDirection = 'column';
+                btn.style.alignItems = 'center';
+                btn.style.gap = '8px';
+                btn.style.cursor = 'pointer';
+                btn.style.padding = '10px';
+                btn.style.borderRadius = '8px';
+                btn.style.transition = 'background 0.2s';
+                btn.onmouseover = () => btn.style.background = 'rgba(255,255,255,0.8)';
+                btn.onmouseout = () => btn.style.background = 'transparent';
+                
+                btn.onclick = () => selectRole(role.name, role.icon);
+
+                const icon = document.createElement('img');
+                icon.src = role.icon;
+                icon.style.width = '48px';
+                icon.style.height = '48px';
+                
+                const label = document.createElement('span');
+                label.innerText = role.id;
+                label.style.fontWeight = 'bold';
+                label.style.color = 'var(--text-color, #2f3640)';
+
+                btn.appendChild(icon);
+                btn.appendChild(label);
+                grid.appendChild(btn);
+            });
+        }
+
+        function toggleRolePool() {
+            const pool = document.getElementById('giao-an-role-pool');
+            if (pool.style.display === 'none') {
+                pool.style.display = 'block';
+                if (document.getElementById('role-options-grid').children.length === 0) {
+                    initRolePool();
+                }
+            } else {
+                pool.style.display = 'none';
+            }
+        }
+
+        function selectRole(roleName, iconUrl) {
+            const dropZone = document.getElementById('target-role-drop');
+            const nameLabel = document.getElementById('selected-role-name');
+            
+            dropZone.style.backgroundImage = `url("${iconUrl}")`;
+            dropZone.innerText = '';
+            dropZone.style.border = '2px solid var(--gold-color, #d4af37)';
+            dropZone.style.backgroundColor = 'rgba(0,0,0,0.05)';
+            dropZone.style.backgroundSize = '80%';
+            dropZone.style.backgroundRepeat = 'no-repeat';
+            
+            nameLabel.innerText = roleName;
+            selectedGuideLane = roleName;
+            
+            toggleRolePool();
+        }
+
+        // --- Spell Selection Pool ---
+        const spellsList = [
+            "Bộc Phá", "Cấp Cứu", "Gầm Thét", "Lá Chắn Sinh Mệnh", "Ngất Ngư", "Suy Nhược", "Thanh Tẩy", "Trừng Trị", "Tốc Biến", "Tốc Hành", "Tụ Bảo Bồn", "Viện Binh Liên Hiệp"
+        ];
+        
+        function initSpellPool() {
+            const grid = document.getElementById('spell-options-grid');
+            grid.innerHTML = '';
+            spellsList.forEach(spell => {
+                const btn = document.createElement('div');
+                btn.style.display = 'flex';
+                btn.style.flexDirection = 'column';
+                btn.style.alignItems = 'center';
+                btn.style.gap = '8px';
+                btn.style.cursor = 'pointer';
+                btn.style.padding = '10px';
+                btn.style.borderRadius = '8px';
+                btn.style.transition = 'background 0.2s';
+                btn.onmouseover = () => btn.style.background = 'rgba(255,255,255,0.8)';
+                btn.onmouseout = () => btn.style.background = 'transparent';
+                
+                const iconUrl = `/images/spells/${encodeURI(spell).replace(/'/g, "%27")}.png?v=3`;
+                btn.onclick = () => selectSpell(spell, iconUrl);
+
+                const icon = document.createElement('img');
+                icon.src = iconUrl;
+                icon.style.width = '48px';
+                icon.style.height = '48px';
+                icon.style.borderRadius = '50%';
+                
+                const label = document.createElement('span');
+                label.innerText = spell;
+                label.style.fontWeight = 'bold';
+                label.style.color = 'var(--text-color, #2f3640)';
+                label.style.fontSize = '0.9rem';
+                label.style.textAlign = 'center';
+                label.style.maxWidth = '80px';
+
+                btn.appendChild(icon);
+                btn.appendChild(label);
+                grid.appendChild(btn);
+            });
+        }
+
+        function toggleSpellPool() {
+            const pool = document.getElementById('giao-an-spell-pool');
+            if (pool.style.display === 'none') {
+                pool.style.display = 'block';
+                if (document.getElementById('spell-options-grid').children.length === 0) {
+                    initSpellPool();
+                }
+            } else {
+                pool.style.display = 'none';
+            }
+        }
+
+        function selectSpell(spellName, iconUrl) {
+            const dropZone = document.getElementById('target-spell-drop');
+            const nameLabel = document.getElementById('selected-spell-name');
+            
+            dropZone.style.backgroundImage = `url("${iconUrl}")`;
+            dropZone.innerText = '';
+            dropZone.style.border = '2px solid var(--gold-color, #d4af37)';
+            dropZone.style.borderRadius = '50%'; // Make it match the spell icon shape
+            
+            nameLabel.innerText = spellName;
+            selectedGuideSpell = spellName;
+            
+            toggleSpellPool();
+        }
+
+        function getCleanSelectedText(elementId, emptyPrefix) {
+            const text = document.getElementById(elementId)?.innerText.trim() || '';
+            return text.startsWith(emptyPrefix) ? '' : text;
+        }
+
+        function getGuideSections() {
+            return Array.from(document.querySelectorAll('.rich-editor')).map(editor => {
+                const block = editor.closest('.builder-block');
+                const title = block?.querySelector('.block-title')?.innerText.trim() || 'Nội dung';
+                return {
+                    title,
+                    text: editor.innerText.trim(),
+                    html: editor.innerHTML.trim()
+                };
+            }).filter(section => section.text || section.html);
+        }
+
+        function fillAuthorFromSession() {
+            if (typeof getAuthUser !== 'function') return;
+            const user = getAuthUser();
+            const authorInput = document.getElementById('guide-author');
+            if (user && authorInput && !authorInput.value.trim()) {
+                authorInput.value = user.displayName || user.name || 'User';
+            }
+        }
+
+        async function saveGuide() {
+            if (typeof isAuthenticated !== 'function' || !isAuthenticated()) {
+                alert('Bạn cần đăng nhập để lưu giáo án.');
+                return;
+            }
+
+            const title = document.getElementById('guide-title')?.value.trim() || '';
+            if (!title) {
+                alert('Vui lòng nhập tiêu đề giáo án.');
+                return;
+            }
+
+            const authorName = document.getElementById('guide-author')?.value.trim() || '';
+            const category = document.getElementById('guide-category')?.value || 'Chiến thuật';
+            const excerpt = document.getElementById('guide-excerpt')?.value.trim() || '';
+            const heroName = selectedGuideHeroName || getCleanSelectedText('selected-hero-name', 'Chưa chọn');
+            const lane = selectedGuideLane || getCleanSelectedText('selected-role-name', 'Chưa chọn');
+            const spell = selectedGuideSpell || getCleanSelectedText('selected-spell-name', 'Chưa chọn');
+            const sections = getGuideSections();
+            const saveButton = document.getElementById('save-guide-btn');
+
+            const payload = {
+                title,
+                authorName,
+                heroName,
+                lane,
+                category,
+                excerpt,
+                coverImageUrl: selectedGuideHeroImage || (heroName ? getHeroImage(heroName) : '/images/backgrounds/bg-map.jpg'),
+                status: 'PUBLISHED',
+                contentData: {
+                    title,
+                    authorName,
+                    heroName,
+                    lane,
+                    spell,
+                    category,
+                    excerpt,
+                    coverImageUrl: selectedGuideHeroImage || (heroName ? getHeroImage(heroName) : '/images/backgrounds/bg-map.jpg'),
+                    sections
+                }
+            };
+
+            try {
+                if (saveButton) {
+                    saveButton.disabled = true;
+                    saveButton.textContent = 'Đang lưu...';
+                }
+
+                const response = await fetch('/api/guides', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(result.error || 'Không thể lưu giáo án.');
+                }
+
+                window.location.href = '/html/guide-detail.html?id=' + encodeURIComponent(result.id);
+            } catch (error) {
+                console.error('Save guide error:', error);
+                alert(error.message || 'Không thể lưu giáo án. Vui lòng thử lại sau.');
+            } finally {
+                if (saveButton) {
+                    saveButton.disabled = false;
+                    saveButton.textContent = 'Lưu Giáo Án';
+                }
+            }
+        }
+
+        window.saveGuide = saveGuide;
+
+        document.addEventListener('DOMContentLoaded', fillAuthorFromSession);
+        document.addEventListener('authChanged', fillAuthorFromSession);
+    </script>
+    <script src="/js/auth.js?v=30260424-account-profile"></script>
+    <script src="/js/header-loader.js?v=30260424-account-profile"></script>
+</body>
+</html>

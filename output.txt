@@ -1,0 +1,379 @@
+=== RENAME PLAN ===
+Airi.jpg -> airi.jpg
+Aleister.jpg -> aleister.jpg
+Alice.png -> alice.png
+Allain.jpg -> allain.jpg
+Amily.jpg -> amily.jpg
+Annette.jpg -> annette.jpg
+Aoi.jpeg -> aoi.jpeg
+Arduin.jpg -> arduin.jpg
+Arum.jpg -> arum.jpg
+Astrid.jpg -> astrid.jpg
+Ata.jpg -> ata.jpg
+Athur.jpg -> arthur.jpg
+Aya.jpg -> aya.jpg
+Baldum.jpg -> baldum.jpg
+Bijan.jpg -> bijan.jpg
+Billow.jpg -> billow.jpg
+Biron.jpg -> biron.jpg
+Bolt Baron.jpg -> bolt-baron.jpg
+Bonnie.jpg -> bonnie.jpg
+Bright.jpg -> bright.jpg
+Butterfly.jpg -> butterfly.jpg
+Capheny.jpg -> capheny.jpg
+Celica.jpg -> celica.jpg
+Charlotte.jpg -> charlotte.jpg
+Chaugnar.jpg -> chaugnar.jpg
+Cresht.jpg -> cresht.jpg
+Dextra.jpg -> dextra.jpg
+Dirak.jpg -> dirak.jpg
+Dolia.jpg -> dolia.jpg
+Dyadia.jpg -> dyadia.jpg
+Edras.jpg -> edras.jpg
+Elsu.jpg -> elsu.jpg
+Enzo.jpg -> enzo.jpg
+Erin.jpg -> erin.jpg
+Errol.jpg -> errol.jpg
+Fennik.jpg -> fennik.jpg
+Florentino.jpg -> florentino.jpg
+Flowborn (ADL).jpg -> flowborn-marksman.jpg
+Flowborn (MID).jpg -> flowborn-mage.jpg
+Gildur.jpg -> gildur.jpg
+Goverra.jpg -> goverra.jpg
+Grakk.png -> grakk.png
+Hayate.jpg -> hayate.jpg
+Heino.jpg -> heino.jpg
+Helen.jpg -> helen.jpg
+Iggy.jpeg -> iggy.jpeg
+Ignis.jpg -> ignis.jpg
+Ilumia.jpg -> ilumia.jpg
+Ishar.jpg -> ishar.jpg
+Jinna.jpg -> jinna.jpg
+Kahlii.png -> kahlii.png
+Kaine.jpg -> kaine.jpg
+Keera.jpg -> keera.jpg
+Kriknak.png -> kriknak.png
+Krixi.png -> krixi.png
+Krizzix.png -> krizzix.png
+Lauriel.jpg -> lauriel.jpg
+Laville.jpg -> laville.jpg
+Liliana.jpg -> liliana.jpg
+Lindis.jpg -> lindis.jpg
+Lorion.jpg -> lorion.jpg
+Lumburr.jpg -> lumburr.jpg
+Lữ Bố.jpg -> lu-bu.jpg
+Maloch.jpg -> maloch.jpg
+Marja.jpg -> marja.jpg
+Max.jpg -> max.jpg
+Mganga.jpg -> mganga.jpg
+Mina.png -> mina.png
+Ming.jpg -> ming.jpg
+Moren.jpg -> moren.jpg
+Murad.jpg -> murad.jpg
+Nakroth.jpg -> nakroth.jpg
+Natalya.jpg -> natalya.jpg
+Ngộ Không.jpg -> ngo-khong.jpg
+Omarr.jpg -> ormarr.jpg
+Omega.jpg -> omega.jpg
+Omen.jpg -> omen.jpg
+Paine.jpg -> paine.jpg
+Preyta.jpg -> preyta.jpg
+Qi.jpg -> qi.jpg
+Quillen.jpg -> quillen.jpg
+Raz.jpg -> raz.jpg
+Richter.jpg -> richter.jpg
+Rouie.jpg -> rouie.jpg
+Rourke.jpg -> rourka.jpg
+Roxie.jpg -> roxie.jpg
+Ryoma.jpg -> ryoma.jpg
+Sephera.jpg -> sephera.jpg
+Sinestrea.jpg -> sinestrea.jpg
+Skud.jpg -> skud.jpg
+Slimz.png -> slimz.png
+Stuart.jpg -> stuart.jpg
+Superman.jpg -> superman.jpg
+Taara.jpg -> taara.jpg
+Tachi.jpg -> tachi.jpg
+TeeMee.jpg -> teemee.jpg
+Teeri.jpg -> teeri.jpg
+Thane.png -> thane.png
+The Flash.jpg -> the-flash.jpg
+Thorn.jpg -> thorne.jpg
+Toro.jpg -> toro.jpg
+Triệu Vân.jpg -> trieu-van.jpg
+Tulen.jpg -> tulen.jpg
+Valhein.jpg -> valhein.jpg
+Veera.jpg -> veera.jpg
+Veres.jpg -> veres.jpg
+Violet.jpg -> violet.jpg
+Volkath.jpg -> volkath.jpg
+Wiro.jpg -> wiro.jpg
+Wisp.jpg -> wisp.jpg
+Wonder Women.jpg -> wonder-woman.jpg
+Xeniel.jpg -> xeniel.jpg
+Yan.jpg -> yan.jpg
+Yena.jpg -> yena.jpg
+Yorn.jpg -> yorn.jpg
+Yue.jpg -> yue.jpg
+Zata.jpg -> zata.jpg
+Zephis.jpg -> zephys.jpg
+Zill.jpg -> zill.jpg
+Zip.jpg -> zip.jpg
+Zuka.jpg -> zuka.jpg
+Điêu Thuyền.jpg -> dieu-thuyen.jpg
+
+=== SAFE RENAME SCRIPT ===
+ren "Airi.jpg" "airi.jpg"
+ren "Aleister.jpg" "aleister.jpg"
+ren "Alice.png" "alice.png"
+ren "Allain.jpg" "allain.jpg"
+ren "Amily.jpg" "amily.jpg"
+ren "Annette.jpg" "annette.jpg"
+ren "Aoi.jpeg" "aoi.jpeg"
+ren "Arduin.jpg" "arduin.jpg"
+ren "Arum.jpg" "arum.jpg"
+ren "Astrid.jpg" "astrid.jpg"
+ren "Ata.jpg" "ata.jpg"
+ren "Athur.jpg" "arthur.jpg"
+ren "Aya.jpg" "aya.jpg"
+ren "Baldum.jpg" "baldum.jpg"
+ren "Bijan.jpg" "bijan.jpg"
+ren "Billow.jpg" "billow.jpg"
+ren "Biron.jpg" "biron.jpg"
+ren "Bolt Baron.jpg" "bolt-baron.jpg"
+ren "Bonnie.jpg" "bonnie.jpg"
+ren "Bright.jpg" "bright.jpg"
+ren "Butterfly.jpg" "butterfly.jpg"
+ren "Capheny.jpg" "capheny.jpg"
+ren "Celica.jpg" "celica.jpg"
+ren "Charlotte.jpg" "charlotte.jpg"
+ren "Chaugnar.jpg" "chaugnar.jpg"
+ren "Cresht.jpg" "cresht.jpg"
+ren "Dextra.jpg" "dextra.jpg"
+ren "Dirak.jpg" "dirak.jpg"
+ren "Dolia.jpg" "dolia.jpg"
+ren "Dyadia.jpg" "dyadia.jpg"
+ren "Edras.jpg" "edras.jpg"
+ren "Elsu.jpg" "elsu.jpg"
+ren "Enzo.jpg" "enzo.jpg"
+ren "Erin.jpg" "erin.jpg"
+ren "Errol.jpg" "errol.jpg"
+ren "Fennik.jpg" "fennik.jpg"
+ren "Florentino.jpg" "florentino.jpg"
+ren "Flowborn (ADL).jpg" "flowborn-marksman.jpg"
+ren "Flowborn (MID).jpg" "flowborn-mage.jpg"
+ren "Gildur.jpg" "gildur.jpg"
+ren "Goverra.jpg" "goverra.jpg"
+ren "Grakk.png" "grakk.png"
+ren "Hayate.jpg" "hayate.jpg"
+ren "Heino.jpg" "heino.jpg"
+ren "Helen.jpg" "helen.jpg"
+ren "Iggy.jpeg" "iggy.jpeg"
+ren "Ignis.jpg" "ignis.jpg"
+ren "Ilumia.jpg" "ilumia.jpg"
+ren "Ishar.jpg" "ishar.jpg"
+ren "Jinna.jpg" "jinna.jpg"
+ren "Kahlii.png" "kahlii.png"
+ren "Kaine.jpg" "kaine.jpg"
+ren "Keera.jpg" "keera.jpg"
+ren "Kriknak.png" "kriknak.png"
+ren "Krixi.png" "krixi.png"
+ren "Krizzix.png" "krizzix.png"
+ren "Lauriel.jpg" "lauriel.jpg"
+ren "Laville.jpg" "laville.jpg"
+ren "Liliana.jpg" "liliana.jpg"
+ren "Lindis.jpg" "lindis.jpg"
+ren "Lorion.jpg" "lorion.jpg"
+ren "Lumburr.jpg" "lumburr.jpg"
+ren "Lữ Bố.jpg" "lu-bu.jpg"
+ren "Maloch.jpg" "maloch.jpg"
+ren "Marja.jpg" "marja.jpg"
+ren "Max.jpg" "max.jpg"
+ren "Mganga.jpg" "mganga.jpg"
+ren "Mina.png" "mina.png"
+ren "Ming.jpg" "ming.jpg"
+ren "Moren.jpg" "moren.jpg"
+ren "Murad.jpg" "murad.jpg"
+ren "Nakroth.jpg" "nakroth.jpg"
+ren "Natalya.jpg" "natalya.jpg"
+ren "Ngộ Không.jpg" "ngo-khong.jpg"
+ren "Omarr.jpg" "ormarr.jpg"
+ren "Omega.jpg" "omega.jpg"
+ren "Omen.jpg" "omen.jpg"
+ren "Paine.jpg" "paine.jpg"
+ren "Preyta.jpg" "preyta.jpg"
+ren "Qi.jpg" "qi.jpg"
+ren "Quillen.jpg" "quillen.jpg"
+ren "Raz.jpg" "raz.jpg"
+ren "Richter.jpg" "richter.jpg"
+ren "Rouie.jpg" "rouie.jpg"
+ren "Rourke.jpg" "rourka.jpg"
+ren "Roxie.jpg" "roxie.jpg"
+ren "Ryoma.jpg" "ryoma.jpg"
+ren "Sephera.jpg" "sephera.jpg"
+ren "Sinestrea.jpg" "sinestrea.jpg"
+ren "Skud.jpg" "skud.jpg"
+ren "Slimz.png" "slimz.png"
+ren "Stuart.jpg" "stuart.jpg"
+ren "Superman.jpg" "superman.jpg"
+ren "Taara.jpg" "taara.jpg"
+ren "Tachi.jpg" "tachi.jpg"
+ren "TeeMee.jpg" "teemee.jpg"
+ren "Teeri.jpg" "teeri.jpg"
+ren "Thane.png" "thane.png"
+ren "The Flash.jpg" "the-flash.jpg"
+ren "Thorn.jpg" "thorne.jpg"
+ren "Toro.jpg" "toro.jpg"
+ren "Triệu Vân.jpg" "trieu-van.jpg"
+ren "Tulen.jpg" "tulen.jpg"
+ren "Valhein.jpg" "valhein.jpg"
+ren "Veera.jpg" "veera.jpg"
+ren "Veres.jpg" "veres.jpg"
+ren "Violet.jpg" "violet.jpg"
+ren "Volkath.jpg" "volkath.jpg"
+ren "Wiro.jpg" "wiro.jpg"
+ren "Wisp.jpg" "wisp.jpg"
+ren "Wonder Women.jpg" "wonder-woman.jpg"
+ren "Xeniel.jpg" "xeniel.jpg"
+ren "Yan.jpg" "yan.jpg"
+ren "Yena.jpg" "yena.jpg"
+ren "Yorn.jpg" "yorn.jpg"
+ren "Yue.jpg" "yue.jpg"
+ren "Zata.jpg" "zata.jpg"
+ren "Zephis.jpg" "zephys.jpg"
+ren "Zill.jpg" "zill.jpg"
+ren "Zip.jpg" "zip.jpg"
+ren "Zuka.jpg" "zuka.jpg"
+ren "Điêu Thuyền.jpg" "dieu-thuyen.jpg"
+
+=== SQL FIX ===
+UPDATE heroes SET avatar_url = '/images/airi.jpg' WHERE slug = 'airi';
+UPDATE heroes SET avatar_url = '/images/aleister.jpg' WHERE slug = 'aleister';
+UPDATE heroes SET avatar_url = '/images/alice.png' WHERE slug = 'alice';
+UPDATE heroes SET avatar_url = '/images/allain.jpg' WHERE slug = 'allain';
+UPDATE heroes SET avatar_url = '/images/amily.jpg' WHERE slug = 'amily';
+UPDATE heroes SET avatar_url = '/images/annette.jpg' WHERE slug = 'annette';
+UPDATE heroes SET avatar_url = '/images/aoi.jpeg' WHERE slug = 'aoi';
+UPDATE heroes SET avatar_url = '/images/arduin.jpg' WHERE slug = 'arduin';
+UPDATE heroes SET avatar_url = '/images/arum.jpg' WHERE slug = 'arum';
+UPDATE heroes SET avatar_url = '/images/astrid.jpg' WHERE slug = 'astrid';
+UPDATE heroes SET avatar_url = '/images/ata.jpg' WHERE slug = 'ata';
+UPDATE heroes SET avatar_url = '/images/arthur.jpg' WHERE slug = 'arthur';
+UPDATE heroes SET avatar_url = '/images/aya.jpg' WHERE slug = 'aya';
+UPDATE heroes SET avatar_url = '/images/baldum.jpg' WHERE slug = 'baldum';
+UPDATE heroes SET avatar_url = '/images/bijan.jpg' WHERE slug = 'bijan';
+UPDATE heroes SET avatar_url = '/images/billow.jpg' WHERE slug = 'billow';
+UPDATE heroes SET avatar_url = '/images/biron.jpg' WHERE slug = 'biron';
+UPDATE heroes SET avatar_url = '/images/bolt-baron.jpg' WHERE slug = 'bolt-baron';
+UPDATE heroes SET avatar_url = '/images/bonnie.jpg' WHERE slug = 'bonnie';
+UPDATE heroes SET avatar_url = '/images/bright.jpg' WHERE slug = 'bright';
+UPDATE heroes SET avatar_url = '/images/butterfly.jpg' WHERE slug = 'butterfly';
+UPDATE heroes SET avatar_url = '/images/capheny.jpg' WHERE slug = 'capheny';
+UPDATE heroes SET avatar_url = '/images/celica.jpg' WHERE slug = 'celica';
+UPDATE heroes SET avatar_url = '/images/charlotte.jpg' WHERE slug = 'charlotte';
+UPDATE heroes SET avatar_url = '/images/chaugnar.jpg' WHERE slug = 'chaugnar';
+UPDATE heroes SET avatar_url = '/images/cresht.jpg' WHERE slug = 'cresht';
+UPDATE heroes SET avatar_url = '/images/dextra.jpg' WHERE slug = 'dextra';
+UPDATE heroes SET avatar_url = '/images/dirak.jpg' WHERE slug = 'dirak';
+UPDATE heroes SET avatar_url = '/images/dolia.jpg' WHERE slug = 'dolia';
+UPDATE heroes SET avatar_url = '/images/dyadia.jpg' WHERE slug = 'dyadia';
+UPDATE heroes SET avatar_url = '/images/edras.jpg' WHERE slug = 'edras';
+UPDATE heroes SET avatar_url = '/images/elsu.jpg' WHERE slug = 'elsu';
+UPDATE heroes SET avatar_url = '/images/enzo.jpg' WHERE slug = 'enzo';
+UPDATE heroes SET avatar_url = '/images/erin.jpg' WHERE slug = 'erin';
+UPDATE heroes SET avatar_url = '/images/errol.jpg' WHERE slug = 'errol';
+UPDATE heroes SET avatar_url = '/images/fennik.jpg' WHERE slug = 'fennik';
+UPDATE heroes SET avatar_url = '/images/florentino.jpg' WHERE slug = 'florentino';
+UPDATE heroes SET avatar_url = '/images/flowborn-marksman.jpg' WHERE slug = 'flowborn-marksman';
+UPDATE heroes SET avatar_url = '/images/flowborn-mage.jpg' WHERE slug = 'flowborn-mage';
+UPDATE heroes SET avatar_url = '/images/gildur.jpg' WHERE slug = 'gildur';
+UPDATE heroes SET avatar_url = '/images/goverra.jpg' WHERE slug = 'goverra';
+UPDATE heroes SET avatar_url = '/images/grakk.png' WHERE slug = 'grakk';
+UPDATE heroes SET avatar_url = '/images/hayate.jpg' WHERE slug = 'hayate';
+UPDATE heroes SET avatar_url = '/images/heino.jpg' WHERE slug = 'heino';
+UPDATE heroes SET avatar_url = '/images/helen.jpg' WHERE slug = 'helen';
+UPDATE heroes SET avatar_url = '/images/iggy.jpeg' WHERE slug = 'iggy';
+UPDATE heroes SET avatar_url = '/images/ignis.jpg' WHERE slug = 'ignis';
+UPDATE heroes SET avatar_url = '/images/ilumia.jpg' WHERE slug = 'ilumia';
+UPDATE heroes SET avatar_url = '/images/ishar.jpg' WHERE slug = 'ishar';
+UPDATE heroes SET avatar_url = '/images/jinna.jpg' WHERE slug = 'jinna';
+UPDATE heroes SET avatar_url = '/images/kahlii.png' WHERE slug = 'kahlii';
+UPDATE heroes SET avatar_url = '/images/kaine.jpg' WHERE slug = 'kaine';
+UPDATE heroes SET avatar_url = '/images/keera.jpg' WHERE slug = 'keera';
+UPDATE heroes SET avatar_url = '/images/kriknak.png' WHERE slug = 'kriknak';
+UPDATE heroes SET avatar_url = '/images/krixi.png' WHERE slug = 'krixi';
+UPDATE heroes SET avatar_url = '/images/krizzix.png' WHERE slug = 'krizzix';
+UPDATE heroes SET avatar_url = '/images/lauriel.jpg' WHERE slug = 'lauriel';
+UPDATE heroes SET avatar_url = '/images/laville.jpg' WHERE slug = 'laville';
+UPDATE heroes SET avatar_url = '/images/liliana.jpg' WHERE slug = 'liliana';
+UPDATE heroes SET avatar_url = '/images/lindis.jpg' WHERE slug = 'lindis';
+UPDATE heroes SET avatar_url = '/images/lorion.jpg' WHERE slug = 'lorion';
+UPDATE heroes SET avatar_url = '/images/lumburr.jpg' WHERE slug = 'lumburr';
+UPDATE heroes SET avatar_url = '/images/lu-bu.jpg' WHERE slug = 'lu-bu';
+UPDATE heroes SET avatar_url = '/images/maloch.jpg' WHERE slug = 'maloch';
+UPDATE heroes SET avatar_url = '/images/marja.jpg' WHERE slug = 'marja';
+UPDATE heroes SET avatar_url = '/images/max.jpg' WHERE slug = 'max';
+UPDATE heroes SET avatar_url = '/images/mganga.jpg' WHERE slug = 'mganga';
+UPDATE heroes SET avatar_url = '/images/mina.png' WHERE slug = 'mina';
+UPDATE heroes SET avatar_url = '/images/ming.jpg' WHERE slug = 'ming';
+UPDATE heroes SET avatar_url = '/images/moren.jpg' WHERE slug = 'moren';
+UPDATE heroes SET avatar_url = '/images/murad.jpg' WHERE slug = 'murad';
+UPDATE heroes SET avatar_url = '/images/nakroth.jpg' WHERE slug = 'nakroth';
+UPDATE heroes SET avatar_url = '/images/natalya.jpg' WHERE slug = 'natalya';
+UPDATE heroes SET avatar_url = '/images/ngo-khong.jpg' WHERE slug = 'ngo-khong';
+UPDATE heroes SET avatar_url = '/images/ormarr.jpg' WHERE slug = 'ormarr';
+UPDATE heroes SET avatar_url = '/images/omega.jpg' WHERE slug = 'omega';
+UPDATE heroes SET avatar_url = '/images/omen.jpg' WHERE slug = 'omen';
+UPDATE heroes SET avatar_url = '/images/paine.jpg' WHERE slug = 'paine';
+UPDATE heroes SET avatar_url = '/images/preyta.jpg' WHERE slug = 'preyta';
+UPDATE heroes SET avatar_url = '/images/qi.jpg' WHERE slug = 'qi';
+UPDATE heroes SET avatar_url = '/images/quillen.jpg' WHERE slug = 'quillen';
+UPDATE heroes SET avatar_url = '/images/raz.jpg' WHERE slug = 'raz';
+UPDATE heroes SET avatar_url = '/images/richter.jpg' WHERE slug = 'richter';
+UPDATE heroes SET avatar_url = '/images/rouie.jpg' WHERE slug = 'rouie';
+UPDATE heroes SET avatar_url = '/images/rourka.jpg' WHERE slug = 'rourka';
+UPDATE heroes SET avatar_url = '/images/roxie.jpg' WHERE slug = 'roxie';
+UPDATE heroes SET avatar_url = '/images/ryoma.jpg' WHERE slug = 'ryoma';
+UPDATE heroes SET avatar_url = '/images/sephera.jpg' WHERE slug = 'sephera';
+UPDATE heroes SET avatar_url = '/images/sinestrea.jpg' WHERE slug = 'sinestrea';
+UPDATE heroes SET avatar_url = '/images/skud.jpg' WHERE slug = 'skud';
+UPDATE heroes SET avatar_url = '/images/slimz.png' WHERE slug = 'slimz';
+UPDATE heroes SET avatar_url = '/images/stuart.jpg' WHERE slug = 'stuart';
+UPDATE heroes SET avatar_url = '/images/superman.jpg' WHERE slug = 'superman';
+UPDATE heroes SET avatar_url = '/images/taara.jpg' WHERE slug = 'taara';
+UPDATE heroes SET avatar_url = '/images/tachi.jpg' WHERE slug = 'tachi';
+UPDATE heroes SET avatar_url = '/images/teemee.jpg' WHERE slug = 'teemee';
+UPDATE heroes SET avatar_url = '/images/teeri.jpg' WHERE slug = 'teeri';
+UPDATE heroes SET avatar_url = '/images/thane.png' WHERE slug = 'thane';
+UPDATE heroes SET avatar_url = '/images/the-flash.jpg' WHERE slug = 'the-flash';
+UPDATE heroes SET avatar_url = '/images/thorne.jpg' WHERE slug = 'thorne';
+UPDATE heroes SET avatar_url = '/images/toro.jpg' WHERE slug = 'toro';
+UPDATE heroes SET avatar_url = '/images/trieu-van.jpg' WHERE slug = 'trieu-van';
+UPDATE heroes SET avatar_url = '/images/tulen.jpg' WHERE slug = 'tulen';
+UPDATE heroes SET avatar_url = '/images/valhein.jpg' WHERE slug = 'valhein';
+UPDATE heroes SET avatar_url = '/images/veera.jpg' WHERE slug = 'veera';
+UPDATE heroes SET avatar_url = '/images/veres.jpg' WHERE slug = 'veres';
+UPDATE heroes SET avatar_url = '/images/violet.jpg' WHERE slug = 'violet';
+UPDATE heroes SET avatar_url = '/images/volkath.jpg' WHERE slug = 'volkath';
+UPDATE heroes SET avatar_url = '/images/wiro.jpg' WHERE slug = 'wiro';
+UPDATE heroes SET avatar_url = '/images/wisp.jpg' WHERE slug = 'wisp';
+UPDATE heroes SET avatar_url = '/images/wonder-woman.jpg' WHERE slug = 'wonder-woman';
+UPDATE heroes SET avatar_url = '/images/xeniel.jpg' WHERE slug = 'xeniel';
+UPDATE heroes SET avatar_url = '/images/yan.jpg' WHERE slug = 'yan';
+UPDATE heroes SET avatar_url = '/images/yena.jpg' WHERE slug = 'yena';
+UPDATE heroes SET avatar_url = '/images/yorn.jpg' WHERE slug = 'yorn';
+UPDATE heroes SET avatar_url = '/images/yue.jpg' WHERE slug = 'yue';
+UPDATE heroes SET avatar_url = '/images/zata.jpg' WHERE slug = 'zata';
+UPDATE heroes SET avatar_url = '/images/zephys.jpg' WHERE slug = 'zephys';
+UPDATE heroes SET avatar_url = '/images/zill.jpg' WHERE slug = 'zill';
+UPDATE heroes SET avatar_url = '/images/zip.jpg' WHERE slug = 'zip';
+UPDATE heroes SET avatar_url = '/images/zuka.jpg' WHERE slug = 'zuka';
+UPDATE heroes SET avatar_url = '/images/dieu-thuyen.jpg' WHERE slug = 'dieu-thuyen';
+
+=== UNMATCHED FILES ===
+Azzen'Ka.jpg
+D'Arcy.jpg
+Eland'orr.jpg
+Kil'Groth.gif
+Tel'Annas.jpg
+Y'bneth.jpg

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bảng xếp hạng Esports đầy đủ - ATG Academy</title>
+    <meta name="description" content="Theo dõi toàn bộ đội tuyển trong hệ thống AER.">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/esports.css?v=20260427-dashboard-leaderboard">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+    <div id="header-placeholder"></div>
+
+    <main class="leaderboard-page">
+        <section class="leaderboard-top section-shell" aria-labelledby="leaderboard-title">
+            <a class="back-pill" href="/esports.html">&larr; Quay lại Esports</a>
+
+            <div class="leaderboard-hero-card">
+                <span class="eyebrow">AER DASHBOARD</span>
+                <h1 id="leaderboard-title">Bảng xếp hạng Esports đầy đủ</h1>
+                <p>Theo dõi toàn bộ đội tuyển trong hệ thống AER.</p>
+            </div>
+        </section>
+
+        <section class="leaderboard-shell section-shell">
+            <div class="leaderboard-main">
+                <div class="leaderboard-primary">
+                    <div class="filter-strip" aria-label="Bộ lọc khu vực">
+                        <button type="button" class="filter-chip is-active" data-region-filter="ALL">Tất cả</button>
+                        <button type="button" class="filter-chip" data-region-filter="RPL">RPL</button>
+                        <button type="button" class="filter-chip" data-region-filter="AOG">AOG</button>
+                        <button type="button" class="filter-chip" data-region-filter="GCS">GCS</button>
+                    </div>
+
+                    <div class="rankings-card">
+                        <div class="rankings-card-header leaderboard-card-header">
+                            <div>
+                                <h2>Toàn bộ đội tuyển</h2>
+                                <p id="teams-summary">Đang tải dữ liệu đội tuyển...</p>
+                            </div>
+                        </div>
+
+                        <div class="rankings-state" id="teams-state" hidden></div>
+
+                        <div class="rankings-table-scroll">
+                            <table class="rankings-table full-leaderboard-table" id="teams-table">
+                                <thead>
+                                    <tr>
+                                        <th>STT</th>
+                                        <th>Đội tuyển</th>
+                                        <th>Khu vực</th>
+                                        <th>Tier</th>
+                                        <th>Điểm AER</th>
+                                        <th>Số trận</th>
+                                        <th>Thắng / Thua</th>
+                                        <th>Tỷ lệ thắng</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="teams-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <aside class="leaderboard-side">
+                    <div class="region-panel">
+                        <div class="region-panel-header">
+                            <h2>Xếp hạng khu vực</h2>
+                            <p>Tổng hợp sức mạnh theo từng giải đấu.</p>
+                        </div>
+                        <div class="region-panel-list" id="region-panel-list"></div>
+                    </div>
+                </aside>
+            </div>
+        </section>
+    </main>
+
+    <footer class="esports-footer">
+        <span>© 2026 ATG Academy. Nền tảng esports chuyên sâu.</span>
+        <span id="leaderboard-updated">Đang tải dữ liệu...</span>
+    </footer>
+
+    <script>
+        const TEAM_ENDPOINT = '/api/esports/teams';
+        const REGION_META = {
+            RPL: {
+                name: 'RPL',
+                fullName: 'RoV Pro League',
+                logo: '/images/leagues/RPL_logo.png',
+                accent: 'blue',
+                status: 'Active'
+            },
+            AOG: {
+                name: 'AOG',
+                fullName: 'Arena of Glory',
+                logo: '/images/leagues/AOG_logo.png',
+                accent: 'gold',
+                status: 'Active'
+            },
+            GCS: {
+                name: 'GCS',
+                fullName: 'Garena Challenger Series',
+                logo: '/images/leagues/GCS_logo.png',
+                accent: 'green',
+                status: 'Off-season'
+            }
+        };
+
+        let allTeams = [];
+        let activeRegionFilter = 'ALL';
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, function(char) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[char];
+            });
+        }
+
+        function numberValue(value) {
+            const number = Number(value);
+            return Number.isFinite(number) ? number : 0;
+        }
+
+        function formatNumber(value) {
+            return numberValue(value).toLocaleString('vi-VN');
+        }
+
+        function getTeamCode(team) {
+            return String(team?.teamCode || team?.code || team?.shortName || team?.teamName || 'Team').trim();
+        }
+
+        function getTeamName(team) {
+            return String(team?.teamName || team?.name || getTeamCode(team)).trim();
+        }
+
+        function getEloScore(team) {
+            return numberValue(team?.eloScore ?? team?.score ?? team?.aerScore);
+        }
+
+        function normalizeRegion(region) {
+            return String(region || 'OTHER').trim().toUpperCase() || 'OTHER';
+        }
+
+        function tierByRank(rank, total) {
+            const idx = rank - 1;
+            const idxS = Math.floor(total * 0.10);
+            const idxA = Math.floor(total * 0.30);
+            const idxB = Math.floor(total * 0.50);
+            const idxC = Math.floor(total * 0.75);
+
+            if (idx < idxS) return 'S';
+            if (idx < idxA) return 'A';
+            if (idx < idxB) return 'B';
+            if (idx < idxC) return 'C';
+            return 'D';
+        }
+
+        function normalizeTeams(teams) {
+            return teams
+                .slice()
+                .sort(function(a, b) {
+                    return getEloScore(b) - getEloScore(a);
+                })
+                .map(function(team, index, sortedTeams) {
+                    const matchWins = numberValue(team.matchWins);
+                    const matchLosses = numberValue(team.matchLosses);
+                    const matches = matchWins + matchLosses;
+                    const code = getTeamCode(team);
+
+                    return {
+                        rank: index + 1,
+                        code: code,
+                        name: getTeamName(team),
+                        logo: team.logoUrl || '/images/teams/' + encodeURIComponent(code) + '.png',
+                        region: normalizeRegion(team.region),
+                        tier: tierByRank(index + 1, sortedTeams.length),
+                        score: Math.round(getEloScore(team)),
+                        matches: matches,
+                        wins: matchWins,
+                        losses: matchLosses,
+                        winRate: matches > 0 ? (matchWins / matches) * 100 : 0
+                    };
+                });
+        }
+
+        function getFilteredTeams() {
+            if (activeRegionFilter === 'ALL') return allTeams.slice();
+            return allTeams.filter(function(team) {
+                return team.region === activeRegionFilter;
+            });
+        }
+
+        function rankBadge(rank) {
+            if (rank === 1) return '<span class="rank-badge rank-gold">1</span>';
+            if (rank === 2) return '<span class="rank-badge rank-silver">2</span>';
+            if (rank === 3) return '<span class="rank-badge rank-bronze">3</span>';
+            return '<span class="rank-plain">' + rank + '</span>';
+        }
+
+        function setTableState(message, type) {
+            const state = document.getElementById('teams-state');
+            const table = document.getElementById('teams-table');
+            if (!state || !table) return;
+
+            if (!message) {
+                state.hidden = true;
+                table.hidden = false;
+                return;
+            }
+
+            state.className = 'rankings-state ' + (type || '');
+            state.textContent = message;
+            state.hidden = false;
+            table.hidden = true;
+        }
+
+        function renderTeams() {
+            const tbody = document.getElementById('teams-tbody');
+            const summary = document.getElementById('teams-summary');
+            if (!tbody) return;
+
+            const teams = getFilteredTeams();
+            if (!teams.length) {
+                if (summary) summary.textContent = 'Không có đội tuyển phù hợp với bộ lọc hiện tại.';
+                setTableState('Không có dữ liệu đội tuyển cho khu vực đã chọn.', 'empty');
+                return;
+            }
+
+            tbody.innerHTML = teams.map(function(team) {
+                return '' +
+                    '<tr>' +
+                        '<td>' + rankBadge(team.rank) + '</td>' +
+                        '<td>' +
+                            '<div class="team-cell">' +
+                                '<img src="' + escapeHtml(team.logo) + '" alt="' + escapeHtml(team.code) + ' logo" onerror="this.style.display=\'none\';">' +
+                                '<div>' +
+                                    '<strong>' + escapeHtml(team.code) + '</strong>' +
+                                    '<span>' + escapeHtml(team.name) + '</span>' +
+                                '</div>' +
+                            '</div>' +
+                        '</td>' +
+                        '<td><span class="region-pill">' + escapeHtml(team.region) + '</span></td>' +
+                        '<td><span class="tier-badge tier-' + team.tier.toLowerCase() + '">' + team.tier + '</span></td>' +
+                        '<td class="elo-score">' + formatNumber(team.score) + '</td>' +
+                        '<td>' + team.matches + '</td>' +
+                        '<td><span class="wins">' + team.wins + '</span><span class="wl-divider">/</span><span class="losses">' + team.losses + '</span></td>' +
+                        '<td><span class="win-rate">' + team.winRate.toFixed(1) + '%</span></td>' +
+                    '</tr>';
+            }).join('');
+
+            if (summary) {
+                if (activeRegionFilter === 'ALL') {
+                    summary.textContent = teams.length + ' đội tuyển, sắp xếp theo điểm AER giảm dần.';
+                } else {
+                    summary.textContent = teams.length + ' đội tuyển khu vực ' + activeRegionFilter + ', sắp xếp theo điểm AER giảm dần.';
+                }
+            }
+            setTableState('', '');
+        }
+
+        function renderRegionPanel() {
+            const container = document.getElementById('region-panel-list');
+            if (!container) return;
+
+            const rows = Object.keys(REGION_META).map(function(regionKey) {
+                const teams = allTeams.filter(function(team) {
+                    return team.region === regionKey;
+                });
+                const average = teams.length
+                    ? Math.round(teams.reduce(function(total, team) { return total + team.score; }, 0) / teams.length)
+                    : 0;
+                const meta = REGION_META[regionKey];
+
+                return '' +
+                    '<article class="region-summary-card accent-' + meta.accent + '">' +
+                        '<div class="region-summary-top">' +
+                            '<div class="region-summary-brand">' +
+                                '<div class="region-summary-logo">' +
+                                    '<img src="' + meta.logo + '" alt="' + meta.name + ' logo" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
+                                    '<span>' + meta.name + '</span>' +
+                                '</div>' +
+                                '<div>' +
+                                    '<h3>' + meta.name + '</h3>' +
+                                    '<p>' + meta.fullName + '</p>' +
+                                '</div>' +
+                            '</div>' +
+                            '<span class="region-season ' + (meta.status === 'Active' ? 'is-active' : 'is-off') + '">' + meta.status + '</span>' +
+                        '</div>' +
+                        '<div class="region-summary-stats">' +
+                            '<div>' +
+                                '<strong>' + (average ? formatNumber(average) : '—') + '</strong>' +
+                                '<span>Avg Elo</span>' +
+                            '</div>' +
+                            '<div>' +
+                                '<strong>' + teams.length + '</strong>' +
+                                '<span>Teams</span>' +
+                            '</div>' +
+                        '</div>' +
+                    '</article>';
+            });
+
+            container.innerHTML = rows.join('');
+        }
+
+        function syncFilterButtons() {
+            document.querySelectorAll('[data-region-filter]').forEach(function(button) {
+                const isActive = button.getAttribute('data-region-filter') === activeRegionFilter;
+                button.classList.toggle('is-active', isActive);
+            });
+        }
+
+        function bindFilters() {
+            document.querySelectorAll('[data-region-filter]').forEach(function(button) {
+                button.addEventListener('click', function() {
+                    activeRegionFilter = button.getAttribute('data-region-filter') || 'ALL';
+                    syncFilterButtons();
+                    renderTeams();
+                });
+            });
+        }
+
+        async function fetchJson(url) {
+            const response = await fetch(url, { headers: { Accept: 'application/json' } });
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.json();
+        }
+
+        async function loadLeaderboard() {
+            bindFilters();
+            syncFilterButtons();
+
+            try {
+                const teams = await fetchJson(TEAM_ENDPOINT);
+                if (!Array.isArray(teams)) throw new Error('Invalid teams payload');
+
+                allTeams = normalizeTeams(teams);
+                renderTeams();
+                renderRegionPanel();
+
+                const updated = document.getElementById('leaderboard-updated');
+                if (updated) {
+                    updated.textContent = 'Cập nhật lần cuối: ' + new Date().toLocaleString('vi-VN');
+                }
+            } catch (error) {
+                console.error('Leaderboard load error:', error);
+                setTableState('Không thể tải dữ liệu đội tuyển. Vui lòng thử lại sau.', 'error');
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadLeaderboard);
+        } else {
+            loadLeaderboard();
+        }
+    </script>
+    <script src="/js/auth.js?v=20260424-account-profile"></script>
+    <script src="/js/header-loader.js?v=20260427-dashboard-leaderboard"></script>
+</body>
+</html>

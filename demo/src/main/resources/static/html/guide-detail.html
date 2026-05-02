@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi tiết giáo án - ATG Academy</title>
+    <link rel="stylesheet" href="/css/style.css?v=20260426-guide-detail">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+    <div id="header-placeholder"></div>
+
+    <main class="guide-detail-page">
+        <div id="guide-detail-root" class="guide-detail-shell">
+            <div class="guide-state">Đang tải giáo án...</div>
+        </div>
+    </main>
+
+    <footer>
+        © 2026 ATG Academy. Nền tảng esports chuyên sâu.
+    </footer>
+
+    <script src="/js/tier-list-data.js?v=20260426-guide-detail"></script>
+    <script src="/js/auth.js?v=20260424-account-profile"></script>
+    <script src="/js/header-loader.js?v=20260424-account-profile"></script>
+    <script>
+        (function() {
+            function escapeGuideHtml(value) {
+                return String(value || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function formatGuideDate(value) {
+                if (!value) return '';
+                var date = new Date(value);
+                if (Number.isNaN(date.getTime())) return '';
+                return date.toLocaleDateString('vi-VN');
+            }
+
+            function getDetailHeroName(guide) {
+                return guide?.hero?.name || guide?.heroName || guide?.contentData?.heroName || 'Chưa chọn tướng';
+            }
+
+            function getDetailCover(guide) {
+                var heroName = getDetailHeroName(guide);
+                if (guide?.coverImageUrl) return guide.coverImageUrl;
+                if (typeof getHeroImgUrl === 'function' && heroName) return getHeroImgUrl(heroName);
+                return '/images/backgrounds/bg-map.jpg';
+            }
+
+            function renderGuideDetail(guide) {
+                var root = document.getElementById('guide-detail-root');
+                if (!root) return;
+
+                var contentData = guide.contentData || {};
+                var sections = Array.isArray(contentData.sections) ? contentData.sections : [];
+                var heroName = getDetailHeroName(guide);
+                var lane = guide.lane || contentData.lane || 'Tổng quan';
+                var category = guide.category || contentData.category || 'Chiến thuật';
+                var authorName = guide.author?.name || contentData.authorName || 'ATG Member';
+                var dateLabel = formatGuideDate(guide.publishedAt || guide.createdAt);
+                var readingTime = guide.readingTime || guide.readingTimeMinutes || 5;
+                var viewCount = Number(guide.viewCount || 0).toLocaleString('vi-VN');
+                var excerpt = guide.excerpt || contentData.excerpt || '';
+
+                var sectionsHtml = sections.length ? sections.map(function(section) {
+                    return '<section class="guide-detail-section">' +
+                        '<h2>' + escapeGuideHtml(section.title || 'Nội dung') + '</h2>' +
+                        '<p>' + escapeGuideHtml(section.text || '') + '</p>' +
+                    '</section>';
+                }).join('') : '<section class="guide-detail-section"><p>Giáo án này chưa có nội dung chi tiết.</p></section>';
+
+                root.innerHTML =
+                    '<div class="guide-detail-cover">' +
+                        '<img src="' + escapeGuideHtml(getDetailCover(guide)) + '" alt="' + escapeGuideHtml(guide.title) + '" onerror="this.src=\'/images/backgrounds/bg-map.jpg\'">' +
+                    '</div>' +
+                    '<article class="guide-detail-body">' +
+                        '<div class="guide-card-tags">' +
+                            '<span class="guide-tag primary">' + escapeGuideHtml(heroName) + '</span>' +
+                            '<span class="guide-tag">' + escapeGuideHtml(lane) + '</span>' +
+                            '<span class="guide-tag">' + escapeGuideHtml(category) + '</span>' +
+                        '</div>' +
+                        '<h1 class="guide-detail-title">' + escapeGuideHtml(guide.title) + '</h1>' +
+                        '<div class="guide-detail-meta">' +
+                            '<span>' + escapeGuideHtml(authorName) + '</span>' +
+                            '<span>' + escapeGuideHtml(dateLabel || 'Chưa rõ ngày') + '</span>' +
+                            '<span>' + viewCount + ' lượt xem</span>' +
+                            '<span>' + escapeGuideHtml(readingTime) + ' phút đọc</span>' +
+                        '</div>' +
+                        (excerpt ? '<p class="guide-detail-content">' + escapeGuideHtml(excerpt) + '</p>' : '') +
+                        sectionsHtml +
+                    '</article>';
+            }
+
+            function renderGuideDetailState(message, isError) {
+                var root = document.getElementById('guide-detail-root');
+                if (!root) return;
+                root.innerHTML = '<div class="guide-state ' + (isError ? 'text-red-500' : '') + '">' + escapeGuideHtml(message) + '</div>';
+            }
+
+            async function loadGuideDetail() {
+                var id = new URLSearchParams(window.location.search).get('id');
+                if (!id) {
+                    renderGuideDetailState('Thiếu mã giáo án.', true);
+                    return;
+                }
+
+                try {
+                    var response = await fetch('/api/guides/' + encodeURIComponent(id), { headers: { Accept: 'application/json' } });
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    var guide = await response.json();
+                    renderGuideDetail(guide);
+                } catch (error) {
+                    console.error('Guide detail load error:', error);
+                    renderGuideDetailState('Không thể tải giáo án. Vui lòng thử lại sau.', true);
+                }
+            }
+
+            window.loadGuideDetail = loadGuideDetail;
+            window.renderGuideDetail = renderGuideDetail;
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', loadGuideDetail);
+            } else {
+                loadGuideDetail();
+            }
+        })();
+    </script>
+</body>
+</html>

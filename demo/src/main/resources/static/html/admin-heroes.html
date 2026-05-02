@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Tướng - AoV Tactics & Guides</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'dark-bg': '#0B1120',
+                        'dark-panel': '#111827',
+                        'dark-surface': '#1E293B',
+                        'dark-border': '#1e293b',
+                        'accent-blue': '#60A5FA',
+                        'accent-red': '#FF4757',
+                        'accent-green': '#3AE374',
+                        'accent-yellow': '#FFD32A',
+                        'accent-orange': '#FF8C42'
+                    },
+                    fontFamily: {
+                        orbitron: ['Orbitron', 'sans-serif'],
+                        inter: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="/css/admin-heroes.css">
+</head>
+<body class="flex h-screen overflow-hidden">
+<div id="toast" class="toast-box"></div>
+
+<aside class="w-64 flex-shrink-0 h-screen bg-white shadow-lg border-r border-slate-200 flex flex-col fixed left-0 top-0 z-40">
+    <div class="px-5 py-5 border-b border-slate-200">
+        <a href="/html/index.html" class="inline-flex items-center gap-2 text-xs font-semibold text-accent-blue/70 hover:text-accent-blue transition-colors mb-4">
+            <span>←</span>
+            <span>Về trang chủ</span>
+        </a>
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-accent-blue to-blue-700 flex items-center justify-center text-slate-900 text-sm">⚡</div>
+            <div>
+                <div class="font-orbitron text-sm font-bold text-slate-900 tracking-wider">AoV Tactics</div>
+                <div class="text-[0.65rem] text-slate-500 tracking-widest uppercase">Admin Panel</div>
+            </div>
+        </div>
+    </div>
+
+    <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <div class="text-[0.6rem] text-slate-400 font-bold uppercase tracking-[3px] px-4 mb-3">Menu</div>
+
+        <a class="nav-item" href="/html/admin.html" title="Tổng quan">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1"/></svg>
+            <span>Tổng quan</span>
+        </a>
+
+        <a class="nav-item active" href="/html/admin-heroes.html" title="Quản lý Tướng">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 11c1.657 0 3-1.343 3-3S13.657 5 12 5 9 6.343 9 8s1.343 3 3 3zm0 2c-2.761 0-5 1.239-5 4v1h10v-1c0-2.761-2.239-4-5-4z"/></svg>
+            <span>Quản lý Tướng</span>
+        </a>
+
+        <a class="nav-item" href="/html/admin.html" title="Cẩm nang">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+            <span>Cẩm nang</span>
+        </a>
+
+        <a class="nav-item" href="/html/admin.html" title="Quản lý người dùng">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m9-4a4 4 0 10-8 0 4 4 0 008 0zm6 4a4 4 0 10-8 0"/></svg>
+            <span>Quản lý người dùng</span>
+        </a>
+    </nav>
+</aside>
+
+<div class="flex-1 ml-64 flex flex-col h-screen overflow-hidden">
+    <header class="flex-shrink-0 h-14 bg-white shadow-lg/60 backdrop-blur border-b border-slate-200 flex items-center justify-between px-6">
+        <h2 id="page-title" class="font-orbitron text-sm font-bold text-slate-900 tracking-widest uppercase">Quản lý Tướng</h2>
+        <div class="text-xs text-slate-400" id="header-clock"></div>
+    </header>
+
+    <div id="main-content" class="flex-1 overflow-y-auto p-6">
+        <section id="page-heroes" class="page-section active space-y-6">
+            <div class="flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">⚔</span>
+                    <div>
+                        <h2 class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Quản lý tướng</h2>
+                        <p id="hero-subtitle" class="text-xs text-slate-500 mt-0.5">Chỉnh sửa chất tướng, vị trí, đặc điểm và mô tả Wiki — <span id="hero-total-count" class="text-accent-blue">0</span> tướng</p>
+                    </div>
+                </div>
+                <button onclick="loadAdminHeroes()" class="btn-press bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-all">
+                    Làm mới
+                </button>
+            </div>
+
+            <div class="hero-filter-toolbar rounded-xl border border-slate-200 bg-white shadow-sm p-4">
+                <div class="flex flex-col lg:flex-row lg:items-center gap-3">
+                    <div class="flex-1">
+                        <label for="hero-search" class="sr-only">Tìm tướng</label>
+                        <input id="hero-search" type="search" placeholder="Tìm tướng theo tên hoặc slug..." oninput="applyHeroFilters()" class="hero-filter-control w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 transition-all">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:grid-cols-[180px_180px_auto] gap-3">
+                        <label for="hero-class-filter" class="sr-only">Lọc theo class</label>
+                        <select id="hero-class-filter" onchange="applyHeroFilters()" class="hero-filter-control bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 transition-all cursor-pointer">
+                            <option value="">Tất cả class</option>
+                            <option value="Đấu sĩ">Đấu sĩ</option>
+                            <option value="Sát thủ">Sát thủ</option>
+                            <option value="Pháp sư">Pháp sư</option>
+                            <option value="Xạ thủ">Xạ thủ</option>
+                            <option value="Đỡ đòn">Đỡ đòn</option>
+                            <option value="Trợ thủ">Trợ thủ</option>
+                        </select>
+
+                        <label for="hero-role-filter" class="sr-only">Lọc theo vị trí</label>
+                        <select id="hero-role-filter" onchange="applyHeroFilters()" class="hero-filter-control bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 transition-all cursor-pointer">
+                            <option value="">Tất cả vị trí</option>
+                            <option value="DSL">DSL: Đường Tà Thần</option>
+                            <option value="JGL">JGL: Đi Rừng</option>
+                            <option value="MID">MID: Đường Giữa</option>
+                            <option value="ADL">ADL: Đường Rồng</option>
+                            <option value="SUP">SUP: Trợ Thủ</option>
+                        </select>
+
+                        <button id="btn-hero-reset" type="button" onclick="resetHeroFilters()" class="btn-press border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm px-4 py-2.5 rounded-lg transition-all">
+                            Xóa lọc
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-xl border border-blue-100 bg-white shadow-sm overflow-hidden">
+                <div class="px-5 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <h3 class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Quản lý đặc điểm</h3>
+                        <p class="text-xs text-slate-500 mt-1">Thêm, sửa, xóa các đặc điểm dùng cho tướng.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="loadAdminAttributes()" class="btn-press border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm px-4 py-2.5 rounded-lg transition-all">
+                            Làm mới
+                        </button>
+                        <button type="button" onclick="openAttributeModal()" class="btn-press bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-all">
+                            Thêm đặc điểm
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto max-h-72">
+                    <table class="w-full min-w-[920px]">
+                        <thead class="sticky top-0 z-10">
+                        <tr class="bg-slate-50">
+                            <th class="text-left px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest">Tên đặc điểm</th>
+                            <th class="text-left px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest">Mô tả</th>
+                            <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-24">Icon</th>
+                            <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-36">Số tướng đang dùng</th>
+                            <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-36">Hành động</th>
+                        </tr>
+                        </thead>
+                        <tbody id="attributes-tbody">
+                        <tr>
+                            <td colspan="5" class="px-4 py-8 text-center text-sm text-slate-400">
+                                <div class="spinner mx-auto mb-3"></div>
+                                Đang tải đặc điểm...
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[1120px]">
+                        <thead>
+                        <tr class="bg-slate-50">
+                            <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-20">Avatar</th>
+                            <th class="text-left px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest">Tên</th>
+                            <th class="text-left px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest">Slug</th>
+                            <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-32">Class</th>
+                            <th class="text-left px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest">Roles</th>
+                            <th class="text-left px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest">Đặc điểm</th>
+                            <th class="text-center px-4 py-3 text-[0.68rem] font-bold text-slate-500 uppercase tracking-widest w-28">Thao tác</th>
+                        </tr>
+                        </thead>
+                        <tbody id="heroes-tbody">
+                        <tr>
+                            <td colspan="7" class="text-center py-16 text-slate-400">
+                                <div class="spinner mx-auto mb-3"></div>
+                                <p class="text-sm">Đang tải danh sách tướng...</p>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<div id="hero-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" style="display:none">
+    <div class="bg-white shadow-lg border border-slate-200 rounded-2xl shadow-2xl w-full max-w-4xl mx-4 overflow-hidden max-h-[92vh] flex flex-col">
+        <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+            <div>
+                <h3 id="hero-modal-title" class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Chỉnh sửa tướng</h3>
+                <p id="hero-modal-subtitle" class="text-xs text-slate-500 mt-1"></p>
+            </div>
+            <button onclick="closeHeroModal()" class="text-slate-500 hover:text-slate-900 text-xl transition-colors">&times;</button>
+        </div>
+        <form id="hero-form" onsubmit="saveHeroChanges(event)" class="p-6 space-y-5 overflow-y-auto">
+            <input type="hidden" id="hf-id">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1.5">
+                    <label for="hf-name" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Tên tướng *</label>
+                    <input type="text" id="hf-name" required class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 transition-all">
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label for="hf-slug" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Slug *</label>
+                    <input type="text" id="hf-slug" required class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 font-mono transition-all">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-3">Chất tướng</div>
+                    <div id="hero-class-options" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label for="hf-difficulty" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Độ khó</label>
+                    <select id="hf-difficulty" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 transition-all cursor-pointer"></select>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+                <label for="hf-description" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Mô tả</label>
+                <textarea id="hf-description" rows="4" placeholder="Mô tả ngắn dùng cho Wiki" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 resize-y transition-all"></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="flex flex-col gap-1.5">
+                    <label for="hf-avatar" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Avatar URL</label>
+                    <input type="text" id="hf-avatar" placeholder="/images/heroes/Hero.jpg" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-600 transition-all">
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label for="hf-portrait" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Portrait URL</label>
+                    <input type="text" id="hf-portrait" placeholder="/images/heroes/Hero-portrait.jpg" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-600 transition-all">
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label for="hf-banner" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Banner URL</label>
+                    <input type="text" id="hf-banner" placeholder="/images/heroes/Hero-banner.jpg" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-600 transition-all">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-3">Vai trò đi đường</div>
+                    <div id="hero-role-suggestion" class="hidden mb-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700"></div>
+                    <div id="hero-role-options" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+                </div>
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-3">Đặc điểm của tướng</div>
+                    <div id="hero-attribute-options" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1"></div>
+                </div>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="closeHeroModal()" class="flex-1 btn-press bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 font-semibold text-sm py-2.5 rounded-lg transition-all">Hủy</button>
+                <button type="submit" id="btn-hero-submit" class="flex-1 btn-press bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold text-sm py-2.5 rounded-lg transition-all shadow-lg shadow-blue-900/30">Lưu thay đổi</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="attribute-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" style="display:none">
+    <div class="bg-white shadow-lg border border-slate-200 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden max-h-[92vh] flex flex-col">
+        <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+            <div>
+                <h3 id="attribute-modal-title" class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Thêm đặc điểm</h3>
+                <p class="text-xs text-slate-500 mt-1">Tạo hoặc cập nhật đặc điểm dùng chung.</p>
+            </div>
+            <button type="button" onclick="closeAttributeModal()" class="text-slate-500 hover:text-slate-900 text-xl transition-colors">&times;</button>
+        </div>
+        <form onsubmit="saveAttribute(event)" class="p-6 space-y-5 overflow-y-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1.5">
+                    <label for="af-name" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Tên đặc điểm *</label>
+                    <input type="text" id="af-name" required class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 transition-all">
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label for="af-sort-order" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Thứ tự</label>
+                    <input type="number" id="af-sort-order" min="0" step="1" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 transition-all">
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+                <label for="af-description" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Mô tả</label>
+                <textarea id="af-description" rows="3" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 resize-y transition-all"></textarea>
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+                <label for="af-icon-url" class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Icon URL</label>
+                <input type="text" id="af-icon-url" placeholder="/images/ui/icon.png" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 transition-all">
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="closeAttributeModal()" class="flex-1 btn-press bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 font-semibold text-sm py-2.5 rounded-lg transition-all">Hủy</button>
+                <button type="submit" id="btn-attribute-submit" class="flex-1 btn-press bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold text-sm py-2.5 rounded-lg transition-all shadow-lg shadow-blue-900/30">Lưu đặc điểm</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="/js/auth.js?v=20260424-account-profile"></script>
+<script>
+    requireRoleAccess('Admin', '/html/index.html');
+
+    document.addEventListener('authExpired', function () {
+        window.location.replace('/html/index.html');
+    });
+</script>
+<script src="/js/admin-heroes.js"></script>
+</body>
+</html>

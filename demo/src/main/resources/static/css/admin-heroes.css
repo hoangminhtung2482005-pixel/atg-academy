@@ -1,0 +1,79 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #f8fafc; color: #0f172a; font-family: 'Inter', sans-serif; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Sidebar menu item */
+        .nav-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 16px; border-radius: 8px;
+            font-size: 0.875rem; font-weight: 500;
+            color: #64748b;
+            cursor: pointer; text-decoration: none; transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+        .nav-item:hover { color: #0f172a; background: #f1f5f9;
+        }
+        .nav-item.active { color: #2563eb; background: #eff6ff; border-color: #bfdbfe;
+            font-weight: 600;
+        }
+        .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.6; }
+        .nav-item.active svg { opacity: 1; color: #60A5FA; }
+
+        /* Section pages */
+        .page-section { display: none; }
+        .page-section.active { display: block; }
+
+        /* Toast */
+        .toast-box {
+            position: fixed; top: 20px; right: 20px; z-index: 9999;
+            padding: 12px 22px; border-radius: 10px; font-weight: 600; font-size: 0.85rem;
+            transform: translateX(130%); transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
+            max-width: 400px;
+        }
+        .toast-box.show { transform: translateX(0); }
+        .toast-ok { background: rgba(58,227,116,0.12); border: 1px solid rgba(58,227,116,0.25); color: #3AE374; }
+        .toast-err { background: rgba(255,71,87,0.12); border: 1px solid rgba(255,71,87,0.25); color: #FF4757; }
+
+        /* Esports-specific styles */
+        textarea:focus, input:focus, select:focus {
+            outline: none;
+            border-color: #60A5FA !important;
+            box-shadow: 0 0 0 3px rgba(96,165,250,0.15);
+        }
+        @keyframes subtleGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(96,165,250,0.05); }
+            50% { box-shadow: 0 0 30px rgba(96,165,250,0.12); }
+        }
+        .card-glow { animation: subtleGlow 4s ease-in-out infinite; }
+        .match-row { transition: background 0.2s ease; }
+        .match-row:hover { background: #f8fafc !important; }
+        .btn-press:active { transform: scale(0.97); }
+        .badge-tier { padding: 2px 10px; border-radius: 4px; font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 0.7rem; letter-spacing: 1px; }
+        .badge-tier-0 { background: rgba(255,71,87,0.15); color: #ff4757; border: 1px solid rgba(255,71,87,0.25); }
+        .badge-tier-1 { background: rgba(255,140,66,0.15); color: #ff8c42; border: 1px solid rgba(255,140,66,0.25); }
+        .badge-tier-2 { background: rgba(255,211,42,0.15); color: #ffd32a; border: 1px solid rgba(255,211,42,0.25); }
+        .badge-stage { padding: 2px 10px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.5px; }
+        .badge-ck { background: rgba(255,71,87,0.12); color: #ff6b81; border: 1px solid rgba(255,71,87,0.2); }
+        .badge-playoff { background: rgba(96,165,250,0.12); color: #93c5fd; border: 1px solid rgba(96,165,250,0.2); }
+        .badge-bang { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+        .badge-vongloai { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.35); border: 1px solid rgba(255,255,255,0.06); }
+        .spinner { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.15); border-top-color: #60A5FA; border-radius: 50%; animation: spin 0.6s linear infinite; display: inline-block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .hero-filter-control.is-active {
+            background: #eff6ff;
+            border-color: #93c5fd !important;
+            color: #1d4ed8;
+            box-shadow: 0 0 0 3px rgba(96,165,250,0.12);
+        }
+
+        #btn-hero-reset.is-active {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+            color: #1d4ed8;
+        }

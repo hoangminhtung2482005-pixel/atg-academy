@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <title>Not Found</title>
+    <script>
+        const legacyPages = new Set([
+            '/account.html',
+            '/admin.html',
+            '/ban-pick.html',
+            '/content.html',
+            '/create-guide.html',
+            '/esports.html',
+            '/giao-an.html',
+            '/guide-detail.html',
+            '/header.html',
+            '/index.html',
+            '/tactics-guides.html',
+            '/tier-list.html'
+        ]);
+
+        if (window.location.pathname === '/meta.html' || window.location.pathname === '/html/meta.html') {
+            window.location.replace('/html/tier-list.html');
+        } else
+        if (legacyPages.has(window.location.pathname)) {
+            window.location.replace('/html' + window.location.pathname);
+        }
+    </script>
+</head>
+<body>
+    <p>Khong tim thay trang.</p>
+    <p><a href="/html/index.html">Ve trang chu</a></p>
+</body>
+</html>

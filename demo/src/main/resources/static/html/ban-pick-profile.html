@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ban/Pick Profile - ATG Academy</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        body { background: #f8fafc; }
+        .bp-profile { max-width: 1180px; margin: 0 auto; padding: 34px 18px 72px; }
+        .profile-hero { background: linear-gradient(135deg, #0f172a, #1d4ed8); border-radius: 26px; color: #fff; display: grid; gap: 12px; margin-bottom: 22px; padding: 30px; }
+        .profile-hero span { color: #facc15; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+        .profile-hero h1 { font-size: clamp(2rem, 4vw, 3.6rem); font-weight: 950; line-height: 1; margin: 0; }
+        .profile-grid { display: grid; gap: 18px; grid-template-columns: 1fr 1.4fr; }
+        .profile-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; box-shadow: 0 18px 42px rgba(15,23,42,.08); padding: 22px; }
+        .stats-grid { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0,1fr)); }
+        .stat-box { background: #f8fafc; border-radius: 16px; padding: 16px; }
+        .stat-box span { color: #64748b; font-size: .78rem; font-weight: 900; text-transform: uppercase; }
+        .stat-box strong { color: #0f172a; display: block; font-size: 1.7rem; font-weight: 950; }
+        .hero-picks, .history-list { display: grid; gap: 10px; margin-top: 14px; }
+        .pill-row, .history-row { align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; display: flex; justify-content: space-between; gap: 12px; padding: 12px 14px; }
+        .pill-row strong, .history-row strong { color: #0f172a; }
+        .pill-row span, .history-row span { color: #64748b; font-weight: 800; }
+        .history-row a { color: #2563eb; font-weight: 900; text-decoration: none; }
+        @media (max-width: 880px) { .profile-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<div id="header-placeholder"></div>
+<main class="bp-profile">
+    <section class="profile-hero">
+        <span>Solo Ban/Pick</span>
+        <h1>Hồ sơ draft</h1>
+        <p id="profile-subtitle">Theo dõi lịch sử, rating và các tướng bạn chọn nhiều nhất.</p>
+    </section>
+    <section id="profile-root" class="profile-card">Đang tải hồ sơ...</section>
+</main>
+
+<script src="/js/auth.js?v=30260429-banpick-product"></script>
+<script src="/js/header-loader.js?v=30260429-banpick-product"></script>
+<script>
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, char => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+        }[char]));
+    }
+
+    function renderHeroStats(stats) {
+        const heroes = stats?.mostPickedHeroes || [];
+        if (!heroes.length) return '<div class="pill-row"><strong>Chưa có dữ liệu pick</strong><span>0</span></div>';
+        return heroes.map(hero => `
+            <div class="pill-row">
+                <strong>${escapeHtml(hero.heroName)}</strong>
+                <span>${hero.count} lần</span>
+            </div>
+        `).join('');
+    }
+
+    function renderHistory(history) {
+        if (!history?.length) return '<div class="history-row"><strong>Chưa có draft nào</strong><span>Hãy hoàn tất một phòng solo</span></div>';
+        return history.map(item => {
+            const winner = item.winnerSide === 'BLUE' ? item.blueUser?.name : item.winnerSide === 'RED' ? item.redUser?.name : 'Chưa ghi nhận';
+            return `
+                <div class="history-row">
+                    <div>
+                        <strong>${escapeHtml(item.blueUser?.name)} vs ${escapeHtml(item.redUser?.name)}</strong>
+                        <span>Room ${escapeHtml(item.roomCode)} · ${new Date(item.createdAt).toLocaleString('vi-VN')} · Thắng: ${escapeHtml(winner)}</span>
+                    </div>
+                    <a href="/ban-pick/result/${item.id}">Xem</a>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderProfile(profile) {
+        const stats = profile.stats || {};
+        document.getElementById('profile-subtitle').textContent = `${profile.user?.name || 'User'} · Rating ${stats.rating || 1000}`;
+        document.getElementById('profile-root').innerHTML = `
+            <div class="profile-grid">
+                <article>
+                    <h2>Chỉ số</h2>
+                    <div class="stats-grid">
+                        <div class="stat-box"><span>Rating</span><strong>${stats.rating || 1000}</strong></div>
+                        <div class="stat-box"><span>Win rate</span><strong>${stats.winRate || 0}%</strong></div>
+                        <div class="stat-box"><span>Matches</span><strong>${stats.totalMatches || 0}</strong></div>
+                        <div class="stat-box"><span>W / L</span><strong>${stats.wins || 0}/${stats.losses || 0}</strong></div>
+                    </div>
+                    <h2 style="margin-top:20px;">Tướng pick nhiều</h2>
+                    <div class="hero-picks">${renderHeroStats(stats)}</div>
+                </article>
+                <article>
+                    <h2>Lịch sử draft</h2>
+                    <div class="history-list">${renderHistory(profile.history || [])}</div>
+                </article>
+            </div>
+        `;
+    }
+
+    async function loadProfile() {
+        if (!getAuthUser()) {
+            window.location.replace('/html/account.html');
+            return;
+        }
+        const response = await fetch('/api/ban-pick/profile');
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+            document.getElementById('profile-root').textContent = payload?.message || 'Không thể tải hồ sơ.';
+            return;
+        }
+        renderProfile(payload);
+    }
+
+    document.addEventListener('authChanged', loadProfile);
+    loadProfile();
+</script>
+</body>
+</html>

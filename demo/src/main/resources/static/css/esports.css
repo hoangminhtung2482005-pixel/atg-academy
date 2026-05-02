@@ -1,0 +1,1147 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --esports-blue: #2563eb;
+    --esports-blue-soft: #eff6ff;
+    --esports-gold: #d8a21b;
+    --esports-green: #16a34a;
+    --esports-ink: #0f172a;
+    --esports-muted: #64748b;
+    --esports-line: #e2e8f0;
+    --esports-card: #ffffff;
+    --esports-bg: #f8fbff;
+}
+
+body {
+    background:
+        radial-gradient(circle at 18% 0%, rgba(191, 219, 254, 0.45), transparent 30%),
+        linear-gradient(180deg, #ffffff 0%, var(--esports-bg) 44%, #ffffff 100%);
+    color: var(--esports-ink);
+    font-family: 'Inter', sans-serif;
+}
+
+.esports-page {
+    min-height: calc(100vh - 64px);
+    padding: 0 20px 64px;
+}
+
+.section-shell {
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 1200px;
+    width: 100%;
+}
+
+.esports-hero {
+    padding-bottom: 64px;
+    padding-top: 64px;
+}
+
+.esports-hero-card {
+    align-items: center;
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 255, 0.94)),
+        #ffffff;
+    border: 1px solid rgba(191, 219, 254, 0.78);
+    border-radius: 30px;
+    box-shadow: 0 28px 80px rgba(15, 23, 42, 0.12);
+    display: grid;
+    gap: 44px;
+    grid-template-columns: minmax(0, 0.88fr) minmax(420px, 1.12fr);
+    overflow: hidden;
+    padding: 42px;
+}
+
+.hero-copy {
+    max-width: 560px;
+}
+
+.eyebrow {
+    align-items: center;
+    background: var(--esports-blue-soft);
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    color: var(--esports-blue);
+    display: inline-flex;
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 8px 13px;
+}
+
+.hero-copy h1 {
+    color: var(--esports-ink);
+    font-size: 4rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    line-height: 1.02;
+    margin: 20px 0 18px;
+}
+
+.hero-copy p {
+    color: var(--esports-muted);
+    font-size: 1.08rem;
+    line-height: 1.8;
+    margin: 0;
+}
+
+.hero-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 26px;
+}
+
+.hero-tags span {
+    background: #ffffff;
+    border: 1px solid var(--esports-line);
+    border-radius: 999px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+    color: #334155;
+    font-size: 0.82rem;
+    font-weight: 800;
+    padding: 8px 14px;
+}
+
+.primary-action {
+    align-items: center;
+    background: var(--esports-blue);
+    border-radius: 12px;
+    box-shadow: 0 16px 34px rgba(37, 99, 235, 0.22);
+    color: #ffffff;
+    display: inline-flex;
+    font-size: 0.96rem;
+    font-weight: 800;
+    justify-content: center;
+    margin-top: 32px;
+    min-height: 48px;
+    padding: 0 20px;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.primary-action:hover {
+    background: #1d4ed8;
+    box-shadow: 0 20px 42px rgba(37, 99, 235, 0.28);
+    transform: translateY(-2px);
+}
+
+.hero-visual-card {
+    aspect-ratio: 16 / 9;
+    background: #ffffff;
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    border-radius: 22px;
+    box-shadow: 0 20px 48px rgba(15, 23, 42, 0.12);
+    overflow: hidden;
+    position: relative;
+}
+
+.hero-visual-card img {
+    display: block;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    width: 100%;
+}
+
+.regional-section,
+.rankings-section {
+    padding-bottom: 64px;
+    padding-top: 64px;
+}
+
+.section-heading,
+.rankings-card-header {
+    align-items: flex-end;
+    display: flex;
+    gap: 20px;
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+
+.section-heading h2,
+.rankings-card-header h2 {
+    color: var(--esports-ink);
+    font-size: 1.55rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    margin: 0;
+}
+
+.section-heading a {
+    color: var(--esports-blue);
+    font-size: 0.9rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.section-heading a:hover,
+.leaderboard-link:hover {
+    color: #1d4ed8;
+}
+
+.regional-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.regional-card {
+    background: var(--esports-card);
+    border: 1px solid var(--esports-line);
+    border-radius: 18px;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+    padding: 22px;
+    position: relative;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.regional-card::before {
+    content: "";
+    height: 4px;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
+.regional-card.accent-blue::before {
+    background: var(--esports-blue);
+}
+
+.regional-card.accent-gold::before {
+    background: var(--esports-gold);
+}
+
+.regional-card.accent-green::before {
+    background: var(--esports-green);
+}
+
+.regional-card:hover {
+    border-color: #bfdbfe;
+    box-shadow: 0 24px 58px rgba(15, 23, 42, 0.12);
+    transform: translateY(-4px);
+}
+
+.league-header {
+    align-items: flex-start;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+}
+
+.league-identity {
+    align-items: center;
+    display: flex;
+    gap: 14px;
+    min-width: 0;
+}
+
+.league-logo-wrap {
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid var(--esports-line);
+    border-radius: 14px;
+    display: flex;
+    flex-shrink: 0;
+    height: 54px;
+    justify-content: center;
+    overflow: hidden;
+    width: 54px;
+}
+
+.league-logo-wrap img {
+    height: 40px;
+    object-fit: contain;
+    width: 40px;
+}
+
+.league-logo-wrap span {
+    align-items: center;
+    color: var(--esports-blue);
+    display: none;
+    font-size: 0.72rem;
+    font-weight: 800;
+    height: 100%;
+    justify-content: center;
+    width: 100%;
+}
+
+.league-identity h3 {
+    color: var(--esports-ink);
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin: 0;
+}
+
+.league-identity p {
+    color: var(--esports-muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.4;
+    margin: 4px 0 0;
+}
+
+.status-badge {
+    background: #ecfdf5;
+    border: 1px solid #bbf7d0;
+    border-radius: 999px;
+    color: #15803d;
+    flex-shrink: 0;
+    font-size: 0.74rem;
+    font-weight: 800;
+    padding: 6px 10px;
+}
+
+.league-stats {
+    border-top: 1px solid var(--esports-line);
+    display: grid;
+    gap: 18px;
+    grid-template-columns: 1fr 1fr;
+    margin-top: 22px;
+    padding-top: 22px;
+}
+
+.league-stats strong {
+    color: var(--esports-ink);
+    display: block;
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.league-stats span {
+    color: var(--esports-muted);
+    display: block;
+    font-size: 0.74rem;
+    font-weight: 800;
+    margin-top: 8px;
+    text-transform: uppercase;
+}
+
+.rankings-card {
+    background: #ffffff;
+    border: 1px solid var(--esports-line);
+    border-radius: 22px;
+    box-shadow: 0 22px 60px rgba(15, 23, 42, 0.1);
+    overflow: hidden;
+}
+
+.rankings-card-header {
+    align-items: flex-start;
+    margin: 0;
+    padding: 26px 28px 18px;
+}
+
+.rankings-card-header p {
+    color: var(--esports-muted);
+    font-size: 0.92rem;
+    font-weight: 600;
+    margin: 8px 0 0;
+}
+
+.rankings-controls {
+    align-items: center;
+    border-top: 1px solid #edf2f7;
+    display: flex;
+    gap: 14px;
+    justify-content: space-between;
+    padding: 18px 28px 22px;
+}
+
+.rankings-search {
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    color: #94a3b8;
+    display: flex;
+    flex: 1 1 320px;
+    gap: 10px;
+    max-width: 420px;
+    min-height: 44px;
+    padding: 0 14px;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.rankings-search:focus-within {
+    background: #ffffff;
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.rankings-search input {
+    background: transparent;
+    border: 0;
+    color: var(--esports-ink);
+    flex: 1;
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 700;
+    min-width: 0;
+    outline: none;
+}
+
+.rankings-search input::placeholder {
+    color: #94a3b8;
+    font-weight: 650;
+}
+
+.rankings-region-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.rankings-filter-chip {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    color: #334155;
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    font-size: 0.84rem;
+    font-weight: 800;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0 15px;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.rankings-filter-chip:hover {
+    background: var(--esports-blue-soft);
+    border-color: #93c5fd;
+    color: #1d4ed8;
+}
+
+.rankings-filter-chip.is-active {
+    background: var(--esports-blue);
+    border-color: var(--esports-blue);
+    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
+    color: #ffffff;
+}
+
+.rankings-table-scroll {
+    overflow-x: auto;
+}
+
+.rankings-table {
+    border-collapse: collapse;
+    min-width: 900px;
+    width: 100%;
+}
+
+.rankings-table th {
+    background: #f8fafc;
+    border-bottom: 1px solid var(--esports-line);
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 14px 18px;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.rankings-table td {
+    border-bottom: 1px solid #edf2f7;
+    color: #334155;
+    font-size: 0.9rem;
+    font-weight: 650;
+    padding: 16px 18px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.rankings-table tbody tr {
+    transition: background 0.18s ease;
+}
+
+.rankings-table tbody tr:hover {
+    background: #f8fbff;
+}
+
+.rankings-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.rankings-empty-row td {
+    color: var(--esports-muted);
+    font-size: 0.95rem;
+    font-weight: 800;
+    padding: 32px 18px;
+    text-align: center;
+}
+
+.rank-badge,
+.rank-plain {
+    align-items: center;
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 0.86rem;
+    font-weight: 800;
+    height: 32px;
+    justify-content: center;
+    width: 32px;
+}
+
+.rank-gold {
+    background: #fef3c7;
+    border: 1px solid #facc15;
+    color: #92400e;
+}
+
+.rank-silver {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+}
+
+.rank-bronze {
+    background: #ffedd5;
+    border: 1px solid #fdba74;
+    color: #9a3412;
+}
+
+.rank-plain {
+    color: #64748b;
+}
+
+.team-cell {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+}
+
+.team-cell img {
+    flex-shrink: 0;
+    height: 34px;
+    object-fit: contain;
+    width: 34px;
+}
+
+.team-cell strong,
+.team-cell span {
+    display: block;
+}
+
+.team-cell strong {
+    color: var(--esports-ink);
+    font-size: 0.95rem;
+    font-weight: 800;
+}
+
+.team-cell span {
+    color: var(--esports-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.region-pill,
+.tier-badge {
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 0.76rem;
+    font-weight: 800;
+    padding: 6px 10px;
+}
+
+.region-pill {
+    background: var(--esports-blue-soft);
+    border: 1px solid #bfdbfe;
+    color: var(--esports-blue);
+}
+
+.tier-s {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #c2410c;
+}
+
+.tier-a {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+}
+
+.tier-b {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+}
+
+.tier-c {
+    background: #dcfce7;
+    border: 1px solid #86efac;
+    color: #15803d;
+}
+
+.tier-d {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #64748b;
+}
+
+.elo-score {
+    color: var(--esports-blue) !important;
+    font-weight: 800 !important;
+}
+
+.wins {
+    color: #15803d;
+    font-weight: 800;
+}
+
+.losses {
+    color: #dc2626;
+    font-weight: 800;
+}
+
+.wl-divider {
+    color: #94a3b8;
+    margin: 0 5px;
+}
+
+.win-rate {
+    color: var(--esports-ink);
+    font-weight: 800;
+}
+
+.rankings-state {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 16px;
+    color: var(--esports-muted);
+    font-weight: 700;
+    margin: 0 28px 24px;
+    padding: 28px;
+    text-align: center;
+}
+
+.rankings-state.error {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #b91c1c;
+}
+
+.rankings-state.empty {
+    background: #f8fafc;
+    color: #64748b;
+}
+
+.leaderboard-link {
+    background: #ffffff;
+    border: 0;
+    border-top: 1px solid var(--esports-line);
+    color: var(--esports-blue);
+    cursor: pointer;
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 800;
+    font: inherit;
+    outline: none;
+    padding: 18px 28px;
+    text-align: center;
+    text-decoration: none;
+    transition: background-color 0.18s ease, color 0.18s ease;
+    width: 100%;
+}
+
+.leaderboard-link:hover {
+    background: #f8fbff;
+    color: #1d4ed8;
+}
+
+#rankings-tbody {
+    transition: opacity 0.18s ease;
+}
+
+.esports-footer {
+    align-items: center;
+    border-top: 1px solid var(--esports-line);
+    color: var(--esports-muted);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 0.86rem;
+    font-weight: 600;
+    gap: 10px 18px;
+    justify-content: space-between;
+    margin: 0 auto;
+    max-width: 1200px;
+    padding: 24px 20px 36px;
+}
+
+.leaderboard-page {
+    min-height: calc(100vh - 64px);
+    padding: 0 20px 64px;
+}
+
+.leaderboard-top {
+    padding-bottom: 22px;
+    padding-top: 36px;
+}
+
+.back-pill {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #93c5fd;
+    border-radius: 999px;
+    box-shadow: 0 10px 26px rgba(37, 99, 235, 0.08);
+    color: var(--esports-blue);
+    display: inline-flex;
+    font-size: 0.92rem;
+    font-weight: 800;
+    min-height: 44px;
+    padding: 0 18px;
+    text-decoration: none;
+    transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.back-pill:hover {
+    background: #eff6ff;
+    border-color: #60a5fa;
+    transform: translateY(-1px);
+}
+
+.leaderboard-hero-card {
+    background: linear-gradient(135deg, rgba(230, 240, 255, 0.88), rgba(255, 255, 255, 0.98) 62%);
+    border: 1px solid rgba(191, 219, 254, 0.9);
+    border-radius: 20px;
+    box-shadow: 0 22px 56px rgba(15, 23, 42, 0.08);
+    margin: 18px auto 0;
+    max-width: 960px;
+    padding: 26px 32px;
+    text-align: center;
+}
+
+.leaderboard-hero-card h1 {
+    color: var(--esports-ink);
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    line-height: 1.08;
+    margin: 14px 0 10px;
+}
+
+.leaderboard-hero-card p {
+    color: var(--esports-muted);
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.7;
+    margin: 0 auto;
+    max-width: 680px;
+}
+
+.leaderboard-shell {
+    padding-top: 6px;
+}
+
+.leaderboard-main {
+    align-items: start;
+    display: grid;
+    gap: 24px;
+    grid-template-columns: minmax(0, 1.9fr) minmax(280px, 0.82fr);
+}
+
+.leaderboard-primary,
+.leaderboard-side {
+    min-width: 0;
+}
+
+.filter-strip {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 18px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+}
+
+.filter-strip::-webkit-scrollbar {
+    display: none;
+}
+
+.filter-chip {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    color: #334155;
+    cursor: pointer;
+    display: inline-flex;
+    flex: 0 0 auto;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 800;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 20px;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.filter-chip:hover {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+}
+
+.filter-chip.is-active {
+    background: var(--esports-blue);
+    border-color: var(--esports-blue);
+    box-shadow: 0 14px 28px rgba(37, 99, 235, 0.18);
+    color: #ffffff;
+}
+
+.leaderboard-card-header {
+    padding-bottom: 16px;
+}
+
+.full-leaderboard-table {
+    min-width: 920px;
+}
+
+.full-leaderboard-table th,
+.full-leaderboard-table td {
+    padding-bottom: 14px;
+    padding-top: 14px;
+}
+
+.region-panel {
+    background: #ffffff;
+    border: 1px solid var(--esports-line);
+    border-radius: 22px;
+    box-shadow: 0 22px 56px rgba(15, 23, 42, 0.09);
+    padding: 22px;
+    position: sticky;
+    top: 92px;
+}
+
+.region-panel-header {
+    margin-bottom: 18px;
+}
+
+.region-panel-header h2 {
+    color: var(--esports-ink);
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    line-height: 1.04;
+    margin: 0;
+}
+
+.region-panel-header p {
+    color: var(--esports-muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.6;
+    margin: 8px 0 0;
+}
+
+.region-panel-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.region-summary-card {
+    background: #ffffff;
+    border: 1px solid #e5edf7;
+    border-left-width: 4px;
+    border-radius: 18px;
+    box-shadow: 0 16px 38px rgba(15, 23, 42, 0.06);
+    padding: 18px;
+}
+
+.region-summary-card.accent-blue {
+    border-left-color: var(--esports-blue);
+}
+
+.region-summary-card.accent-gold {
+    border-left-color: var(--esports-gold);
+}
+
+.region-summary-card.accent-green {
+    border-left-color: var(--esports-green);
+}
+
+.region-summary-top {
+    align-items: flex-start;
+    display: flex;
+    gap: 14px;
+    justify-content: space-between;
+}
+
+.region-summary-brand {
+    align-items: center;
+    display: flex;
+    gap: 14px;
+    min-width: 0;
+}
+
+.region-summary-logo {
+    align-items: center;
+    background: #f8fafc;
+    border-radius: 14px;
+    display: flex;
+    flex-shrink: 0;
+    height: 54px;
+    justify-content: center;
+    overflow: hidden;
+    width: 54px;
+}
+
+.region-summary-logo img {
+    height: 38px;
+    object-fit: contain;
+    width: 38px;
+}
+
+.region-summary-logo span {
+    color: var(--esports-blue);
+    display: none;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.region-summary-brand h3 {
+    color: var(--esports-ink);
+    font-size: 1.2rem;
+    font-weight: 800;
+    line-height: 1.1;
+    margin: 0;
+}
+
+.region-summary-brand p {
+    color: var(--esports-muted);
+    font-size: 0.84rem;
+    font-weight: 600;
+    line-height: 1.45;
+    margin: 6px 0 0;
+}
+
+.region-season {
+    align-items: center;
+    border-radius: 999px;
+    display: inline-flex;
+    flex-shrink: 0;
+    font-size: 0.74rem;
+    font-weight: 800;
+    min-height: 28px;
+    padding: 0 10px;
+}
+
+.region-season.is-active {
+    background: #ecfdf5;
+    color: #15803d;
+}
+
+.region-season.is-off {
+    background: #f8fafc;
+    color: #64748b;
+}
+
+.region-summary-stats {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: 1fr 1fr;
+    margin-top: 18px;
+}
+
+.region-summary-stats strong {
+    color: var(--esports-blue);
+    display: block;
+    font-size: 1.9rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.region-summary-card.accent-gold .region-summary-stats strong {
+    color: #b98108;
+}
+
+.region-summary-card.accent-green .region-summary-stats strong {
+    color: #15803d;
+}
+
+.region-summary-stats span {
+    color: var(--esports-muted);
+    display: block;
+    font-size: 0.74rem;
+    font-weight: 800;
+    margin-top: 7px;
+    text-transform: uppercase;
+}
+
+@media (max-width: 1024px) {
+    .esports-hero-card {
+        gap: 36px;
+        grid-template-columns: 1fr;
+        padding: 34px;
+    }
+
+    .hero-copy {
+        max-width: 720px;
+    }
+
+    .hero-copy h1 {
+        font-size: 3.25rem;
+    }
+
+    .hero-visual-card {
+        max-width: 760px;
+    }
+
+    .regional-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .leaderboard-main {
+        grid-template-columns: 1fr;
+    }
+
+    .region-panel {
+        position: static;
+    }
+
+    .leaderboard-hero-card {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 640px) {
+    .esports-page {
+        padding: 0 16px 32px;
+    }
+
+    .esports-hero,
+    .regional-section,
+    .rankings-section {
+        padding-bottom: 32px;
+        padding-top: 32px;
+    }
+
+    .hero-copy h1 {
+        font-size: 2.35rem;
+        line-height: 1.08;
+    }
+
+    .hero-copy p {
+        font-size: 0.98rem;
+    }
+
+    .primary-action {
+        width: 100%;
+    }
+
+    .hero-visual-card {
+        border-radius: 16px;
+    }
+
+    .esports-hero-card {
+        border-radius: 22px;
+        padding: 22px;
+    }
+
+    .section-heading,
+    .rankings-card-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .regional-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .regional-card,
+    .rankings-card {
+        border-radius: 16px;
+    }
+
+    .rankings-card-header {
+        padding: 22px 20px 16px;
+    }
+
+    .rankings-controls {
+        align-items: stretch;
+        flex-direction: column;
+        padding: 16px 20px 20px;
+    }
+
+    .rankings-search {
+        flex-basis: auto;
+        max-width: none;
+        width: 100%;
+    }
+
+    .rankings-region-filters {
+        justify-content: flex-start;
+    }
+
+    .rankings-state {
+        margin: 0 20px 20px;
+    }
+
+    .leaderboard-link {
+        padding: 16px 20px;
+    }
+
+    .esports-footer {
+        align-items: flex-start;
+        flex-direction: column;
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .leaderboard-page {
+        padding: 0 16px 32px;
+    }
+
+    .leaderboard-top {
+        padding-bottom: 28px;
+        padding-top: 32px;
+    }
+
+    .back-pill {
+        min-height: 40px;
+        padding: 0 16px;
+    }
+
+    .leaderboard-hero-card {
+        border-radius: 20px;
+        padding: 20px;
+    }
+
+    .leaderboard-hero-card h1 {
+        font-size: 2rem;
+    }
+
+    .leaderboard-hero-card p {
+        font-size: 0.94rem;
+    }
+
+    .leaderboard-main {
+        gap: 18px;
+    }
+
+    .leaderboard-card-header {
+        padding-bottom: 14px;
+    }
+
+    .filter-strip {
+        margin-bottom: 14px;
+    }
+
+    .region-panel {
+        border-radius: 18px;
+        padding: 18px;
+    }
+
+    .region-panel-header h2 {
+        font-size: 1.6rem;
+    }
+}
