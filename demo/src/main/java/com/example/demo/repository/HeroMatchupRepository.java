@@ -14,6 +14,7 @@ public interface HeroMatchupRepository extends JpaRepository<HeroMatchup, Long> 
     @Query("""
             SELECT DISTINCT matchup FROM HeroMatchup matchup
             JOIN FETCH matchup.targetHero targetHero
+            LEFT JOIN FETCH targetHero.primaryRole
             LEFT JOIN FETCH targetHero.classes
             LEFT JOIN FETCH targetHero.roles
             LEFT JOIN FETCH targetHero.attributes

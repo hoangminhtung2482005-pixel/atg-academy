@@ -58,13 +58,13 @@ class AdminWikiHeroServiceTest {
         Hero hero = hero(10L, "Florentino", "florentino");
         when(heroRepository.findByIdWithRolesAndAttributes(10L)).thenReturn(Optional.of(hero));
 
-        assertThatThrownBy(() -> service.updateHeroRoles(10L, new AdminHeroRolesUpdateRequest(List.of("TOP"))))
+        assertThatThrownBy(() -> service.updateHeroRoles(10L, new AdminHeroRolesUpdateRequest(null, null, List.of("TOP"))))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
     }
 
     @Test
-    void updateHeroRolesReplacesExistingMappings() {
+    void updateHeroRolesSupportsLegacyCodesAsPrimaryAndSubRoles() {
         Hero hero = hero(10L, "Florentino", "florentino");
         hero.getRoles().add(role(1L, "DSL", "Solo"));
         HeroRole jungle = role(2L, "JGL", "Jungle");
@@ -75,11 +75,88 @@ class AdminWikiHeroServiceTest {
         when(heroRoleRepository.findAllByOrderByCodeAsc()).thenReturn(List.of(jungle, mid));
         when(heroAttributeRepository.findAll()).thenReturn(List.of());
 
-        service.updateHeroRoles(10L, new AdminHeroRolesUpdateRequest(List.of("JGL", "MID", "JGL")));
+        service.updateHeroRoles(10L, new AdminHeroRolesUpdateRequest(null, null, List.of("JGL", "MID", "JGL")));
 
+        assertThat(hero.getPrimaryRole()).isEqualTo(jungle);
         assertThat(hero.getRoles())
                 .extracting(HeroRole::getCode)
-                .containsExactlyInAnyOrder("JGL", "MID");
+                .containsExactlyInAnyOrder("MID");
+    }
+
+    @Test
+    void updateHeroRolesRequiresPrimaryRole() {
+        Hero hero = hero(10L, "Florentino", "florentino");
+        when(heroRepository.findByIdWithRolesAndAttributes(10L)).thenReturn(Optional.of(hero));
+
+        assertThatThrownBy(() -> service.updateHeroRoles(10L, new AdminHeroRolesUpdateRequest(null, List.of(), null)))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
+                    assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(exception.getReason()).contains("Primary role is required");
+                });
+    }
+
+    @Test
+    void updateHeroRolesRejectsDuplicateSubRoles() {
+        Hero hero = hero(10L, "Billow", "billow");
+        HeroRole jungle = role(2L, "JGL", "Jungle");
+        when(heroRepository.findByIdWithRolesAndAttributes(10L)).thenReturn(Optional.of(hero));
+        when(heroRoleRepository.findById(2L)).thenReturn(Optional.of(jungle));
+
+        assertThatThrownBy(() -> service.updateHeroRoles(10L, new AdminHeroRolesUpdateRequest(2L, List.of(1L, 1L), null)))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
+                    assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(exception.getReason()).contains("Duplicate sub roles are not allowed");
+                });
+    }
+
+    @Test
+    void updateHeroRolesRejectsPrimaryRoleInsideSubRoles() {
+        Hero hero = hero(10L, "Billow", "billow");
+        HeroRole jungle = role(2L, "JGL", "Jungle");
+        when(heroRepository.findByIdWithRolesAndAttributes(10L)).thenReturn(Optional.of(hero));
+        when(heroRoleRepository.findById(2L)).thenReturn(Optional.of(jungle));
+
+        assertThatThrownBy(() -> service.updateHeroRoles(10L, new AdminHeroRolesUpdateRequest(2L, List.of(2L), null)))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
+                    assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(exception.getReason()).contains("Primary role cannot be selected as sub role");
+                });
+    }
+
+    @Test
+    void updateHeroRolesRejectsMissingRoleId() {
+        Hero hero = hero(10L, "Billow", "billow");
+        HeroRole jungle = role(2L, "JGL", "Jungle");
+        when(heroRepository.findByIdWithRolesAndAttributes(10L)).thenReturn(Optional.of(hero));
+        when(heroRoleRepository.findById(2L)).thenReturn(Optional.of(jungle));
+        when(heroRoleRepository.findAllById(List.of(999L))).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.updateHeroRoles(10L, new AdminHeroRolesUpdateRequest(2L, List.of(999L), null)))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
+                    assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(exception.getReason()).contains("Role not found: 999");
+                });
+    }
+
+    @Test
+    void updateHeroRolesStoresPrimaryAndSubRolesById() {
+        Hero hero = hero(10L, "Billow", "billow");
+        hero.getRoles().add(role(3L, "MID", "Middle"));
+        HeroRole solo = role(1L, "DSL", "Solo");
+        HeroRole jungle = role(2L, "JGL", "Jungle");
+
+        when(heroRepository.findByIdWithRolesAndAttributes(10L)).thenReturn(Optional.of(hero));
+        when(heroRoleRepository.findById(2L)).thenReturn(Optional.of(jungle));
+        when(heroRoleRepository.findAllById(List.of(1L))).thenReturn(List.of(solo));
+        when(heroRoleRepository.findAllByOrderByCodeAsc()).thenReturn(List.of(solo, jungle));
+        when(heroAttributeRepository.findAll()).thenReturn(List.of());
+
+        service.updateHeroRoles(10L, new AdminHeroRolesUpdateRequest(2L, List.of(1L), null));
+
+        assertThat(hero.getPrimaryRole()).isEqualTo(jungle);
+        assertThat(hero.getRoles())
+                .extracting(HeroRole::getCode)
+                .containsExactly("DSL");
     }
 
     @Test

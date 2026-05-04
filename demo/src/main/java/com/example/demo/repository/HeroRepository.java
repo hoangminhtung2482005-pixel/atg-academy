@@ -28,6 +28,7 @@ public interface HeroRepository extends JpaRepository<Hero, Long> {
      */
     @Query("""
             SELECT DISTINCT h FROM Hero h
+            LEFT JOIN FETCH h.primaryRole
             LEFT JOIN FETCH h.classes
             LEFT JOIN FETCH h.roles
             LEFT JOIN FETCH h.attributes
@@ -35,11 +36,12 @@ public interface HeroRepository extends JpaRepository<Hero, Long> {
             """)
     List<Hero> findAllWithRolesAndAttributes();
 
-    @EntityGraph(attributePaths = {"classes", "roles", "attributes"})
+    @EntityGraph(attributePaths = {"primaryRole", "classes", "roles", "attributes"})
     Optional<Hero> findWithRolesAndAttributesBySlug(String slug);
 
     @Query("""
             SELECT DISTINCT h FROM Hero h
+            LEFT JOIN FETCH h.primaryRole
             LEFT JOIN FETCH h.classes
             LEFT JOIN FETCH h.roles
             LEFT JOIN FETCH h.attributes

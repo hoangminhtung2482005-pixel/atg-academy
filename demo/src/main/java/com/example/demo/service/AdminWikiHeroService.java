@@ -79,10 +79,10 @@ public class AdminWikiHeroService {
     @Transactional
     public AdminHeroDetailResponse updateHeroRoles(Long heroId, AdminHeroRolesUpdateRequest request) {
         Hero hero = findHero(heroId);
-        Set<String> requestedCodes = normalizeRoleCodes(request != null ? request.roles() : List.of());
-        List<HeroRole> roles = findRoles(requestedCodes);
+        RoleSelection roleSelection = resolveRoleSelection(request);
+        hero.setPrimaryRole(roleSelection.primaryRole());
         hero.getRoles().clear();
-        hero.getRoles().addAll(roles);
+        hero.getRoles().addAll(roleSelection.subRoles());
         return detailResponse(hero);
     }
 
@@ -184,7 +184,7 @@ public class AdminWikiHeroService {
 
     private AdminHeroDetailResponse detailResponse(Hero hero) {
         AdminHeroResponse heroResponse = AdminHeroResponse.from(hero);
-        List<String> suggestedRoles = heroResponse.roles().isEmpty()
+        List<String> suggestedRoles = heroResponse.primaryRole() == null
                 ? HeroClassCatalog.suggestedRoles(heroResponse.classes())
                 : List.of();
 
@@ -292,6 +292,56 @@ public class AdminWikiHeroService {
         return result;
     }
 
+    private RoleSelection resolveRoleSelection(AdminHeroRolesUpdateRequest request) {
+        if (request == null) {
+            throw badRequest("Primary role is required");
+        }
+        if (request.primaryRoleId() != null) {
+            return resolveRoleSelectionByIds(request);
+        }
+        return resolveLegacyRoleSelection(request.roles());
+    }
+
+    private RoleSelection resolveRoleSelectionByIds(AdminHeroRolesUpdateRequest request) {
+        HeroRole primaryRole = heroRoleRepository.findById(request.primaryRoleId())
+                .orElseThrow(() -> badRequest("Role not found: " + request.primaryRoleId()));
+        List<Long> subRoleIds = normalizeSubRoleIds(request.subRoleIds());
+        if (subRoleIds.contains(primaryRole.getId())) {
+            throw badRequest("Primary role cannot be selected as sub role");
+        }
+        return new RoleSelection(primaryRole, findRolesByIds(subRoleIds));
+    }
+
+    private RoleSelection resolveLegacyRoleSelection(Collection<String> requestedRoles) {
+        Set<String> requestedCodes = normalizeRoleCodes(requestedRoles);
+        if (requestedCodes.isEmpty()) {
+            throw badRequest("Primary role is required");
+        }
+        List<HeroRole> roles = findRoles(requestedCodes);
+        HeroRole primaryRole = roles.get(0);
+        List<HeroRole> subRoles = roles.stream()
+                .skip(1)
+                .filter(role -> !Objects.equals(role.getId(), primaryRole.getId()))
+                .toList();
+        return new RoleSelection(primaryRole, subRoles);
+    }
+
+    private List<Long> normalizeSubRoleIds(Collection<Long> roleIds) {
+        if (roleIds == null || roleIds.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> result = new LinkedHashSet<>();
+        for (Long roleId : roleIds) {
+            if (roleId == null) {
+                throw badRequest("Role not found: null");
+            }
+            if (!result.add(roleId)) {
+                throw badRequest("Duplicate sub roles are not allowed");
+            }
+        }
+        return new ArrayList<>(result);
+    }
+
     private Set<String> normalizeClassNames(Collection<String> classes) {
         Set<String> result = new LinkedHashSet<>();
         if (classes == null) {
@@ -338,6 +388,20 @@ public class AdminWikiHeroService {
         return roleCodes.stream().map(rolesByCode::get).toList();
     }
 
+    private List<HeroRole> findRolesByIds(List<Long> roleIds) {
+        if (roleIds.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, HeroRole> rolesById = heroRoleRepository.findAllById(roleIds).stream()
+                .collect(Collectors.toMap(HeroRole::getId, Function.identity()));
+        for (Long roleId : roleIds) {
+            if (!rolesById.containsKey(roleId)) {
+                throw badRequest("Role not found: " + roleId);
+            }
+        }
+        return roleIds.stream().map(rolesById::get).toList();
+    }
+
     private List<HeroClass> findHeroClasses(Set<String> classNames) {
         if (classNames.isEmpty()) {
             return List.of();
@@ -382,5 +446,8 @@ public class AdminWikiHeroService {
 
     private ResponseStatusException badRequest(String message) {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+    }
+
+    private record RoleSelection(HeroRole primaryRole, List<HeroRole> subRoles) {
     }
 }

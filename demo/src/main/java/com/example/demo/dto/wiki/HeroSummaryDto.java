@@ -7,13 +7,18 @@ import com.example.demo.entity.HeroRole;
 import com.example.demo.util.HeroClassCatalog;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 public record HeroSummaryDto(
         Long id,
         String slug,
         String name,
         String avatarUrl,
+        HeroRoleDto primaryRole,
+        List<HeroRoleDto> subRoles,
         String heroClass,
         List<String> classes,
         List<String> laneRoles,
@@ -30,6 +35,8 @@ public record HeroSummaryDto(
                 hero.getSlug(),
                 hero.getName(),
                 hero.getAvatarUrl(),
+                primaryRole(hero),
+                subRoles(hero),
                 primaryClass(hero),
                 classes(hero),
                 laneRoles(hero),
@@ -68,22 +75,52 @@ public record HeroSummaryDto(
         return legacyClass == null ? List.of() : List.of(legacyClass);
     }
 
+    public static HeroRoleDto primaryRole(Hero hero) {
+        return hero == null ? null : HeroRoleDto.from(hero.getPrimaryRole());
+    }
+
+    public static List<HeroRoleDto> subRoles(Hero hero) {
+        return subRoleEntities(hero).stream()
+                .map(HeroRoleDto::from)
+                .toList();
+    }
+
+    public static List<HeroRole> orderedLaneRoles(Hero hero) {
+        if (hero == null) {
+            return List.of();
+        }
+
+        List<HeroRole> result = new ArrayList<>();
+        HeroRole primaryRole = hero.getPrimaryRole();
+        if (primaryRole != null) {
+            result.add(primaryRole);
+        }
+        subRoleEntities(hero).forEach(result::add);
+        return result;
+    }
+
+    public static List<HeroRole> subRoleEntities(Hero hero) {
+        if (hero == null || hero.getRoles() == null) {
+            return List.of();
+        }
+        Long primaryRoleId = hero.getPrimaryRole() != null ? hero.getPrimaryRole().getId() : null;
+        return hero.getRoles().stream()
+                .filter(role -> role != null)
+                .filter(role -> primaryRoleId == null || !Objects.equals(primaryRoleId, role.getId()))
+                .sorted(Comparator.comparing(HeroRole::getCode, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+    }
+
     static List<String> laneRoles(Hero hero) {
-        return hero.getRoles() != null
-                ? hero.getRoles().stream()
-                    .map(HeroRole::getName)
-                    .sorted()
-                    .toList()
-                : List.of();
+        return orderedLaneRoles(hero).stream()
+                .map(HeroRole::getName)
+                .toList();
     }
 
     static List<String> roleCodes(Hero hero) {
-        return hero.getRoles() != null
-                ? hero.getRoles().stream()
-                    .map(HeroRole::getCode)
-                    .sorted()
-                    .toList()
-                : List.of();
+        return orderedLaneRoles(hero).stream()
+                .map(HeroRole::getCode)
+                .toList();
     }
 
     static List<String> attributes(Hero hero) {

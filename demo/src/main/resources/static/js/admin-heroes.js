@@ -1,33 +1,32 @@
-function showToast(msg, type) {
-    var t = document.getElementById('toast');
-    t.textContent = (type === 'ok' ? '✅ ' : '❌ ') + msg;
-    t.className = 'toast-box ' + (type === 'ok' ? 'toast-ok' : 'toast-err');
-    setTimeout(function () { t.classList.add('show'); }, 30);
-    setTimeout(function () { t.classList.remove('show'); }, 3500);
+const DEFAULT_ROLE_OPTIONS = [
+    { id: null, code: 'DSL', name: 'Đường Tà Thần' },
+    { id: null, code: 'JGL', name: 'Đi Rừng' },
+    { id: null, code: 'MID', name: 'Đường Giữa' },
+    { id: null, code: 'ADL', name: 'Đường Rồng' },
+    { id: null, code: 'SUP', name: 'Trợ Thủ' }
+];
+
+const DEFAULT_CLASS_OPTIONS = ['Đấu sĩ', 'Sát thủ', 'Pháp sư', 'Xạ thủ', 'Đỡ đòn', 'Trợ thủ'];
+
+const state = {
+    heroes: [],
+    roles: DEFAULT_ROLE_OPTIONS.slice(),
+    classes: DEFAULT_CLASS_OPTIONS.slice(),
+    attributes: [],
+    attributeLoadError: '',
+    filters: {
+        search: '',
+        className: '',
+        primaryRole: ''
+    },
+    editingHero: null
+};
+
+function byId(id) {
+    return document.getElementById(id);
 }
 
-function updateClock() {
-    document.getElementById('header-clock').textContent = new Date().toLocaleString('vi-VN');
-}
-setInterval(updateClock, 1000);
-updateClock();
-
-function setBtnLoading(btnId, loading) {
-    var btn = document.getElementById(btnId);
-    if (!btn) return;
-    if (loading) {
-        btn.dataset.originalText = btn.innerHTML;
-        btn.innerHTML = '<span class="spinner"></span> Đang xử lý...';
-        btn.disabled = true;
-        btn.style.opacity = '0.6';
-    } else {
-        btn.innerHTML = btn.dataset.originalText || btn.innerHTML;
-        btn.disabled = false;
-        btn.style.opacity = '1';
-    }
-}
-
-function escapeAdminHtml(value) {
+function escapeHtml(value) {
     return String(value == null ? '' : value)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -36,16 +35,13 @@ function escapeAdminHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
-async function readAdminApiError(response) {
-    var fallback = 'Thao tác thất bại';
-    try {
-        var text = await response.text();
-        if (!text) return fallback;
-        var json = JSON.parse(text);
-        return json.error || json.detail || json.message || json.title || fallback;
-    } catch (ignored) {
-        return fallback;
-    }
+function normalizeText(value) {
+    return String(value == null ? '' : value)
+        .trim()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[đĐ]/g, 'd')
+        .toLowerCase();
 }
 
 function normalizeAssetUrl(url) {
@@ -56,416 +52,586 @@ function normalizeAssetUrl(url) {
     return '/' + url.replace(/^\.?\//, '');
 }
 
-var adminHeroes = [];
-var adminAttributes = [];
-var currentHeroDetail = null;
-var editingAttributeId = null;
-var HERO_SUBTITLE_DEFAULT = 'Chỉnh sửa chất tướng, vị trí, đặc điểm và mô tả Wiki';
-
-function normalizeHeroFilterText(value) {
-    return String(value == null ? '' : value)
-        .trim()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[đĐ]/g, 'd')
-        .toLowerCase();
+function normalizeRole(role) {
+    if (!role) return null;
+    if (typeof role === 'string') return { id: null, code: role, name: role };
+    return {
+        id: role.id == null ? null : Number(role.id),
+        code: role.code || '',
+        name: role.name || role.code || ''
+    };
 }
 
-function heroClassesOf(hero) {
+function roleLabel(role) {
+    if (!role) return '-';
+    const code = role.code || '';
+    const name = role.name || '';
+    return code && name && code !== name ? `${code} - ${name}` : code || name || '-';
+}
+
+function getHeroPrimaryRole(hero) {
+    const primary = normalizeRole(hero && hero.primaryRole);
+    if (primary && (primary.code || primary.name)) return primary;
+    const legacyRoles = Array.isArray(hero && hero.roles) ? hero.roles.map(normalizeRole).filter(Boolean) : [];
+    return legacyRoles.length ? legacyRoles[0] : null;
+}
+
+function getHeroSubRoles(hero) {
+    if (Array.isArray(hero && hero.subRoles)) {
+        return hero.subRoles.map(normalizeRole).filter(Boolean);
+    }
+    const primary = getHeroPrimaryRole(hero);
+    const primaryCode = primary && primary.code;
+    return (Array.isArray(hero && hero.roles) ? hero.roles : [])
+        .map(normalizeRole)
+        .filter(role => role && role.code && role.code !== primaryCode);
+}
+
+function getHeroPrimaryRoleCode(hero) {
+    const primary = getHeroPrimaryRole(hero);
+    return primary && primary.code ? primary.code : '';
+}
+
+function getHeroClasses(hero) {
     if (Array.isArray(hero && hero.classes) && hero.classes.length) {
         return hero.classes.filter(Boolean);
     }
     return hero && hero.heroClass ? [hero.heroClass] : [];
 }
 
-function heroAttributesOf(hero) {
+function getHeroAttributes(hero) {
     return Array.isArray(hero && hero.attributes) ? hero.attributes.filter(Boolean) : [];
 }
 
-function getHeroFilterState() {
-    return {
-        search: normalizeHeroFilterText(document.getElementById('hero-search') && document.getElementById('hero-search').value),
-        heroClass: document.getElementById('hero-class-filter') ? document.getElementById('hero-class-filter').value : '',
-        role: document.getElementById('hero-role-filter') ? document.getElementById('hero-role-filter').value : ''
-    };
+function updateClock() {
+    const clock = byId('header-clock');
+    if (clock) clock.textContent = new Date().toLocaleString('vi-VN');
 }
 
-function hasActiveHeroFilters(state) {
-    return !!(state.search || state.heroClass || state.role);
+function showToast(message, type) {
+    const toast = byId('toast');
+    if (!toast) return;
+    toast.textContent = `${type === 'ok' ? 'OK' : 'ERR'}: ${message}`;
+    toast.className = `toast-box ${type === 'ok' ? 'toast-ok' : 'toast-err'}`;
+    window.setTimeout(() => toast.classList.add('show'), 20);
+    window.setTimeout(() => toast.classList.remove('show'), 3600);
 }
 
-function heroMatchesSearch(hero, query) {
-    if (!query) return true;
-    var values = [
+function setButtonLoading(buttonId, loading) {
+    const button = byId(buttonId);
+    if (!button) return;
+    if (loading) {
+        button.dataset.originalText = button.textContent;
+        button.textContent = 'Đang xử lý...';
+        button.disabled = true;
+    } else {
+        button.textContent = button.dataset.originalText || button.textContent;
+        button.disabled = false;
+    }
+}
+
+function parseApiErrorBody(text) {
+    if (!text) return '';
+    try {
+        const json = JSON.parse(text);
+        return json.error || json.detail || json.message || json.title || text;
+    } catch (error) {
+        return text;
+    }
+}
+
+async function apiFetch(url, options) {
+    const response = await fetch(url, options || {});
+    if (response.ok) {
+        const text = await response.text();
+        return text ? JSON.parse(text) : null;
+    }
+
+    const body = await response.text();
+    const message = parseApiErrorBody(body) || `${response.status} ${response.statusText}`;
+    console.error('[AdminHeroes API error]', {
+        url,
+        status: response.status,
+        statusText: response.statusText,
+        body
+    });
+    throw new Error(`${response.status} ${response.statusText}: ${message}`);
+}
+
+function putJson(url, body) {
+    return apiFetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+}
+
+function updateError(targetId, message) {
+    const target = byId(targetId);
+    if (!target) return;
+    if (!message) {
+        target.textContent = '';
+        target.classList.add('hidden');
+        return;
+    }
+    target.textContent = message;
+    target.classList.remove('hidden');
+}
+
+function chip(value, className) {
+    if (!value) return '';
+    return `<span class="chip ${className || ''}">${escapeHtml(value)}</span>`;
+}
+
+function chipList(values, className) {
+    const list = Array.isArray(values) ? values.filter(Boolean) : [];
+    if (!list.length) return '<span class="empty-muted">Chưa có</span>';
+    return `<div class="chip-row">${list.map(value => chip(value, className)).join('')}</div>`;
+}
+
+function roleChip(role, className) {
+    if (!role) return '<span class="empty-muted">Chưa có</span>';
+    return chip(roleLabel(role), className || 'primary-role-chip');
+}
+
+function heroAvatar(hero) {
+    const name = hero && hero.name ? hero.name : '?';
+    const initial = escapeHtml(name.charAt(0).toUpperCase() || '?');
+    if (!hero || !hero.avatarUrl) {
+        return `<div class="hero-avatar hero-avatar-fallback">${initial}</div>`;
+    }
+    return `<img class="hero-avatar" src="${escapeHtml(normalizeAssetUrl(hero.avatarUrl))}" alt="${escapeHtml(name)}" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'hero-avatar hero-avatar-fallback', textContent:'${initial}'}))">`;
+}
+
+function mergeRolesFromHeroes() {
+    const byCode = new Map(DEFAULT_ROLE_OPTIONS.map(role => [role.code, { ...role }]));
+    state.heroes.forEach(hero => {
+        [getHeroPrimaryRole(hero), ...getHeroSubRoles(hero)].forEach(role => {
+            const normalized = normalizeRole(role);
+            if (!normalized || !normalized.code) return;
+            const existing = byCode.get(normalized.code) || {};
+            byCode.set(normalized.code, {
+                id: normalized.id != null ? normalized.id : existing.id ?? null,
+                code: normalized.code,
+                name: normalized.name || existing.name || normalized.code
+            });
+        });
+    });
+    state.roles = Array.from(byCode.values());
+}
+
+function renderClassFilter() {
+    const select = byId('hero-class-filter');
+    if (!select) return;
+    const current = select.value || state.filters.className;
+    select.innerHTML = '<option value="">Tất cả class</option>' + state.classes
+        .map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)
+        .join('');
+    select.value = current;
+}
+
+function renderRoleFilter() {
+    const select = byId('hero-role-filter');
+    if (!select) return;
+    const current = select.value || state.filters.primaryRole;
+    select.innerHTML = '<option value="">Tất cả Primary Role</option>' + state.roles
+        .map(role => `<option value="${escapeHtml(role.code)}">${escapeHtml(roleLabel(role))}</option>`)
+        .join('');
+    select.value = current;
+}
+
+function renderFilters() {
+    renderClassFilter();
+    renderRoleFilter();
+}
+
+function heroMatchesFilters(hero) {
+    const search = normalizeText(state.filters.search);
+    const classes = getHeroClasses(hero);
+    const primaryRoleCode = getHeroPrimaryRoleCode(hero);
+    const searchValues = [
         hero.name,
         hero.slug,
-        hero.heroClass
+        hero.heroClass,
+        primaryRoleCode,
+        getHeroPrimaryRole(hero)?.name
     ]
-        .concat(heroClassesOf(hero))
-        .concat(Array.isArray(hero.roles) ? hero.roles : [])
-        .concat(heroAttributesOf(hero));
+        .concat(classes)
+        .concat(getHeroSubRoles(hero).flatMap(role => [role.code, role.name]))
+        .concat(getHeroAttributes(hero));
 
-    return values.some(function (value) {
-        return normalizeHeroFilterText(value).includes(query);
-    });
+    const matchesSearch = !search || searchValues.some(value => normalizeText(value).includes(search));
+    const matchesClass = !state.filters.className || classes.includes(state.filters.className);
+    const matchesRole = !state.filters.primaryRole || primaryRoleCode === state.filters.primaryRole;
+    return matchesSearch && matchesClass && matchesRole;
 }
 
-function heroMatchesFilters(hero, state) {
-    var roles = Array.isArray(hero.roles) ? hero.roles : [];
-    var classes = heroClassesOf(hero);
-    return heroMatchesSearch(hero, state.search)
-        && (!state.heroClass || classes.includes(state.heroClass))
-        && (!state.role || roles.includes(state.role));
+function filteredHeroes() {
+    return state.heroes.filter(heroMatchesFilters);
 }
 
-function updateHeroSubtitle(visibleCount, totalCount, filtersActive) {
-    var subtitle = document.getElementById('hero-subtitle');
-    if (!subtitle) return;
-    if (filtersActive) {
-        subtitle.textContent = 'Đang hiển thị ' + visibleCount + ' / ' + totalCount + ' tướng';
-        return;
+function updateHeroHeader(visibleCount) {
+    const total = state.heroes.length;
+    const subtitle = byId('hero-subtitle');
+    const pill = byId('hero-count-pill');
+    if (subtitle) {
+        subtitle.textContent = visibleCount === total
+            ? `Chỉnh sửa tướng, class, primary role, sub roles, đặc điểm và mô tả wiki. ${total} tướng.`
+            : `Đang hiển thị ${visibleCount} / ${total} tướng.`;
     }
-    subtitle.innerHTML = HERO_SUBTITLE_DEFAULT + ' — <span id="hero-total-count" class="text-accent-blue">' + totalCount + '</span> tướng';
+    if (pill) pill.textContent = `${visibleCount} / ${total} tướng`;
 }
 
-function updateHeroFilterStyles(state) {
-    [
-        ['hero-search', state.search],
-        ['hero-class-filter', state.heroClass],
-        ['hero-role-filter', state.role]
-    ].forEach(function (item) {
-        var element = document.getElementById(item[0]);
-        if (!element) return;
-        element.classList.toggle('is-active', !!item[1]);
-    });
-
-    var resetButton = document.getElementById('btn-hero-reset');
-    if (resetButton) {
-        resetButton.classList.toggle('is-active', hasActiveHeroFilters(state));
-    }
-}
-
-function badgeList(values, emptyText) {
-    var list = Array.isArray(values) ? values.filter(Boolean) : [];
-    if (list.length === 0) {
-        return '<span class="text-xs text-slate-400">' + escapeAdminHtml(emptyText || '-') + '</span>';
-    }
-    return list.map(function (value) {
-        return '<span class="inline-flex items-center px-2 py-1 rounded-md border border-slate-200 bg-slate-50 text-[0.68rem] font-semibold text-slate-600">' + escapeAdminHtml(value) + '</span>';
-    }).join(' ');
-}
-
-function heroAvatarHtml(hero) {
-    var label = (hero.name || '?').trim();
-    var initial = escapeAdminHtml((label.charAt(0) || '?').toUpperCase());
-    var fallback = '<div class="w-11 h-11 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 mx-auto">' + initial + '</div>';
-    if (!hero.avatarUrl) return fallback;
-    var src = escapeAdminHtml(normalizeAssetUrl(hero.avatarUrl));
-    var alt = escapeAdminHtml(label);
-    return '<div class="relative w-11 h-11 mx-auto">' +
-        '<img src="' + src + '" alt="' + alt + '" class="w-11 h-11 rounded-lg object-cover bg-slate-50 border border-slate-200" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\'">' +
-        '<div style="display:none" class="absolute inset-0 rounded-lg bg-slate-100 border border-slate-200 items-center justify-center text-xs font-bold text-slate-500">' + initial + '</div>' +
-        '</div>';
-}
-
-function renderAdminHeroes(heroes, filtersActive) {
-    var tbody = document.getElementById('heroes-tbody');
+function renderHeroesTable() {
+    const tbody = byId('heroes-tbody');
     if (!tbody) return;
-    var visibleHeroes = Array.isArray(heroes) ? heroes : [];
-    updateHeroSubtitle(visibleHeroes.length, adminHeroes.length, !!filtersActive);
 
-    if (adminHeroes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-16 text-slate-400 text-sm">Chưa có dữ liệu tướng.</td></tr>';
+    const heroes = filteredHeroes();
+    updateHeroHeader(heroes.length);
+
+    if (!state.heroes.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="table-state">Chưa có dữ liệu tướng.</td></tr>';
         return;
     }
 
-    if (visibleHeroes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-16 text-slate-400 text-sm">Không tìm thấy tướng phù hợp.</td></tr>';
+    if (!heroes.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="table-state">Không tìm thấy tướng phù hợp.</td></tr>';
         return;
     }
 
-    tbody.innerHTML = visibleHeroes.map(function (hero) {
-        return '<tr class="match-row border-b border-slate-200">' +
-            '<td class="px-4 py-3 text-center">' + heroAvatarHtml(hero) + '</td>' +
-            '<td class="px-4 py-3"><div class="text-sm font-semibold text-slate-900">' + escapeAdminHtml(hero.name || '-') + '</div>' +
-            '<div class="text-[0.7rem] text-slate-400">ID #' + escapeAdminHtml(hero.id) + '</div></td>' +
-            '<td class="px-4 py-3 text-xs text-slate-500 font-mono">' + escapeAdminHtml(hero.slug || '-') + '</td>' +
-            '<td class="px-4 py-3 text-center"><div class="flex flex-wrap justify-center gap-1.5">' + badgeList(heroClassesOf(hero), '-') + '</div></td>' +
-            '<td class="px-4 py-3"><div class="flex flex-wrap gap-1.5">' + badgeList(hero.roles, '-') + '</div></td>' +
-            '<td class="px-4 py-3"><div class="flex flex-wrap gap-1.5">' + badgeList(heroAttributesOf(hero), '-') + '</div></td>' +
-            '<td class="px-4 py-3 text-center">' +
-            '<button type="button" onclick="openHeroModal(' + Number(hero.id) + ')" class="btn-press bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 font-semibold text-xs px-3 py-2 rounded-lg transition-all">Chỉnh sửa</button>' +
-            '</td>' +
-            '</tr>';
+    tbody.innerHTML = heroes.map(hero => {
+        const primaryRole = getHeroPrimaryRole(hero);
+        const subRoles = getHeroSubRoles(hero);
+        return `
+            <tr>
+                <td>${heroAvatar(hero)}</td>
+                <td>
+                    <div class="hero-name">${escapeHtml(hero.name || '-')}</div>
+                    <div class="hero-id">ID #${escapeHtml(hero.id)}</div>
+                </td>
+                <td><span class="slug">${escapeHtml(hero.slug || '-')}</span></td>
+                <td>${chipList(getHeroClasses(hero))}</td>
+                <td>${roleChip(primaryRole, 'primary-role-chip')}</td>
+                <td>${chipList(subRoles.map(roleLabel), 'sub-role-chip')}</td>
+                <td>${chipList(getHeroAttributes(hero))}</td>
+                <td>
+                    <div class="row-actions">
+                        <button type="button" class="btn btn-light btn-small" data-action="edit-hero" data-hero-id="${Number(hero.id)}">Sửa</button>
+                    </div>
+                </td>
+            </tr>`;
     }).join('');
 }
 
-function applyHeroFilters() {
-    var state = getHeroFilterState();
-    updateHeroFilterStyles(state);
-    renderAdminHeroes(adminHeroes.filter(function (hero) {
-        return heroMatchesFilters(hero, state);
-    }), hasActiveHeroFilters(state));
+function showLoadingRows(tbodyId, colspan, message) {
+    const tbody = byId(tbodyId);
+    if (tbody) tbody.innerHTML = `<tr><td colspan="${colspan}" class="table-state">${escapeHtml(message)}</td></tr>`;
 }
 
-function resetHeroFilters() {
-    var searchInput = document.getElementById('hero-search');
-    var classFilter = document.getElementById('hero-class-filter');
-    var roleFilter = document.getElementById('hero-role-filter');
-    if (searchInput) searchInput.value = '';
-    if (classFilter) classFilter.value = '';
-    if (roleFilter) roleFilter.value = '';
-    applyHeroFilters();
-}
-
-async function loadAdminHeroes() {
-    var tbody = document.getElementById('heroes-tbody');
-    if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-16 text-slate-400"><div class="spinner mx-auto mb-3"></div><p class="text-sm">Đang tải danh sách tướng...</p></td></tr>';
+async function loadHeroes() {
+    showLoadingRows('heroes-tbody', 8, 'Đang tải danh sách tướng...');
+    updateError('heroes-error', '');
     try {
-        var response = await fetch('/api/admin/wiki/heroes');
-        if (!response.ok) throw new Error(await readAdminApiError(response));
-        adminHeroes = await response.json();
-        if (!Array.isArray(adminHeroes)) adminHeroes = [];
-        applyHeroFilters();
+        const heroes = await apiFetch('/api/admin/wiki/heroes', { headers: { Accept: 'application/json' }, cache: 'no-store' });
+        state.heroes = Array.isArray(heroes) ? heroes : [];
+        mergeRolesFromHeroes();
+        renderRoleFilter();
+        renderHeroesTable();
     } catch (error) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-16 text-accent-red/70 text-sm">⚠ ' + escapeAdminHtml(error.message) + '</td></tr>';
+        updateError('heroes-error', `Không tải được danh sách tướng.\n${error.message}`);
+        showLoadingRows('heroes-tbody', 8, 'Không tải được danh sách tướng. Xem chi tiết lỗi phía trên và console.');
+        updateHeroHeader(0);
     }
 }
 
-function optionHtml(value, label, selected) {
-    return '<option value="' + escapeAdminHtml(value) + '"' + (selected ? ' selected' : '') + '>' + escapeAdminHtml(label) + '</option>';
+async function loadAttributes() {
+    state.attributeLoadError = '';
+    try {
+        const attributes = await apiFetch('/api/admin/wiki/attributes', { headers: { Accept: 'application/json' }, cache: 'no-store' });
+        state.attributes = Array.isArray(attributes) ? attributes : [];
+    } catch (error) {
+        state.attributes = [];
+        state.attributeLoadError = error.message;
+        console.error('[AdminHeroes loadAttributes failed]', error);
+    }
 }
 
-function checkboxHtml(name, value, label, checked) {
-    var id = name + '-' + encodeURIComponent(String(value)).replace(/%/g, '-');
-    return '<label for="' + escapeAdminHtml(id) + '" class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 cursor-pointer hover:border-blue-200 hover:bg-blue-50/50 transition-colors">' +
-        '<input type="checkbox" id="' + escapeAdminHtml(id) + '" name="' + escapeAdminHtml(name) + '" value="' + escapeAdminHtml(value) + '"' + (checked ? ' checked' : '') + ' class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">' +
-        '<span>' + escapeAdminHtml(label) + '</span>' +
-        '</label>';
+function loadClasses() {
+    state.classes = DEFAULT_CLASS_OPTIONS.slice();
+    renderClassFilter();
+}
+
+async function loadInitialData() {
+    loadClasses();
+    renderRoleFilter();
+    await Promise.allSettled([loadHeroes(), loadAttributes()]);
+}
+
+function checkbox(name, value, label, checked, disabled) {
+    const id = `${name}-${String(value).replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+    return `
+        <label class="checkbox-label ${disabled ? 'disabled' : ''}" for="${escapeHtml(id)}">
+            <input id="${escapeHtml(id)}" type="checkbox" name="${escapeHtml(name)}" value="${escapeHtml(value)}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
+            <span>${escapeHtml(label)}</span>
+        </label>`;
 }
 
 function checkedValues(name) {
-    return Array.from(document.querySelectorAll('input[name="' + name + '"]:checked')).map(function (input) {
-        return input.value;
+    return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(input => input.value);
+}
+
+function renderPrimaryRoleSelect(hero) {
+    const select = byId('hero-primary-role');
+    if (!select) return;
+    const primaryRole = getHeroPrimaryRole(hero);
+    const selectedId = primaryRole && primaryRole.id != null ? String(primaryRole.id) : '';
+    select.innerHTML = '<option value="">Chọn Primary Role</option>' + state.roles
+        .filter(role => role.id != null)
+        .map(role => `<option value="${escapeHtml(role.id)}" ${String(role.id) === selectedId ? 'selected' : ''}>${escapeHtml(roleLabel(role))}</option>`)
+        .join('');
+}
+
+function renderSubRoleCheckboxes(hero) {
+    const container = byId('hero-sub-role-options');
+    if (!container) return;
+    const selected = new Set(getHeroSubRoles(hero).map(role => role.id == null ? '' : String(role.id)).filter(Boolean));
+    container.innerHTML = state.roles
+        .filter(role => role.id != null)
+        .map(role => checkbox('hero-sub-role', role.id, roleLabel(role), selected.has(String(role.id)), false))
+        .join('');
+    syncPrimaryAndSubRoles();
+}
+
+function syncPrimaryAndSubRoles() {
+    const primaryRoleId = byId('hero-primary-role') ? byId('hero-primary-role').value : '';
+    document.querySelectorAll('input[name="hero-sub-role"]').forEach(input => {
+        const isPrimary = primaryRoleId && input.value === primaryRoleId;
+        if (isPrimary) input.checked = false;
+        input.disabled = !!isPrimary;
+        const label = input.closest('.checkbox-label');
+        if (label) label.classList.toggle('disabled', !!isPrimary);
     });
 }
 
 function renderHeroRoleSuggestion(detail) {
-    var suggestion = document.getElementById('hero-role-suggestion');
-    if (!suggestion) return;
-    var roles = Array.isArray(detail && detail.suggestedRoles) ? detail.suggestedRoles : [];
-    if (!roles.length) {
-        suggestion.textContent = '';
-        suggestion.classList.add('hidden');
+    const target = byId('hero-role-suggestion');
+    if (!target) return;
+    const suggestions = Array.isArray(detail && detail.suggestedRoles) ? detail.suggestedRoles : [];
+    if (!suggestions.length) {
+        target.textContent = '';
+        target.classList.add('hidden');
         return;
     }
-    suggestion.textContent = 'Gợi ý vị trí: ' + roles.join(', ');
-    suggestion.classList.remove('hidden');
+    target.textContent = `Gợi ý vị trí: ${suggestions.join(', ')}`;
+    target.classList.remove('hidden');
+}
+
+function renderHeroClassCheckboxes(hero) {
+    const selected = new Set(getHeroClasses(hero));
+    const container = byId('hero-class-options');
+    if (!container) return;
+    container.innerHTML = state.classes
+        .map(name => checkbox('hero-class', name, name, selected.has(name), false))
+        .join('');
+}
+
+function renderHeroAttributeCheckboxes(hero) {
+    const selected = new Set(getHeroAttributes(hero));
+    const container = byId('hero-attribute-options');
+    if (!container) return;
+    if (state.attributeLoadError) {
+        container.innerHTML = `<div class="inline-error">Không tải được danh sách đặc điểm. ${escapeHtml(state.attributeLoadError)}</div>`;
+        return;
+    }
+    if (!state.attributes.length) {
+        container.innerHTML = '<div class="empty-muted">Chưa có đặc điểm nào.</div>';
+        return;
+    }
+    container.innerHTML = state.attributes
+        .map(attribute => checkbox('hero-attribute', attribute.name, attribute.name, selected.has(attribute.name), false))
+        .join('');
+}
+
+function renderDifficultySelect(detail, hero) {
+    const select = byId('hf-difficulty');
+    if (!select) return;
+    const options = Array.isArray(detail && detail.difficulties) ? detail.difficulties : [];
+    select.innerHTML = '<option value="">-</option>' + options
+        .map(value => `<option value="${escapeHtml(value)}" ${value === hero.difficulty ? 'selected' : ''}>${escapeHtml(value)}</option>`)
+        .join('');
+}
+
+function fillHeroForm(detail) {
+    const hero = detail.hero || {};
+    state.editingHero = hero;
+    if (Array.isArray(detail.availableRoles) && detail.availableRoles.length) {
+        state.roles = detail.availableRoles.map(normalizeRole).filter(role => role && role.id != null);
+        renderRoleFilter();
+    }
+    if (Array.isArray(detail.availableClasses) && detail.availableClasses.length) {
+        state.classes = detail.availableClasses.slice();
+        renderClassFilter();
+    }
+    if (Array.isArray(detail.availableAttributes)) {
+        state.attributes = detail.availableAttributes.slice();
+        state.attributeLoadError = '';
+    }
+
+    byId('hf-id').value = hero.id || '';
+    byId('hf-name').value = hero.name || '';
+    byId('hf-slug').value = hero.slug || '';
+    byId('hf-avatar').value = hero.avatarUrl || '';
+    byId('hf-portrait').value = hero.portraitUrl || '';
+    byId('hf-banner').value = hero.bannerUrl || '';
+    byId('hf-description').value = hero.description || '';
+    byId('hero-modal-subtitle').textContent = hero.name ? `${hero.name} #${hero.id}` : '';
+
+    renderDifficultySelect(detail, hero);
+    renderHeroClassCheckboxes(hero);
+    renderPrimaryRoleSelect(hero);
+    renderSubRoleCheckboxes(hero);
+    renderHeroAttributeCheckboxes(hero);
+    renderHeroRoleSuggestion(detail);
 }
 
 async function openHeroModal(heroId) {
+    updateError('heroes-error', '');
     try {
-        var response = await fetch('/api/admin/wiki/heroes/' + heroId);
-        if (!response.ok) throw new Error(await readAdminApiError(response));
-        currentHeroDetail = await response.json();
-        var hero = currentHeroDetail.hero || {};
-
-        document.getElementById('hf-id').value = hero.id || '';
-        document.getElementById('hf-name').value = hero.name || '';
-        document.getElementById('hf-slug').value = hero.slug || '';
-        document.getElementById('hf-description').value = hero.description || '';
-        document.getElementById('hf-avatar').value = hero.avatarUrl || '';
-        document.getElementById('hf-portrait').value = hero.portraitUrl || '';
-        document.getElementById('hf-banner').value = hero.bannerUrl || '';
-        document.getElementById('hero-modal-title').textContent = 'Chỉnh sửa tướng';
-        document.getElementById('hero-modal-subtitle').textContent = hero.name ? (hero.name + ' #' + hero.id) : '';
-
-        var difficultySelect = document.getElementById('hf-difficulty');
-        var difficultyOptions = currentHeroDetail.difficulties || [];
-        difficultySelect.innerHTML = optionHtml('', '-', !hero.difficulty) + difficultyOptions.map(function (value) {
-            return optionHtml(value, value, value === hero.difficulty);
-        }).join('');
-
-        var selectedClasses = new Set(heroClassesOf(hero));
-        document.getElementById('hero-class-options').innerHTML = (currentHeroDetail.availableClasses || []).map(function (heroClass) {
-            return checkboxHtml('hero-class', heroClass, heroClass, selectedClasses.has(heroClass));
-        }).join('');
-
-        var selectedRoles = new Set(Array.isArray(hero.roles) ? hero.roles : []);
-        document.getElementById('hero-role-options').innerHTML = (currentHeroDetail.availableRoles || []).map(function (role) {
-            return checkboxHtml('hero-role', role.code, role.code + (role.name ? ' - ' + role.name : ''), selectedRoles.has(role.code));
-        }).join('');
-
-        var selectedAttributes = new Set(heroAttributesOf(hero));
-        document.getElementById('hero-attribute-options').innerHTML = (currentHeroDetail.availableAttributes || []).map(function (attribute) {
-            return checkboxHtml('hero-attribute', attribute.name, attribute.name, selectedAttributes.has(attribute.name));
-        }).join('');
-
-        renderHeroRoleSuggestion(currentHeroDetail);
-        document.getElementById('hero-modal').style.display = 'flex';
+        const detail = await apiFetch(`/api/admin/wiki/heroes/${Number(heroId)}`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+        fillHeroForm(detail || {});
+        byId('hero-modal').classList.remove('hidden');
+        byId('hero-modal').setAttribute('aria-hidden', 'false');
     } catch (error) {
+        updateError('heroes-error', `Không mở được form tướng.\n${error.message}`);
         showToast(error.message, 'err');
     }
 }
 
 function closeHeroModal() {
-    document.getElementById('hero-modal').style.display = 'none';
-    currentHeroDetail = null;
+    state.editingHero = null;
+    const modal = byId('hero-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.setAttribute('aria-hidden', 'true');
+    }
 }
 
-async function putJson(url, body) {
-    var response = await fetch(url, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-    });
-    if (!response.ok) throw new Error(await readAdminApiError(response));
-    return response.json();
-}
-
-async function saveHeroChanges(event) {
+async function saveHero(event) {
     event.preventDefault();
-    var id = document.getElementById('hf-id').value;
-    if (!id) return;
+    const heroId = byId('hf-id').value;
+    const primaryRoleId = byId('hero-primary-role').value;
+    if (!heroId) return;
+    if (!primaryRoleId) {
+        showToast('Primary role is required', 'err');
+        return;
+    }
 
-    var body = {
-        name: document.getElementById('hf-name').value.trim(),
-        slug: document.getElementById('hf-slug').value.trim(),
+    const basicBody = {
+        name: byId('hf-name').value.trim(),
+        slug: byId('hf-slug').value.trim(),
         classes: checkedValues('hero-class'),
-        description: document.getElementById('hf-description').value.trim(),
-        avatarUrl: document.getElementById('hf-avatar').value.trim(),
-        portraitUrl: document.getElementById('hf-portrait').value.trim(),
-        bannerUrl: document.getElementById('hf-banner').value.trim(),
-        difficulty: document.getElementById('hf-difficulty').value
+        description: byId('hf-description').value.trim(),
+        avatarUrl: byId('hf-avatar').value.trim(),
+        portraitUrl: byId('hf-portrait').value.trim(),
+        bannerUrl: byId('hf-banner').value.trim(),
+        difficulty: byId('hf-difficulty').value
     };
 
-    setBtnLoading('btn-hero-submit', true);
+    const roleBody = {
+        primaryRoleId: Number(primaryRoleId),
+        subRoleIds: checkedValues('hero-sub-role').map(Number)
+    };
+
+    setButtonLoading('btn-hero-submit', true);
     try {
-        await putJson('/api/admin/wiki/heroes/' + id, body);
-        await putJson('/api/admin/wiki/heroes/' + id + '/roles', { roles: checkedValues('hero-role') });
-        await putJson('/api/admin/wiki/heroes/' + id + '/attributes', { attributes: checkedValues('hero-attribute') });
+        await putJson(`/api/admin/wiki/heroes/${Number(heroId)}`, basicBody);
+        await putJson(`/api/admin/wiki/heroes/${Number(heroId)}/roles`, roleBody);
+        await putJson(`/api/admin/wiki/heroes/${Number(heroId)}/attributes`, {
+            attributes: checkedValues('hero-attribute')
+        });
         showToast('Đã lưu thông tin tướng.', 'ok');
         closeHeroModal();
-        await loadAdminHeroes();
+        await loadHeroes();
     } catch (error) {
+        console.error('[AdminHeroes saveHero failed]', error);
         showToast(error.message, 'err');
     } finally {
-        setBtnLoading('btn-hero-submit', false);
+        setButtonLoading('btn-hero-submit', false);
     }
 }
 
-function renderAdminAttributes(attributes) {
-    var tbody = document.getElementById('attributes-tbody');
-    if (!tbody) return;
+function bindEvents() {
+    byId('btn-refresh-heroes')?.addEventListener('click', async () => {
+        await Promise.allSettled([loadHeroes(), loadAttributes()]);
+    });
 
-    if (!Array.isArray(attributes) || attributes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-sm text-slate-400">Chưa có đặc điểm nào.</td></tr>';
-        return;
-    }
+    byId('hero-search')?.addEventListener('input', event => {
+        state.filters.search = event.target.value;
+        renderHeroesTable();
+    });
+    byId('hero-class-filter')?.addEventListener('change', event => {
+        state.filters.className = event.target.value;
+        renderHeroesTable();
+    });
+    byId('hero-role-filter')?.addEventListener('change', event => {
+        state.filters.primaryRole = event.target.value;
+        renderHeroesTable();
+    });
+    byId('btn-hero-reset')?.addEventListener('click', () => {
+        state.filters.search = '';
+        state.filters.className = '';
+        state.filters.primaryRole = '';
+        byId('hero-search').value = '';
+        renderFilters();
+        renderHeroesTable();
+    });
 
-    tbody.innerHTML = attributes.map(function (attribute) {
-        var icon = attribute.iconUrl
-            ? '<img src="' + escapeAdminHtml(normalizeAssetUrl(attribute.iconUrl)) + '" alt="' + escapeAdminHtml(attribute.name) + '" class="w-8 h-8 rounded-lg object-cover border border-slate-200 bg-slate-50" onerror="this.style.display=\'none\'">'
-            : '<span class="text-xs text-slate-400">-</span>';
+    byId('heroes-tbody')?.addEventListener('click', event => {
+        const button = event.target.closest('[data-action="edit-hero"]');
+        if (button) openHeroModal(button.dataset.heroId);
+    });
 
-        return '<tr class="border-b border-slate-200">' +
-            '<td class="px-4 py-3 text-sm font-semibold text-slate-900">' + escapeAdminHtml(attribute.name) + '</td>' +
-            '<td class="px-4 py-3 text-sm text-slate-500">' + escapeAdminHtml(attribute.description || '-') + '</td>' +
-            '<td class="px-4 py-3 text-center">' + icon + '</td>' +
-            '<td class="px-4 py-3 text-center text-sm text-slate-500">' + escapeAdminHtml(attribute.usageCount) + '</td>' +
-            '<td class="px-4 py-3 text-center">' +
-            '<div class="inline-flex gap-2">' +
-            '<button type="button" onclick="openAttributeModal(' + Number(attribute.id) + ')" class="btn-press bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 font-semibold text-xs px-3 py-2 rounded-lg transition-all">Sửa</button>' +
-            '<button type="button" onclick="deleteAttribute(' + Number(attribute.id) + ')" class="btn-press bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-100 font-semibold text-xs px-3 py-2 rounded-lg transition-all">Xóa</button>' +
-            '</div>' +
-            '</td>' +
-            '</tr>';
-    }).join('');
-}
+    byId('btn-close-hero-modal')?.addEventListener('click', closeHeroModal);
+    byId('btn-cancel-hero')?.addEventListener('click', closeHeroModal);
+    byId('hero-form')?.addEventListener('submit', saveHero);
+    byId('hero-primary-role')?.addEventListener('change', syncPrimaryAndSubRoles);
 
-async function loadAdminAttributes() {
-    var tbody = document.getElementById('attributes-tbody');
-    if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-sm text-slate-400"><div class="spinner mx-auto mb-3"></div>Đang tải đặc điểm...</td></tr>';
-    }
-    try {
-        var response = await fetch('/api/admin/wiki/attributes');
-        if (!response.ok) throw new Error(await readAdminApiError(response));
-        adminAttributes = await response.json();
-        if (!Array.isArray(adminAttributes)) adminAttributes = [];
-        renderAdminAttributes(adminAttributes);
-    } catch (error) {
-        if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-sm text-rose-600">' + escapeAdminHtml(error.message) + '</td></tr>';
-        }
-    }
-}
-
-function openAttributeModal(attributeId) {
-    editingAttributeId = attributeId || null;
-    var attribute = adminAttributes.find(function (item) { return Number(item.id) === Number(attributeId); }) || {};
-    document.getElementById('attribute-modal-title').textContent = editingAttributeId ? 'Sửa đặc điểm' : 'Thêm đặc điểm';
-    document.getElementById('af-name').value = attribute.name || '';
-    document.getElementById('af-description').value = attribute.description || '';
-    document.getElementById('af-icon-url').value = attribute.iconUrl || '';
-    document.getElementById('af-sort-order').value = attribute.sortOrder == null ? '' : attribute.sortOrder;
-    document.getElementById('attribute-modal').style.display = 'flex';
-}
-
-function closeAttributeModal() {
-    editingAttributeId = null;
-    document.getElementById('attribute-modal').style.display = 'none';
-}
-
-async function saveAttribute(event) {
-    event.preventDefault();
-    var body = {
-        name: document.getElementById('af-name').value.trim(),
-        description: document.getElementById('af-description').value.trim(),
-        iconUrl: document.getElementById('af-icon-url').value.trim(),
-        sortOrder: document.getElementById('af-sort-order').value === '' ? null : Number(document.getElementById('af-sort-order').value)
-    };
-
-    setBtnLoading('btn-attribute-submit', true);
-    try {
-        var response = await fetch(editingAttributeId ? '/api/admin/wiki/attributes/' + editingAttributeId : '/api/admin/wiki/attributes', {
-            method: editingAttributeId ? 'PUT' : 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
+    document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+        backdrop.addEventListener('click', event => {
+            if (event.target === backdrop && backdrop.id === 'hero-modal') closeHeroModal();
         });
-        if (!response.ok) throw new Error(await readAdminApiError(response));
-        closeAttributeModal();
-        await loadAdminAttributes();
-        if (currentHeroDetail && currentHeroDetail.hero && currentHeroDetail.hero.id) {
-            await openHeroModal(currentHeroDetail.hero.id);
-        }
-        showToast('Đã lưu đặc điểm.', 'ok');
-    } catch (error) {
-        showToast(error.message, 'err');
-    } finally {
-        setBtnLoading('btn-attribute-submit', false);
-    }
+    });
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeHeroModal();
+    });
+
+    document.addEventListener('authExpired', () => {
+        window.location.replace('/html/index.html');
+    });
 }
 
-async function deleteAttribute(id) {
-    var attribute = adminAttributes.find(function (item) { return Number(item.id) === Number(id); }) || {};
-    var name = attribute.name || ('#' + id);
-    if (!window.confirm('Xóa đặc điểm "' + name + '"?')) {
+function initAdminHeroesPage() {
+    if (!document.querySelector('[data-page="admin-heroes"]')) return;
+    if (typeof requireRoleAccess === 'function' && !requireRoleAccess('Admin', '/html/index.html')) {
         return;
     }
-    try {
-        var response = await fetch('/api/admin/wiki/attributes/' + id, { method: 'DELETE' });
-        if (!response.ok) throw new Error(await readAdminApiError(response));
-        await loadAdminAttributes();
-        if (currentHeroDetail && currentHeroDetail.hero && currentHeroDetail.hero.id) {
-            await openHeroModal(currentHeroDetail.hero.id);
-        }
-        showToast('Đã xóa đặc điểm.', 'ok');
-    } catch (error) {
-        showToast(error.message, 'err');
-    }
+    bindEvents();
+    renderFilters();
+    updateClock();
+    window.setInterval(updateClock, 1000);
+    loadInitialData();
 }
 
-loadAdminHeroes();
-loadAdminAttributes();
+window.AdminHeroesPage = {
+    state,
+    loadHeroes,
+    loadAttributes,
+    openHeroModal
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAdminHeroesPage);
+} else {
+    initAdminHeroesPage();
+}

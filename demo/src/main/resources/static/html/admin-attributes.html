@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đặc điểm tướng - AoV Tactics & Guides</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/admin-heroes.css">
+</head>
+<body data-page="admin-attributes">
+<div id="toast" class="toast-box"></div>
+
+<aside class="admin-sidebar">
+    <div class="sidebar-brand">
+        <a href="/html/index.html" class="back-link">← Về trang chủ</a>
+        <div class="brand-row">
+            <div class="brand-mark">ATG</div>
+            <div>
+                <div class="brand-name">AoV Tactics</div>
+                <div class="brand-subtitle">Admin Panel</div>
+            </div>
+        </div>
+    </div>
+
+    <nav class="sidebar-nav">
+        <a class="nav-item" href="/html/admin.html">Tổng quan</a>
+        <a class="nav-item" href="/html/admin-heroes.html">Quản lý Tướng</a>
+        <a class="nav-item active" href="/html/admin-attributes.html">Đặc điểm tướng</a>
+        <a class="nav-item" href="/html/admin.html#guides">Cẩm nang</a>
+        <a class="nav-item" href="/html/admin.html#users">Người dùng</a>
+        <a class="nav-item" href="/html/admin.html#teams">Quản lý Đội</a>
+        <a class="nav-item" href="/html/admin.html#esports">Giải đấu AER 2026</a>
+    </nav>
+</aside>
+
+<main class="admin-shell">
+    <header class="topbar">
+        <h1>Đặc điểm tướng</h1>
+        <span id="header-clock" class="clock"></span>
+    </header>
+
+    <section class="admin-page">
+        <div class="admin-page-header">
+            <div>
+                <p class="eyebrow">Wiki Attribute Admin</p>
+                <h2>Đặc điểm tướng</h2>
+                <p>Quản lý danh mục đặc điểm dùng trong Wiki tướng.</p>
+            </div>
+            <div class="header-actions">
+                <button id="btn-refresh-attributes" type="button" class="btn btn-light">Làm mới</button>
+                <button id="btn-add-attribute" type="button" class="btn btn-dark">Thêm đặc điểm</button>
+            </div>
+        </div>
+
+        <section class="admin-section">
+            <div class="section-header">
+                <div>
+                    <h3>Danh sách đặc điểm</h3>
+                    <p>Trang này là nơi duy nhất quản lý CRUD đặc điểm tướng.</p>
+                </div>
+                <span id="attribute-count-pill" class="count-pill">0 đặc điểm</span>
+            </div>
+
+            <div class="filter-grid single">
+                <label class="field">
+                    <span>Tìm kiếm</span>
+                    <input id="attribute-search" type="search" placeholder="Tên hoặc mô tả đặc điểm">
+                </label>
+                <button id="btn-attribute-reset" type="button" class="btn btn-light">Xóa lọc</button>
+            </div>
+
+            <div id="attributes-error" class="error-state hidden"></div>
+
+            <div class="admin-table-card">
+                <table class="admin-table attribute-table">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Tên đặc điểm</th>
+                        <th>Mô tả</th>
+                        <th>Icon</th>
+                        <th>Số tướng đang dùng</th>
+                        <th>Hành động</th>
+                    </tr>
+                    </thead>
+                    <tbody id="attributes-tbody">
+                    <tr><td colspan="6" class="table-state">Đang tải đặc điểm...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </section>
+</main>
+
+<div id="attribute-modal" class="modal-backdrop hidden" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="attribute-modal-title">
+        <div class="modal-header">
+            <div>
+                <h3 id="attribute-modal-title">Thêm đặc điểm</h3>
+                <p>Tạo hoặc cập nhật đặc điểm dùng chung trong Wiki Hero.</p>
+            </div>
+            <button id="btn-close-attribute-modal" type="button" class="modal-close" aria-label="Đóng">×</button>
+        </div>
+        <form id="attribute-form" class="modal-body">
+            <div class="form-grid two">
+                <label class="field">
+                    <span>Tên đặc điểm *</span>
+                    <input type="text" id="af-name" required>
+                </label>
+                <label class="field">
+                    <span>Thứ tự</span>
+                    <input type="number" id="af-sort-order" min="0" step="1">
+                </label>
+            </div>
+            <label class="field">
+                <span>Mô tả</span>
+                <textarea id="af-description" rows="3"></textarea>
+            </label>
+            <label class="field">
+                <span>Icon URL</span>
+                <input type="text" id="af-icon-url" placeholder="/images/ui/icon.png">
+            </label>
+            <div class="modal-actions">
+                <button id="btn-cancel-attribute" type="button" class="btn btn-light">Hủy</button>
+                <button id="btn-attribute-submit" type="submit" class="btn btn-primary">Lưu đặc điểm</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="/js/auth.js?v=20260424-account-profile"></script>
+<script src="/js/admin-attributes.js"></script>
+</body>
+</html>

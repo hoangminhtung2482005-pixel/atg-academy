@@ -295,13 +295,32 @@ ON DUPLICATE KEY UPDATE
     avatar_url = VALUES(avatar_url),
     hero_class = VALUES(hero_class);
 
--- Add conservative default role mappings.
--- This is intentionally additive: no existing role mapping is deleted/replaced.
+-- Set primary lane role from the seed lane_code. hero_role_mapping is sub roles only.
+UPDATE heroes h
+JOIN tmp_seed_heroes_full_from_user_list seed ON h.slug = seed.slug
+JOIN hero_roles r ON r.code = seed.lane_code
+SET h.primary_role_id = r.id
+WHERE h.primary_role_id IS NULL;
+
+UPDATE heroes h
+JOIN hero_roles r ON r.code = 'JGL'
+SET h.primary_role_id = r.id
+WHERE h.slug = 'billow';
+
+DELETE hrm
+FROM hero_role_mapping hrm
+JOIN heroes h ON h.id = hrm.hero_id
+WHERE h.primary_role_id IS NOT NULL
+  AND hrm.role_id = h.primary_role_id;
+
 INSERT IGNORE INTO hero_role_mapping (hero_id, role_id)
 SELECT h.id, r.id
 FROM tmp_seed_heroes_full_from_user_list seed
 JOIN heroes h ON h.slug = seed.slug
-JOIN hero_roles r ON r.code = seed.lane_code;
+JOIN hero_roles r ON r.code = 'DSL'
+WHERE seed.slug = 'billow'
+  AND h.primary_role_id IS NOT NULL
+  AND h.primary_role_id <> r.id;
 
 -- Extra verification for this seed source.
 SELECT 'seed_source_rows' AS check_name, COUNT(*) AS actual, 128 AS expected
@@ -319,11 +338,23 @@ SELECT 'seed_rows_using_placeholder_avatar' AS check_name, COUNT(*) AS actual, 0
 FROM tmp_seed_heroes_full_from_user_list
 WHERE avatar_url = '/images/heroes/default.png';
 
-SELECT 'seed_rows_with_default_lane_mapping' AS check_name, COUNT(DISTINCT seed.slug) AS actual, 128 AS expected
+SELECT 'seed_rows_with_primary_lane_role' AS check_name, COUNT(DISTINCT seed.slug) AS actual, 128 AS expected
 FROM tmp_seed_heroes_full_from_user_list seed
 JOIN heroes h ON h.slug = seed.slug
-JOIN hero_role_mapping hrm ON hrm.hero_id = h.id
-JOIN hero_roles r ON r.id = hrm.role_id AND r.code = seed.lane_code;
+JOIN hero_roles r ON r.id = h.primary_role_id AND r.code = seed.lane_code;
+
+SELECT 'sub_roles_matching_primary_role' AS check_name, COUNT(*) AS actual, 0 AS expected
+FROM hero_role_mapping hrm
+JOIN heroes h ON h.id = hrm.hero_id
+WHERE h.primary_role_id = hrm.role_id;
+
+SELECT h.slug, h.name, primary_role.code AS primary_role_code, GROUP_CONCAT(sub_role.code ORDER BY sub_role.code) AS sub_role_codes
+FROM heroes h
+LEFT JOIN hero_roles primary_role ON primary_role.id = h.primary_role_id
+LEFT JOIN hero_role_mapping hrm ON hrm.hero_id = h.id
+LEFT JOIN hero_roles sub_role ON sub_role.id = hrm.role_id
+WHERE h.slug = 'billow'
+GROUP BY h.id, h.slug, h.name, primary_role.code;
 
 SELECT h.id, h.slug, h.name
 FROM heroes h

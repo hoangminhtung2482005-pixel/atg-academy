@@ -334,13 +334,12 @@
                 <div class="hero-pool-sticky-header">
                     <input type="text" id="searchInput" placeholder="🔍 Tìm kiếm tướng..." oninput="filterHeroes()">
                     <div class="role-filters" id="role-filters">
-                        <button class="role-btn active" onclick="setRoleFilter('Tất cả')">Tất cả</button>
-                        <button class="role-btn" onclick="setRoleFilter('Sát thủ')">Sát thủ</button>
-                        <button class="role-btn" onclick="setRoleFilter('Xạ thủ')">Xạ thủ</button>
-                        <button class="role-btn" onclick="setRoleFilter('Đấu sĩ')">Đấu sĩ</button>
-                        <button class="role-btn" onclick="setRoleFilter('Pháp sư')">Pháp sư</button>
-                        <button class="role-btn" onclick="setRoleFilter('Trợ thủ')">Trợ thủ</button>
-                        <button class="role-btn" onclick="setRoleFilter('Đỡ đòn')">Đỡ đòn</button>
+                        <button class="role-btn active" data-role-filter="Tất cả" onclick="setRoleFilter('Tất cả')">Tất cả</button>
+                        <button class="role-btn" data-role-filter="DSL" onclick="setRoleFilter('DSL')">DSL</button>
+                        <button class="role-btn" data-role-filter="JGL" onclick="setRoleFilter('JGL')">JGL</button>
+                        <button class="role-btn" data-role-filter="MID" onclick="setRoleFilter('MID')">MID</button>
+                        <button class="role-btn" data-role-filter="ADL" onclick="setRoleFilter('ADL')">ADL</button>
+                        <button class="role-btn" data-role-filter="SUP" onclick="setRoleFilter('SUP')">SUP</button>
                     </div>
                 </div>
                 <div class="hero-grid" id="hero-grid"></div>
@@ -405,6 +404,22 @@
         let heroByIdMap = {};
         let heroesLoaded = false;
 
+        function getApiHeroPrimaryRoleCode(hero) {
+            if (hero && hero.primaryRole && hero.primaryRole.code) return hero.primaryRole.code;
+            if (Array.isArray(hero && hero.roles) && hero.roles.length) return hero.roles[0];
+            return '';
+        }
+
+        function getApiHeroLaneRoleLabels(hero) {
+            const labels = [];
+            if (hero && hero.primaryRole) labels.push(hero.primaryRole.name || hero.primaryRole.code);
+            if (Array.isArray(hero && hero.subRoles)) {
+                hero.subRoles.forEach(role => labels.push(role.name || role.code));
+            }
+            if (!labels.length && Array.isArray(hero && hero.laneRoles)) return hero.laneRoles;
+            return labels.filter(Boolean);
+        }
+
         async function loadHeroesFromApi() {
             try {
                 const response = await fetch('/api/wiki/heroes', { headers: { 'Accept': 'application/json' } });
@@ -414,8 +429,8 @@
                 heroes = data.map(h => ({
                     id: h.id,
                     name: h.name,
-                    role: h.heroClass || '',
-                    laneRoles: Array.isArray(h.laneRoles) ? h.laneRoles : (Array.isArray(h.roles) ? h.roles : []),
+                    role: getApiHeroPrimaryRoleCode(h),
+                    laneRoles: getApiHeroLaneRoleLabels(h),
                     attributes: Array.isArray(h.attributes) ? h.attributes : [],
                     avatarUrl: h.avatarUrl || ''
                 }));
@@ -1582,7 +1597,8 @@
             document.getElementById('searchInput').value = '';
             currentRoleFilter = 'Tất cả';
             document.querySelectorAll('.role-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.textContent.trim() === currentRoleFilter);
+                const value = btn.getAttribute('data-role-filter') || btn.textContent.trim();
+                btn.classList.toggle('active', value === currentRoleFilter);
             });
         }
 
@@ -2613,7 +2629,8 @@
         function setRoleFilter(role) {
             currentRoleFilter = role;
             document.querySelectorAll('.role-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.textContent.trim() === role);
+                const value = btn.getAttribute('data-role-filter') || btn.textContent.trim();
+                btn.classList.toggle('active', value === role);
             });
             filterHeroes();
         }

@@ -1,5 +1,7 @@
 package com.example.demo.dto.admin;
 
+import com.example.demo.dto.wiki.HeroRoleDto;
+import com.example.demo.dto.wiki.HeroSummaryDto;
 import com.example.demo.entity.Hero;
 import com.example.demo.entity.HeroAttribute;
 import com.example.demo.entity.HeroClass;
@@ -20,22 +22,25 @@ public record AdminHeroResponse(
         List<String> classes,
         String difficulty,
         String description,
-        List<String> roles,
+        HeroRoleDto primaryRole,
+        List<HeroRoleDto> subRoles,
+        List<HeroRoleDto> roles,
+        List<String> roleCodes,
         List<String> roleNames,
         List<String> attributes
 ) {
     public static AdminHeroResponse from(Hero hero) {
-        List<HeroRole> roles = hero.getRoles() == null
-                ? List.of()
-                : hero.getRoles().stream()
-                    .sorted((left, right) -> left.getCode().compareToIgnoreCase(right.getCode()))
-                    .toList();
+        List<HeroRole> laneRoles = HeroSummaryDto.orderedLaneRoles(hero);
 
-        List<String> roleCodes = roles.stream()
+        List<HeroRoleDto> roleDtos = laneRoles.stream()
+                .map(HeroRoleDto::from)
+                .toList();
+
+        List<String> roleCodes = laneRoles.stream()
                 .map(HeroRole::getCode)
                 .toList();
 
-        List<String> roleNames = roles.stream()
+        List<String> roleNames = laneRoles.stream()
                 .map(HeroRole::getName)
                 .toList();
 
@@ -81,6 +86,9 @@ public record AdminHeroResponse(
                 classes,
                 hero.getDifficulty(),
                 hero.getDescription(),
+                HeroSummaryDto.primaryRole(hero),
+                HeroSummaryDto.subRoles(hero),
+                roleDtos,
                 roleCodes,
                 roleNames,
                 attributes

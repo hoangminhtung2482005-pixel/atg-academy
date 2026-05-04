@@ -220,14 +220,34 @@ ON DUPLICATE KEY UPDATE
     avatar_url = VALUES(avatar_url),
     hero_class = VALUES(hero_class);
 
--- Add conservative default lane mappings derived from hero_class.
--- Existing more precise mappings are preserved because INSERT IGNORE is additive.
+-- Set primary lane role from the seed lane_code. hero_role_mapping is sub roles only.
+UPDATE heroes h
+JOIN tmp_seed_heroes_v2 seed ON h.slug = seed.slug
+JOIN hero_roles r ON r.code = seed.lane_code
+SET h.primary_role_id = r.id
+WHERE h.primary_role_id IS NULL
+  AND seed.lane_code IS NOT NULL
+  AND seed.lane_code <> '';
+
+UPDATE heroes h
+JOIN hero_roles r ON r.code = 'JGL'
+SET h.primary_role_id = r.id
+WHERE h.slug = 'billow';
+
+DELETE hrm
+FROM hero_role_mapping hrm
+JOIN heroes h ON h.id = hrm.hero_id
+WHERE h.primary_role_id IS NOT NULL
+  AND hrm.role_id = h.primary_role_id;
+
 INSERT IGNORE INTO hero_role_mapping (hero_id, role_id)
 SELECT h.id, r.id
 FROM tmp_seed_heroes_v2 seed
 JOIN heroes h ON h.slug = seed.slug
-JOIN hero_roles r ON r.code = seed.lane_code
-WHERE seed.lane_code IS NOT NULL AND seed.lane_code <> '';
+JOIN hero_roles r ON r.code = 'DSL'
+WHERE seed.slug = 'billow'
+  AND h.primary_role_id IS NOT NULL
+  AND h.primary_role_id <> r.id;
 
 -- This source seed has no attribute data. Existing hero_attributes and
 -- hero_attribute_mapping rows are intentionally left unchanged.
@@ -253,9 +273,15 @@ SELECT id, name
 FROM heroes
 WHERE hero_class IS NULL OR hero_class = '';
 
-SELECT h.id, h.name, h.slug, h.hero_class, GROUP_CONCAT(r.code ORDER BY r.code) AS lane_codes
+SELECT h.id,
+       h.name,
+       h.slug,
+       h.hero_class,
+       primary_role.code AS primary_role_code,
+       GROUP_CONCAT(sub_role.code ORDER BY sub_role.code) AS sub_role_codes
 FROM heroes h
+LEFT JOIN hero_roles primary_role ON primary_role.id = h.primary_role_id
 LEFT JOIN hero_role_mapping hrm ON hrm.hero_id = h.id
-LEFT JOIN hero_roles r ON r.id = hrm.role_id
-GROUP BY h.id, h.name, h.slug, h.hero_class
+LEFT JOIN hero_roles sub_role ON sub_role.id = hrm.role_id
+GROUP BY h.id, h.name, h.slug, h.hero_class, primary_role.code
 ORDER BY h.name;

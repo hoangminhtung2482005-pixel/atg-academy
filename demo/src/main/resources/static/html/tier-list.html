@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tier List Meta - AoV Tactics & Guides</title>
-    <link rel="stylesheet" href="/css/style.css?v=20260426-tier-heroes-row">
+    <link rel="stylesheet" href="/css/style.css?v=20260504-temp-heroes">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -28,14 +28,31 @@
                 <button class="btn-save-official" onclick="saveOfficialTierList()">💾 Lưu Meta Chính</button>
             </div>
 
+            <div class="tier-import-panel" id="tier-import-panel" style="display:none;" data-require-role="Admin">
+                <div class="tier-import-head">
+                    <div>
+                        <h2>Import từ bảng dữ liệu</h2>
+                        <p>Dán dữ liệu 3 cột: Tướng, Role, Tier. Hỗ trợ tab, dấu phẩy hoặc nhiều khoảng trắng.</p>
+                    </div>
+                    <div class="tier-import-actions">
+                        <button type="button" class="add-grid-btn" id="tier-import-preview-btn" onclick="previewTierListImport()">Xem trước</button>
+                        <button type="button" class="btn-save-official" id="tier-import-apply-btn" onclick="applyTierListImport()" disabled>Áp dụng vào Tier List</button>
+                    </div>
+                </div>
+                <textarea id="tier-import-input" class="tier-import-input" rows="9" spellcheck="false" placeholder="Tướng	Role	Tier&#10;Billow	JGL	S&#10;Ryoma	DSL	A&#10;Marja	MID	S"></textarea>
+                <div class="tier-import-feedback" id="tier-import-feedback"></div>
+                <div class="tier-import-summary" id="tier-import-summary"></div>
+                <div class="tier-import-preview" id="tier-import-preview"></div>
+            </div>
+
             <div class="tier-grid-container">
                 <div class="tier-grid tier-board" id="tier-grid">
                     <div class="tier-cell header-cell empty"></div>
                     <div class="tier-cell header-cell"><img src="/images/ui/top.png" alt="DSL" class="role-icon-header" style="width:24px;height:24px;margin-right:8px;vertical-align:middle;"><span contenteditable="true" style="vertical-align:middle;">DSL</span><button class="delete-btn" onclick="deleteColumn(this)">×</button></div>
                     <div class="tier-cell header-cell"><img src="/images/ui/jungle.png" alt="JGL" class="role-icon-header" style="width:24px;height:24px;margin-right:8px;vertical-align:middle;"><span contenteditable="true" style="vertical-align:middle;">JGL</span><button class="delete-btn" onclick="deleteColumn(this)">×</button></div>
                     <div class="tier-cell header-cell"><img src="/images/ui/mid.png" alt="MID" class="role-icon-header" style="width:24px;height:24px;margin-right:8px;vertical-align:middle;"><span contenteditable="true" style="vertical-align:middle;">MID</span><button class="delete-btn" onclick="deleteColumn(this)">×</button></div>
-                    <div class="tier-cell header-cell"><img src="/images/ui/support.png" alt="SUP" class="role-icon-header" style="width:24px;height:24px;margin-right:8px;vertical-align:middle;"><span contenteditable="true" style="vertical-align:middle;">SUP</span><button class="delete-btn" onclick="deleteColumn(this)">×</button></div>
                     <div class="tier-cell header-cell"><img src="/images/ui/adc.png" alt="ADL" class="role-icon-header" style="width:24px;height:24px;margin-right:8px;vertical-align:middle;"><span contenteditable="true" style="vertical-align:middle;">ADL</span><button class="delete-btn" onclick="deleteColumn(this)">×</button></div>
+                    <div class="tier-cell header-cell"><img src="/images/ui/support.png" alt="SUP" class="role-icon-header" style="width:24px;height:24px;margin-right:8px;vertical-align:middle;"><span contenteditable="true" style="vertical-align:middle;">SUP</span><button class="delete-btn" onclick="deleteColumn(this)">×</button></div>
 
                     <div class="tier-cell tier-label s-tier" style="background-color:#e74c3c;"><input type="color" class="tier-color-picker" value="#e74c3c" title="Chọn màu tier S" oninput="updateTierColor(this)"><span contenteditable="true">S</span><button class="delete-btn" onclick="deleteRow(this)">×</button></div>
                     <div class="tier-cell tier-content tier-heroes"></div><div class="tier-cell tier-content tier-heroes"></div><div class="tier-cell tier-content tier-heroes"></div><div class="tier-cell tier-content tier-heroes"></div><div class="tier-cell tier-content tier-heroes"></div>
@@ -60,18 +77,43 @@
 
             <!-- Hero Pool (Admin only) -->
             <div class="hero-pool-container tier-pool" id="hero-pool-official" style="margin-top:24px; display:none;" data-require-role="Admin">
-                <h2>Danh Sách Tướng</h2>
-                <input type="text" id="searchInput" placeholder="Tìm kiếm tướng..." title="Tìm kiếm tướng trong tier list" oninput="filterHeroes()">
-                <div class="role-filters" id="role-filters">
-                    <button class="role-btn active" onclick="setRoleFilter('Tất cả')"><div class="role-icon"></div><span>Tất cả</span></button>
-                    <button class="role-btn" onclick="setRoleFilter('Sát thủ')"><div class="role-icon"></div><span>Sát thủ</span></button>
-                    <button class="role-btn" onclick="setRoleFilter('Xạ thủ')"><div class="role-icon"></div><span>Xạ thủ</span></button>
-                    <button class="role-btn" onclick="setRoleFilter('Đấu sĩ')"><div class="role-icon"></div><span>Đấu sĩ</span></button>
-                    <button class="role-btn" onclick="setRoleFilter('Pháp sư')"><div class="role-icon"></div><span>Pháp sư</span></button>
-                    <button class="role-btn" onclick="setRoleFilter('Trợ thủ')"><div class="role-icon"></div><span>Trợ thủ</span></button>
-                    <button class="role-btn" onclick="setRoleFilter('Đỡ đòn')"><div class="role-icon"></div><span>Đỡ đòn</span></button>
+                <div class="hero-pool-header">
+                    <div>
+                        <h2>Danh sách tướng</h2>
+                        <p>Kéo tướng vào tier hoặc chuột phải để tạo bản tạm cho lane khác.</p>
+                    </div>
+                </div>
+                <div class="hero-pool-toolbar">
+                    <label class="hero-search-wrap" for="searchInput">
+                        <span aria-hidden="true">⌕</span>
+                        <input type="text" id="searchInput" placeholder="Tìm kiếm tướng..." title="Tìm kiếm tướng trong tier list" oninput="filterHeroes()">
+                    </label>
+                    <label class="hero-class-filter" for="classFilter">
+                        <span>Class</span>
+                        <select id="classFilter" title="Lọc theo class tướng" onchange="setClassFilter(this.value)">
+                            <option value="Tất cả">Tất cả class</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="hero-filter-row">
+                    <div class="role-filters" id="role-filters">
+                        <button class="role-btn active" data-role-filter="Tất cả" onclick="setRoleFilter('Tất cả')"><div class="role-icon"></div><span>Tất cả</span></button>
+                        <button class="role-btn" data-role-filter="DSL" onclick="setRoleFilter('DSL')"><div class="role-icon"></div><span>DSL</span></button>
+                        <button class="role-btn" data-role-filter="JGL" onclick="setRoleFilter('JGL')"><div class="role-icon"></div><span>JGL</span></button>
+                        <button class="role-btn" data-role-filter="MID" onclick="setRoleFilter('MID')"><div class="role-icon"></div><span>MID</span></button>
+                        <button class="role-btn" data-role-filter="ADL" onclick="setRoleFilter('ADL')"><div class="role-icon"></div><span>ADL</span></button>
+                        <button class="role-btn" data-role-filter="SUP" onclick="setRoleFilter('SUP')"><div class="role-icon"></div><span>SUP</span></button>
+                    </div>
+                </div>
+                <div class="hero-temp-section" id="hero-temp-section" hidden>
+                    <div class="hero-temp-section__head">
+                        <span>Bản tạm</span>
+                        <small>Kéo vào tier list hoặc xóa nếu chưa dùng.</small>
+                    </div>
+                    <div class="hero-grid hero-temp-grid" id="hero-temp-grid"></div>
                 </div>
                 <div class="hero-grid" id="hero-grid"></div>
+                <div class="hero-pool-empty" id="hero-pool-empty" hidden>Không tìm thấy tướng phù hợp.</div>
             </div>
 
             <!-- User Prompt (User only, ẩn mặc định) -->
@@ -118,8 +160,8 @@
                         <div class="tier-cell header-cell"><span contenteditable="true">DSL</span></div>
                         <div class="tier-cell header-cell"><span contenteditable="true">JGL</span></div>
                         <div class="tier-cell header-cell"><span contenteditable="true">MID</span></div>
-                        <div class="tier-cell header-cell"><span contenteditable="true">SUP</span></div>
                         <div class="tier-cell header-cell"><span contenteditable="true">ADL</span></div>
+                        <div class="tier-cell header-cell"><span contenteditable="true">SUP</span></div>
 
                         <div class="tier-cell tier-label" style="background-color:#e74c3c;"><span contenteditable="true">S</span></div>
                         <div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div>
@@ -137,10 +179,44 @@
                         <div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div>
                     </div>
                 </div>
-                <div class="tier-pool-modal">
-                    <h3>Danh Sách Tướng</h3>
-                    <input type="text" id="modal-search" placeholder="Tìm tướng..." title="Tìm kiếm tướng để thêm vào tier list" oninput="filterModalHeroes()" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:10px;box-sizing:border-box;outline:none;">
-                    <div class="hero-grid" id="modal-hero-grid" style="grid-template-columns:repeat(auto-fill,minmax(55px,1fr));gap:5px;"></div>
+                <div class="tier-pool-modal tier-pool" id="modal-hero-pool">
+                    <div class="hero-pool-header">
+                        <div>
+                            <h3>Danh sách tướng</h3>
+                            <p>Kéo tướng vào tier hoặc chuột phải để tạo bản tạm.</p>
+                        </div>
+                    </div>
+                    <div class="hero-pool-toolbar">
+                        <label class="hero-search-wrap" for="modal-search">
+                            <span aria-hidden="true">⌕</span>
+                            <input type="text" id="modal-search" placeholder="Tìm kiếm tướng..." title="Tìm kiếm tướng để thêm vào tier list" oninput="filterModalHeroes()">
+                        </label>
+                        <label class="hero-class-filter" for="modal-class-filter">
+                            <span>Class</span>
+                            <select id="modal-class-filter" title="Lọc theo class tướng" onchange="setModalClassFilter(this.value)">
+                                <option value="Tất cả">Tất cả class</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="hero-filter-row">
+                        <div class="role-filters" id="modal-role-filters">
+                            <button class="role-btn active" data-role-filter="Tất cả" onclick="setModalRoleFilter('Tất cả')"><div class="role-icon"></div><span>Tất cả</span></button>
+                            <button class="role-btn" data-role-filter="DSL" onclick="setModalRoleFilter('DSL')"><div class="role-icon"></div><span>DSL</span></button>
+                            <button class="role-btn" data-role-filter="JGL" onclick="setModalRoleFilter('JGL')"><div class="role-icon"></div><span>JGL</span></button>
+                            <button class="role-btn" data-role-filter="MID" onclick="setModalRoleFilter('MID')"><div class="role-icon"></div><span>MID</span></button>
+                            <button class="role-btn" data-role-filter="ADL" onclick="setModalRoleFilter('ADL')"><div class="role-icon"></div><span>ADL</span></button>
+                            <button class="role-btn" data-role-filter="SUP" onclick="setModalRoleFilter('SUP')"><div class="role-icon"></div><span>SUP</span></button>
+                        </div>
+                    </div>
+                    <div class="hero-temp-section" id="modal-hero-temp-section" hidden>
+                        <div class="hero-temp-section__head">
+                            <span>Bản tạm</span>
+                            <small>Kéo vào tier list hoặc xóa nếu chưa dùng.</small>
+                        </div>
+                        <div class="hero-grid hero-temp-grid" id="modal-hero-temp-grid"></div>
+                    </div>
+                    <div class="hero-grid" id="modal-hero-grid"></div>
+                    <div class="hero-pool-empty" id="modal-hero-pool-empty" hidden>Không tìm thấy tướng phù hợp.</div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -151,13 +227,14 @@
     </div>
 
     <div id="tierListExportArea" class="tier-export-area" aria-hidden="true"></div>
+    <div class="hero-context-menu" id="hero-context-menu" hidden></div>
 
     <footer>© 2026 AoV Tactics & Guides. All rights reserved.</footer>
 
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/js/tier-list-data.js"></script>
-    <script src="/js/tier-list-export.js?v=20260430-tier-export"></script>
-    <script src="/js/tier-list-app.js?v=20260430-tier-detail"></script>
+    <script src="/js/tier-list-data.js?v=20260504-temp-heroes"></script>
+    <script src="/js/tier-list-export.js?v=20260504-temp-heroes"></script>
+    <script src="/js/tier-list-app.js?v=20260504-temp-heroes"></script>
     <script src="/js/auth.js?v=20260424-account-profile"></script>
     <script src="/js/header-loader.js?v=20260424-account-profile"></script>
 </body>

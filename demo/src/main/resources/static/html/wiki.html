@@ -115,6 +115,8 @@
         }
         .wiki-badge.class { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
         .wiki-badge.lane { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+        .wiki-badge.lane.primary { background: #dcfce7; color: #166534; border-color: #86efac; }
+        .wiki-badge.lane.sub { background: #f8fafc; color: #64748b; border-color: #cbd5e1; }
         .wiki-badge.attr { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
 
         /* ===== States ===== */
@@ -303,9 +305,8 @@
                     avatarHtml = '<span class="avatar-fallback">' + escapeHtml((hero.name || '?').charAt(0)) + '</span>';
                 }
 
-                var roleCodes = getHeroRoleCodes(hero);
-                var roleLabels = getHeroLaneRoleLabels(hero);
-                var rolesArr = roleCodes.length ? roleCodes : roleLabels;
+                var primaryRole = getHeroPrimaryRole(hero);
+                var subRoles = getHeroSubRoles(hero);
                 // heroClass (Chất tướng)
                 var heroClasses = Array.isArray(hero.classes) && hero.classes.length
                     ? hero.classes
@@ -317,9 +318,11 @@
                 heroClasses.forEach(function (heroClass) {
                     metaLines += '<span class="wiki-badge class">' + escapeHtml(heroClass) + '</span>';
                 });
-                rolesArr.forEach(function (role) {
-                    var roleLabel = getRoleLabel(role) || role;
-                    metaLines += '<span class="wiki-badge lane" title="' + escapeHtml(roleLabel) + '">' + escapeHtml(role) + '</span>';
+                if (primaryRole) {
+                    metaLines += '<span class="wiki-badge lane primary" title="' + escapeHtml(primaryRole.name || getRoleLabel(primaryRole.code) || primaryRole.code) + '">Primary: ' + escapeHtml(primaryRole.code || primaryRole.name) + '</span>';
+                }
+                subRoles.forEach(function (role) {
+                    metaLines += '<span class="wiki-badge lane sub" title="' + escapeHtml(role.name || getRoleLabel(role.code) || role.code) + '">Sub: ' + escapeHtml(role.code || role.name) + '</span>';
                 });
                 attrsArr.forEach(function (attribute) { metaLines += '<span class="wiki-badge attr">' + escapeHtml(attribute) + '</span>'; });
                 metaLines += '</div>';
@@ -390,7 +393,10 @@
                 var matchesClass = activeClassFilter === 'all' || classNames.some(function (heroClass) {
                     return normalize(heroClass) === normalize(activeClassFilter);
                 });
-                var matchesRole = activeRoleFilter === 'all' || roleCodes.includes(activeRoleFilter);
+                var primaryRoleCode = getHeroPrimaryRoleCode(hero);
+                var matchesRole = activeRoleFilter === 'all'
+                    || primaryRoleCode === activeRoleFilter
+                    || (!primaryRoleCode && roleCodes.includes(activeRoleFilter));
 
                 return matchesSearch && matchesClass && matchesRole;
             });
@@ -494,16 +500,70 @@
 
         // ==================== UTILITIES ====================
 
-        function getHeroLaneRoleLabels(hero) {
-            if (Array.isArray(hero.laneRoles) && hero.laneRoles.length) {
-                return hero.laneRoles;
+        function getHeroPrimaryRole(hero) {
+            if (hero && hero.primaryRole) {
+                var primaryCode = normalizeRoleCode(hero.primaryRole.code || hero.primaryRole.name);
+                return {
+                    id: hero.primaryRole.id,
+                    code: primaryCode || hero.primaryRole.code || '',
+                    name: hero.primaryRole.name || getRoleLabel(primaryCode) || primaryCode
+                };
             }
-            if (Array.isArray(hero.roles)) {
-                return hero.roles.map(function (role) {
-                    return getRoleLabel(role) || role;
+            var legacyCodes = [];
+            if (Array.isArray(hero && hero.roles)) {
+                hero.roles.forEach(function (role) {
+                    var code = normalizeRoleCode(role);
+                    if (code && legacyCodes.indexOf(code) === -1) legacyCodes.push(code);
                 });
             }
-            return [];
+            if (legacyCodes.length) {
+                return {
+                    code: legacyCodes[0],
+                    name: getRoleLabel(legacyCodes[0]) || legacyCodes[0]
+                };
+            }
+            return null;
+        }
+
+        function getHeroPrimaryRoleCode(hero) {
+            var primaryRole = getHeroPrimaryRole(hero);
+            return primaryRole && primaryRole.code ? normalizeRoleCode(primaryRole.code) : '';
+        }
+
+        function getHeroSubRoles(hero) {
+            var primaryCode = getHeroPrimaryRoleCode(hero);
+            if (Array.isArray(hero && hero.subRoles)) {
+                return hero.subRoles.map(function (role) {
+                    var code = normalizeRoleCode(role.code || role.name);
+                    return {
+                        id: role.id,
+                        code: code || role.code || '',
+                        name: role.name || getRoleLabel(code) || code
+                    };
+                }).filter(function (role) {
+                    return (role.code || role.name) && role.code !== primaryCode;
+                });
+            }
+            return getHeroRoleCodes(hero).filter(function (code) {
+                return code !== primaryCode;
+            }).map(function (code) {
+                return { code: code, name: getRoleLabel(code) || code };
+            });
+        }
+
+        function getHeroLaneRoleLabels(hero) {
+            var labels = [];
+            var primaryRole = getHeroPrimaryRole(hero);
+            if (primaryRole) {
+                labels.push(primaryRole.name || getRoleLabel(primaryRole.code) || primaryRole.code);
+            }
+            getHeroSubRoles(hero).forEach(function (role) {
+                labels.push(role.name || getRoleLabel(role.code) || role.code);
+            });
+            if (!labels.length && Array.isArray(hero && hero.laneRoles)) {
+                return hero.laneRoles;
+            }
+            return labels;
         }
 
         function getHeroRoleCodes(hero) {
@@ -513,10 +573,18 @@
                 if (code && codes.indexOf(code) === -1) codes.push(code);
             }
 
-            if (Array.isArray(hero.roles)) {
+            if (hero && hero.primaryRole) {
+                addCode(hero.primaryRole.code || hero.primaryRole.name);
+            }
+            if (Array.isArray(hero && hero.subRoles)) {
+                hero.subRoles.forEach(function (role) {
+                    addCode(role.code || role.name);
+                });
+            }
+            if (Array.isArray(hero && hero.roles)) {
                 hero.roles.forEach(addCode);
             }
-            if (Array.isArray(hero.laneRoles)) {
+            if (Array.isArray(hero && hero.laneRoles)) {
                 hero.laneRoles.forEach(addCode);
             }
             return codes;

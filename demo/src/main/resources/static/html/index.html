@@ -20,11 +20,183 @@
         }
     </script>
     <style>
+        :root {
+            --home-radius-lg: 24px;
+            --home-radius-md: 18px;
+            --home-border: rgba(148, 163, 184, 0.24);
+            --home-border-strong: rgba(148, 163, 184, 0.34);
+            --home-shadow: 0 20px 50px rgba(15, 23, 42, 0.10);
+            --home-shadow-hover: 0 28px 70px rgba(15, 23, 42, 0.15);
+            --home-focus: 0 0 0 4px rgba(37, 99, 235, 0.18);
+            --home-transition: 220ms ease;
+        }
+
         body {
             background:
                 radial-gradient(circle at 50% -12%, rgba(219, 234, 254, 0.72), transparent 38%),
                 #f8fbff;
         }
+
+        a,
+        button {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible {
+            border-radius: 14px;
+            box-shadow: var(--home-focus);
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+        }
+
+        .home-card-hover {
+            transition:
+                border-color var(--home-transition),
+                box-shadow var(--home-transition),
+                transform var(--home-transition);
+        }
+
+        .home-card-hover:hover {
+            border-color: var(--home-border-strong);
+            box-shadow: var(--home-shadow-hover);
+            transform: translateY(-3px);
+        }
+
+        .home-feature-grid {
+            align-items: stretch;
+        }
+
+        .home-feature-card {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+            border: 1px solid var(--home-border);
+            border-radius: var(--home-radius-lg);
+            box-shadow: var(--home-shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            min-height: 100%;
+            overflow: hidden;
+            padding: 14px;
+        }
+
+        .home-feature-card__header {
+            align-items: center;
+            display: flex;
+            gap: 12px;
+            justify-content: space-between;
+            min-height: 34px;
+            padding: 4px 4px 0;
+        }
+
+        .home-feature-card__title {
+            align-items: center;
+            color: #0f172a;
+            display: flex;
+            font-size: 1.12rem;
+            font-weight: 900;
+            gap: 9px;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+            margin: 0;
+        }
+
+        .home-feature-card__icon {
+            align-items: center;
+            background: linear-gradient(135deg, #eff6ff, #ffffff);
+            border: 1px solid rgba(191, 219, 254, 0.92);
+            border-radius: 12px;
+            color: #2563eb;
+            display: inline-flex;
+            height: 34px;
+            justify-content: center;
+            width: 34px;
+        }
+
+        .home-feature-card__eyebrow {
+            color: #64748b;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .home-link-action {
+            align-items: center;
+            border-radius: 14px;
+            color: #2563eb;
+            display: inline-flex;
+            font-size: 0.82rem;
+            font-weight: 900;
+            gap: 6px;
+            justify-content: center;
+            min-height: 42px;
+            padding: 0 14px;
+            text-decoration: none;
+            transition:
+                background-color var(--home-transition),
+                color var(--home-transition),
+                transform var(--home-transition);
+        }
+
+        .home-link-action:hover {
+            background: rgba(239, 246, 255, 0.92);
+            color: #1d4ed8;
+            transform: translateX(2px);
+        }
+
+        .home-badge,
+        .home-chip {
+            align-items: center;
+            border-radius: 999px;
+            display: inline-flex;
+            font-size: 0.7rem;
+            font-weight: 900;
+            letter-spacing: 0.06em;
+            line-height: 1;
+            min-height: 28px;
+            padding: 0 11px;
+            text-transform: uppercase;
+        }
+
+        .home-badge {
+            background: rgba(254, 240, 138, 0.15);
+            border: 1px solid rgba(253, 224, 71, 0.34);
+            color: #fef08a;
+        }
+
+        .home-chip {
+            background: rgba(255, 255, 255, 0.09);
+            border: 1px solid rgba(226, 232, 240, 0.18);
+            color: rgba(226, 232, 240, 0.94);
+            text-transform: none;
+        }
+
+        .home-section-header {
+            align-items: flex-end;
+            display: flex;
+            gap: 18px;
+            justify-content: space-between;
+            margin-bottom: 22px;
+        }
+
+        .home-section-title {
+            color: #0f172a;
+            font-size: clamp(1.55rem, 2vw, 2rem);
+            font-weight: 900;
+            letter-spacing: -0.035em;
+            line-height: 1.05;
+            margin: 0;
+        }
+
+        .home-section-subtitle {
+            color: #64748b;
+            font-size: 0.92rem;
+            line-height: 1.6;
+            margin-top: 7px;
+        }
+
         .home-banner-section {
             display: block;
             margin-left: auto;
@@ -166,6 +338,14 @@
             font-size: 0.8rem;
             font-weight: 700;
             padding: 8px 12px;
+            transition: background-color var(--home-transition), border-color var(--home-transition), color var(--home-transition), transform var(--home-transition);
+        }
+
+        .home-banner-chip:hover {
+            background: #ffffff;
+            border-color: rgba(37, 99, 235, 0.38);
+            color: #2563eb;
+            transform: translateY(-1px);
         }
 
         .home-banner-cta {
@@ -232,10 +412,16 @@
 
         .home-banner-dot {
             background: rgba(148, 163, 184, 0.38);
+            border: 0;
             border-radius: 999px;
             height: 8px;
+            padding: 0;
             transition: background-color 0.2s ease, width 0.2s ease;
             width: 8px;
+        }
+
+        .home-banner-dot:hover {
+            background: rgba(37, 99, 235, 0.46);
         }
 
         .home-banner-dot.is-active {
@@ -330,6 +516,392 @@
             justify-content: center;
         }
 
+        .home-aer-card {
+            position: relative;
+        }
+
+        .home-aer-visual {
+            background:
+                linear-gradient(115deg, rgba(6, 16, 35, 0.92) 0%, rgba(11, 28, 58, 0.78) 46%, rgba(11, 28, 58, 0.34) 100%),
+                var(--home-aer-bg, url('/images/backgrounds/aer-bg.png'));
+            background-color: #071326;
+            background-position: center;
+            background-size: cover;
+            border-radius: var(--home-radius-md);
+            min-height: 238px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .home-aer-slide-bg {
+            background-image: var(--home-aer-slide-bg, url('/images/backgrounds/aer-bg.png'));
+            background-position: center right;
+            background-size: cover;
+            inset: 0;
+            opacity: 1;
+            position: absolute;
+            transform: scale(1.02);
+            transition: opacity 0.35s ease, transform 0.55s ease;
+        }
+
+        .home-aer-visual.is-transitioning .home-aer-slide-bg {
+            opacity: 0.72;
+            transform: scale(1.07);
+        }
+
+        .home-aer-visual::after {
+            background:
+                linear-gradient(100deg, rgba(5, 13, 31, 0.94) 0%, rgba(9, 21, 47, 0.74) 48%, rgba(9, 21, 47, 0.24) 100%),
+                radial-gradient(circle at 84% 22%, rgba(250, 204, 21, 0.24), transparent 30%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 54%);
+            content: "";
+            inset: 0;
+            pointer-events: none;
+            position: absolute;
+        }
+
+        .home-aer-visual__content {
+            color: #f8fafc;
+            max-width: 25rem;
+            padding: 28px 62px 36px 28px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .home-aer-kicker {
+            align-items: center;
+            background: rgba(250, 204, 21, 0.16);
+            border: 1px solid rgba(250, 204, 21, 0.34);
+            border-radius: 999px;
+            color: #fef3c7;
+            display: inline-flex;
+            font-size: 0.7rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            margin-bottom: 12px;
+            padding: 7px 11px;
+            text-transform: uppercase;
+        }
+
+        .home-aer-title {
+            font-size: 1.55rem;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            line-height: 1.08;
+            margin: 0;
+        }
+
+        .home-aer-description {
+            color: rgba(226, 232, 240, 0.88);
+            font-size: 0.92rem;
+            line-height: 1.65;
+            margin: 10px 0 0;
+        }
+
+        .home-aer-cta {
+            align-items: center;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.44);
+            border-radius: 999px;
+            color: #0f172a;
+            display: inline-flex;
+            font-size: 0.82rem;
+            font-weight: 900;
+            gap: 7px;
+            margin-top: 16px;
+            min-height: 38px;
+            padding: 0 15px;
+            text-decoration: none;
+            transition: transform 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+
+        .home-aer-cta:hover {
+            background: #ffffff;
+            border-color: rgba(250, 204, 21, 0.72);
+            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.24);
+            transform: translateY(-1px);
+        }
+
+        .home-aer-slider-nav {
+            align-items: center;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.42);
+            border-radius: 999px;
+            color: #0f172a;
+            display: flex;
+            height: 34px;
+            justify-content: center;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            box-shadow: 0 12px 26px rgba(15, 23, 42, 0.14);
+            transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
+            width: 34px;
+            z-index: 2;
+        }
+
+        .home-aer-slider-nav:hover {
+            background: #ffffff;
+            border-color: rgba(250, 204, 21, 0.62);
+            transform: translateY(-50%) scale(1.06);
+        }
+
+        .home-aer-slider-nav svg {
+            height: 17px;
+            width: 17px;
+        }
+
+        .home-aer-slider-prev {
+            left: 16px;
+        }
+
+        .home-aer-slider-next {
+            right: 16px;
+        }
+
+        .home-aer-slider-dots {
+            align-items: center;
+            bottom: 18px;
+            display: flex;
+            gap: 8px;
+            position: absolute;
+            right: 22px;
+            z-index: 2;
+        }
+
+        .home-aer-slider-dot {
+            background: rgba(255, 255, 255, 0.45);
+            border: 0;
+            border-radius: 999px;
+            height: 7px;
+            padding: 0;
+            transition: background-color 0.18s ease, transform 0.18s ease, width 0.18s ease;
+            width: 7px;
+        }
+
+        .home-aer-slider-dot:hover {
+            background: rgba(255, 255, 255, 0.86);
+            transform: translateY(-1px);
+        }
+
+        .home-aer-slider-dot.is-active {
+            background: #facc15;
+            width: 22px;
+        }
+
+        .home-aer-table-panel {
+            background:
+                linear-gradient(180deg, rgba(248, 250, 252, 0.92), #ffffff 62%);
+            border: 1px solid rgba(226, 232, 240, 0.88);
+            border-radius: 18px;
+            padding: 8px 8px 2px;
+        }
+
+        .home-aer-card table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .home-aer-card tbody tr {
+            border-radius: 12px;
+            transition: background-color 0.18s ease, transform 0.18s ease;
+        }
+
+        .home-aer-card tbody tr:hover {
+            background: rgba(239, 246, 255, 0.78);
+            transform: translateX(2px);
+        }
+
+        .home-aer-footer-link {
+            margin-top: auto;
+        }
+
+        .home-tier-card {
+            position: relative;
+        }
+
+        .home-tier-card .home-link-action {
+            margin-top: auto;
+        }
+
+        .home-tier-promo {
+            background:
+                linear-gradient(110deg, rgba(7, 16, 36, 0.92) 0%, rgba(11, 25, 54, 0.84) 36%, rgba(16, 38, 78, 0.38) 100%),
+                url('/images/backgrounds/tier-list-bg.png');
+            background-color: #081325;
+            background-position: center;
+            background-size: cover;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: var(--home-radius-md);
+            box-shadow: 0 22px 50px rgba(15, 23, 42, 0.18);
+            min-height: 238px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .home-tier-promo::after {
+            background:
+                radial-gradient(circle at top right, rgba(96, 165, 250, 0.26), transparent 32%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 52%);
+            content: "";
+            inset: 0;
+            pointer-events: none;
+            position: absolute;
+        }
+
+        .home-tier-promo__content {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            max-width: 29rem;
+            padding: 28px 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .home-tier-promo__eyebrow {
+            align-items: center;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .home-tier-promo__badge,
+        .home-tier-promo__chip {
+            transition: transform var(--home-transition), border-color var(--home-transition);
+        }
+
+        .home-tier-promo__badge {
+            background: rgba(254, 240, 138, 0.15);
+            border: 1px solid rgba(253, 224, 71, 0.34);
+            border-radius: 999px;
+            color: #fef08a;
+            display: inline-flex;
+            font-size: 0.7rem;
+            font-weight: 900;
+            letter-spacing: 0.06em;
+            line-height: 1;
+            min-height: 28px;
+            padding: 0 11px;
+            text-transform: uppercase;
+        }
+
+        .home-tier-promo__chip {
+            background: rgba(255, 255, 255, 0.09);
+            border: 1px solid rgba(226, 232, 240, 0.18);
+            border-radius: 999px;
+            color: rgba(226, 232, 240, 0.94);
+            display: inline-flex;
+            font-size: 0.7rem;
+            font-weight: 900;
+            letter-spacing: 0.04em;
+            line-height: 1;
+            min-height: 28px;
+            padding: 0 11px;
+        }
+
+        .home-tier-promo__title {
+            color: #f8fafc;
+            font-size: 1.9rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.08;
+            margin: 0;
+        }
+
+        .home-tier-promo__description {
+            color: rgba(226, 232, 240, 0.86);
+            font-size: 0.97rem;
+            line-height: 1.7;
+            margin: 0;
+        }
+
+        .home-tier-promo__actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .home-tier-promo__button {
+            align-items: center;
+            border-radius: 14px;
+            display: inline-flex;
+            font-size: 0.92rem;
+            font-weight: 800;
+            gap: 8px;
+            min-height: 46px;
+            padding: 0 18px;
+            text-decoration: none;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .home-tier-promo__button {
+            background: linear-gradient(135deg, #f8fafc, #dbeafe);
+            box-shadow: 0 18px 34px rgba(15, 23, 42, 0.22);
+            color: #0f172a;
+        }
+
+        .home-tier-promo__button:hover {
+            box-shadow: 0 22px 40px rgba(15, 23, 42, 0.26);
+            transform: translateY(-1px);
+        }
+
+        .home-tier-preview {
+            display: grid;
+            gap: 12px;
+        }
+
+        .home-tier-preview-row,
+        .home-compact-tier-preview {
+            transition: background-color var(--home-transition), border-color var(--home-transition), box-shadow var(--home-transition), transform var(--home-transition);
+        }
+
+        .home-tier-preview-row:hover,
+        .home-compact-tier-preview:hover {
+            background: #ffffff;
+            border-color: rgba(37, 99, 235, 0.24);
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .home-tier-avatar,
+        .home-compact-tier-avatar {
+            transition: border-color var(--home-transition), box-shadow var(--home-transition), transform var(--home-transition);
+        }
+
+        .home-tier-avatar:hover,
+        .home-compact-tier-avatar:hover {
+            border-color: rgba(37, 99, 235, 0.45);
+            box-shadow: 0 10px 22px rgba(37, 99, 235, 0.14);
+            transform: translateY(-2px) scale(1.04);
+        }
+
+        .home-community-card {
+            min-height: 100%;
+            transition: border-color var(--home-transition), box-shadow var(--home-transition), transform var(--home-transition);
+        }
+
+        .home-community-card:hover {
+            border-color: var(--home-border-strong);
+            box-shadow: var(--home-shadow-hover);
+            transform: translateY(-3px);
+        }
+
+        .home-community-card img {
+            transition: transform 320ms ease;
+        }
+
+        .home-community-card:hover img {
+            transform: scale(1.035);
+        }
+
+        .home-community-state {
+            background: rgba(255, 255, 255, 0.86);
+            border: 1px dashed rgba(148, 163, 184, 0.4);
+            border-radius: var(--home-radius-md);
+            box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06);
+        }
+
         @keyframes bannerFadeIn {
             from { opacity: 0; transform: translateX(14px); }
             to { opacity: 1; transform: translateX(0); }
@@ -393,6 +965,71 @@
             .home-banner-description {
                 font-size: 0.95rem;
                 line-height: 1.6;
+            }
+
+            .home-tier-promo__content {
+                max-width: none;
+                padding: 20px 18px;
+            }
+
+            .home-feature-card {
+                border-radius: 20px;
+                padding: 12px;
+            }
+
+            .home-feature-card__header,
+            .home-section-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .home-aer-visual {
+                min-height: 236px;
+            }
+
+            .home-aer-visual__content {
+                padding: 22px 58px 58px 20px;
+            }
+
+            .home-aer-title {
+                font-size: 1.38rem;
+            }
+
+            .home-aer-description {
+                font-size: 0.88rem;
+                line-height: 1.58;
+            }
+
+            .home-aer-slider-prev {
+                left: 12px;
+            }
+
+            .home-aer-slider-next {
+                right: 12px;
+            }
+
+            .home-aer-slider-dots {
+                bottom: 16px;
+                left: 20px;
+                right: auto;
+            }
+
+            .home-tier-promo__title {
+                font-size: 1.52rem;
+            }
+
+            .home-tier-promo__description {
+                font-size: 0.92rem;
+                line-height: 1.65;
+            }
+
+            .home-tier-promo__actions {
+                flex-direction: column;
+            }
+
+            .home-tier-promo__button {
+                justify-content: center;
+                width: 100%;
             }
 
             .home-banner-chip {
@@ -482,20 +1119,46 @@
         </section>
 
         <!-- Middle Grid Section (Leaderboard & Tier List) -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="home-feature-grid grid grid-cols-1 lg:grid-cols-2 gap-8">
             
             <!-- Left: Leaderboard (1/3) -->
-            <section class="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col hover:shadow-md transition-shadow">
-                <div class="flex items-center justify-between px-6 pt-5 pb-4">
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                        </div>
-                        <h2 class="text-lg font-bold text-slate-900">Bảng xếp hạng AER 2026</h2>
-                    </div>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-50 text-green-600 border border-green-200">● TRỰC TIẾP</span>
+            <section class="home-feature-card home-card-hover home-aer-card">
+                <div class="home-feature-card__header">
+                    <h2 class="home-feature-card__title">
+                        <span class="home-feature-card__icon" aria-hidden="true">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M3 17l6-6 4 4 7-9"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M14 6h6v6"></path>
+                            </svg>
+                        </span>
+                        Bảng xếp hạng AER 2026
+                    </h2>
+                    <span class="home-feature-card__eyebrow">AOV Esports</span>
                 </div>
-                <div class="overflow-x-auto flex-1 px-3">
+                <div class="home-aer-visual" data-esports-slider aria-label="AER 2026 esports ranking">
+                    <div class="home-aer-slide-bg" data-esports-slide-bg></div>
+                    <div class="home-aer-visual__content">
+                        <span class="home-aer-kicker" data-esports-slide-badge>AOV Esports</span>
+                        <h2 class="home-aer-title" data-esports-slide-title>Bảng xếp hạng AER 2026</h2>
+                        <p class="home-aer-description" data-esports-slide-subtitle>Cập nhật nhanh sức mạnh đội tuyển hàng đầu theo Elo và phong độ thi đấu mới nhất.</p>
+                        <a class="home-aer-cta" data-esports-slide-link href="/html/esports.html">
+                            Xem bảng xếp hạng
+                            <span aria-hidden="true">→</span>
+                        </a>
+                    </div>
+                    <button type="button" class="home-aer-slider-nav home-aer-slider-prev" data-esports-prev aria-label="Slide AOV Esports trước">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                    </button>
+                    <button type="button" class="home-aer-slider-nav home-aer-slider-next" data-esports-next aria-label="Slide AOV Esports tiếp theo">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+                    <div class="home-aer-slider-dots" data-esports-dots aria-label="Chọn slide AOV Esports"></div>
+                </div>
+                <div class="home-aer-table-panel overflow-x-auto flex-1">
                     <table class="w-full text-sm text-left">
                         <thead class="text-[10px] text-slate-400 uppercase tracking-wider">
                             <tr class="border-b border-slate-100">
@@ -516,26 +1179,43 @@
                     </table>
                 </div>
                 <!-- Footer link -->
-                <a href="/html/esports.html" class="block text-center py-3.5 border-t border-slate-100 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50/50 transition-colors rounded-b-xl">
+                <a href="/html/esports.html" class="home-link-action home-aer-footer-link">
                     Xem bảng xếp hạng đầy đủ →
                 </a>
             </section>
 
             <!-- Tier List Preview -->
-            <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 hover:shadow-md transition-shadow">
-                <div class="flex justify-between items-center mb-6">
-                    <div class="flex items-center gap-2">
-                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
-                        <h2 class="text-xl font-bold text-slate-900">Tier List nổi bật</h2>
-                    </div>
-                    <span id="home-tier-badge" class="px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-500">Đang đồng bộ</span>
+            <section class="home-feature-card home-card-hover home-tier-card">
+                <div class="home-feature-card__header">
+                    <h2 class="home-feature-card__title">
+                        <span class="home-feature-card__icon" aria-hidden="true">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                            </svg>
+                        </span>
+                        Tier List Meta Hiện Tại
+                    </h2>
+                    <span class="home-feature-card__eyebrow">Meta chính thức</span>
                 </div>
-                <div id="home-tier-preview" class="space-y-3">
+                <div class="home-tier-promo">
+                    <div class="home-tier-promo__content">
+                        <div class="home-tier-promo__eyebrow">
+                            <span class="home-tier-promo__badge">Meta chính thức</span>
+                            <span class="home-tier-promo__chip">DSL • JGL • MID • ADL • SUP</span>
+                        </div>
+                        <h3 class="home-tier-promo__title">Theo dõi ngay bảng Tier List chuẩn theo từng vai trò.</h3>
+                        <p class="home-tier-promo__description">Cập nhật nhanh các lựa chọn mạnh nhất cho từng lane, nổi bật tướng Tier S và những thay đổi đáng chú ý của meta hiện tại.</p>
+                        <div class="home-tier-promo__actions">
+                            <a href="/html/tier-list.html" class="home-tier-promo__button">Xem Tier List</a>
+                        </div>
+                    </div>
+                </div>
+                <div id="home-tier-preview" class="home-tier-preview flex-1">
                     <div class="border border-slate-200 rounded-lg bg-slate-50/50 px-4 py-10 text-center text-sm text-slate-400">
                         Đang tải Tier List chính...
                     </div>
                 </div>
-                <a href="/html/tier-list.html" class="block text-center mt-4 py-3 border-t border-slate-100 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50/50 transition-colors rounded-b-xl">
+                <a href="/html/tier-list.html" class="home-link-action">
                     Xem đầy đủ Tier List &rarr;
                 </a>
             </section>
@@ -544,9 +1224,12 @@
 
         <!-- Community Feed Section -->
         <section id="home-community-feed-section" class="mt-4">
-            <div class="flex justify-between items-end gap-4 mb-6">
-                <h2 class="text-2xl font-bold text-slate-900">Chiến thuật & Giáo án</h2>
-                <a href="/tier-list" class="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1">
+            <div class="home-section-header">
+                <div>
+                    <h2 class="home-section-title">Tier List &amp; Giáo án cộng đồng</h2>
+                    <p class="home-section-subtitle">Các Tier List cộng đồng và giáo án mới nhất từ ATG Academy.</p>
+                </div>
+                <a href="/tier-list" class="home-link-action">
                     Xem tất cả
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                 </a>
@@ -555,7 +1238,7 @@
             <div id="home-community-feed" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 
                 <!-- Card 1 -->
-                <div onclick="window.location.href='/html/giao-an.html'" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group cursor-pointer hover:shadow-md transition-shadow">
+                <div onclick="window.location.href='/html/giao-an.html'" class="home-community-card bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group cursor-pointer">
                     <img src="https://via.placeholder.com/600x300/f1f5f9/94a3b8?text=Di+chuyen+ban+do" alt="Ảnh minh họa" class="w-full h-48 object-cover">
                     <div class="p-5 flex flex-col flex-grow">
                         <div class="flex items-center gap-3 mb-3">
@@ -573,7 +1256,7 @@
                 </div>
 
                 <!-- Card 2 -->
-                <div onclick="window.location.href='/html/giao-an.html'" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group cursor-pointer hover:shadow-md transition-shadow">
+                <div onclick="window.location.href='/html/giao-an.html'" class="home-community-card bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group cursor-pointer">
                     <img src="https://via.placeholder.com/600x300/fffbeb/fcd34d?text=Thong+ke+kinh+te" alt="Ảnh minh họa" class="w-full h-48 object-cover">
                     <div class="p-5 flex flex-col flex-grow">
                         <div class="flex items-center gap-3 mb-3">
@@ -591,7 +1274,7 @@
                 </div>
 
                 <!-- Card 3 -->
-                <div onclick="window.location.href='/html/giao-an.html'" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group cursor-pointer hover:shadow-md transition-shadow">
+                <div onclick="window.location.href='/html/giao-an.html'" class="home-community-card bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group cursor-pointer">
                     <img src="https://via.placeholder.com/600x300/fef2f2/fca5a5?text=Khac+che+tuong" alt="Ảnh minh họa" class="w-full h-48 object-cover">
                     <div class="p-5 flex flex-col flex-grow">
                         <div class="flex items-center gap-3 mb-3">
@@ -631,7 +1314,7 @@
         </div>
     </footer>
 
-    <script src="/js/tier-list-data.js?v=20260426-home-tier-sync"></script>
+    <script src="/js/tier-list-data.js?v=20260504-role-order"></script>
 
     <!-- Home widgets: Fetch Top 3 leaderboard and Tier List from API -->
     <script>
@@ -678,6 +1361,9 @@
 
             function getHomeTierRows(contentData) {
                 var data = parseHomeTierData(contentData);
+                if (typeof normalizeTierRoleColumnOrder === 'function') {
+                    data = normalizeTierRoleColumnOrder(data);
+                }
                 if (!data) return [];
 
                 if (Array.isArray(data.rows)) {
@@ -730,13 +1416,57 @@
             }
 
             var HOME_BANNER_BACKGROUND = '/images/backgrounds/home-bg-1.jpg';
+            var HOME_TIER_LIST_BACKGROUND = '/images/backgrounds/tier-list-bg.png';
             var HOME_BANNER_ESPORTS_BACKGROUND = '/images/leagues/aer-logo-bg.png';
             var HOME_BANNER_INTERVAL = 5000;
+            var HOME_ESPORTS_INTERVAL = 6000;
+            var HOME_AER_FALLBACK_BACKGROUND = '/images/backgrounds/aer-bg.png';
+            var esportsSlides = [
+                {
+                    badge: 'AOV ESPORTS',
+                    title: 'Bảng xếp hạng AER 2026',
+                    subtitle: 'Cập nhật sức mạnh đội tuyển hàng đầu theo Elo và phong độ thi đấu mới nhất.',
+                    image: '/images/backgrounds/aer-bg-2.png',
+                    href: '/html/esports.html',
+                    cta: 'Xem bảng xếp hạng'
+                },
+                {
+                    badge: 'RPL',
+                    title: 'Ranking RPL',
+                    subtitle: 'Theo dõi sức mạnh các đội tuyển ROV Pro League và nhóm cạnh tranh ngôi đầu khu vực.',
+                    image: '/images/backgrounds/aer-bg-3.png',
+                    href: '/html/esports.html#power-rankings',
+                    cta: 'Xem RPL'
+                },
+                {
+                    badge: 'GCS',
+                    title: 'Ranking GCS',
+                    subtitle: 'Cập nhật nhóm đội nổi bật tại Garena Challenger Series theo phong độ và chỉ số Elo.',
+                    image: '/images/backgrounds/aer-bg-4.png',
+                    href: '/html/esports.html#power-rankings',
+                    cta: 'Xem GCS'
+                },
+                {
+                    badge: 'APL / AIC',
+                    title: 'Ranking Quốc Tế',
+                    subtitle: 'Theo dõi biến động sức mạnh ở các giải đấu quốc tế và cuộc đua giữa các khu vực lớn.',
+                    image: '/images/backgrounds/aer-bg-5.png',
+                    href: '/html/esports.html#power-rankings',
+                    cta: 'Xem quốc tế'
+                }
+            ];
             var homeBannerState = {
                 index: 0,
                 items: [],
                 paused: false,
                 timer: null,
+                touchStartX: 0
+            };
+            var esportsSliderState = {
+                index: 0,
+                slides: esportsSlides,
+                timer: null,
+                paused: false,
                 touchStartX: 0
             };
 
@@ -747,13 +1477,13 @@
                         description: 'Theo dõi các lựa chọn mạnh nhất theo từng bậc, từng vai trò và cập nhật nhanh khi sức mạnh tướng thay đổi.',
                         href: '/html/tier-list.html',
                         id: 'tier-list-fallback',
-                        image: HOME_BANNER_BACKGROUND,
+                        image: HOME_TIER_LIST_BACKGROUND,
                         kicker: 'Tier List',
                         shortTitle: 'Tier List Chính Thức',
-                        thumbnail: HOME_BANNER_BACKGROUND,
+                        thumbnail: HOME_TIER_LIST_BACKGROUND,
                         title: 'Tier List',
                         titleAccent: 'Chính Thức',
-                        chips: ['Official', 'Tier S', 'Cập nhật liên tục']
+                        chips: ['Official', 'Tier S', 'DSL • JGL • MID • ADL • SUP']
                     },
                     {
                         cta: 'Xem giáo án',
@@ -821,10 +1551,10 @@
                         : 'Tier List chính đã sẵn sàng để bạn theo dõi sức mạnh tướng theo từng bậc và vai trò.',
                     href: '/html/tier-list.html',
                     id: 'tier-list-official',
-                    image: HOME_BANNER_BACKGROUND,
+                    image: HOME_TIER_LIST_BACKGROUND,
                     kicker: 'Tier List',
                     shortTitle: 'Tier List Chính Thức',
-                    thumbnail: HOME_BANNER_BACKGROUND,
+                    thumbnail: HOME_TIER_LIST_BACKGROUND,
                     title: 'Tier List',
                     titleAccent: 'Chính Thức',
                     chips: [updatedLabel].concat(highlighted.slice(0, 3).map(function(name) {
@@ -1082,7 +1812,7 @@
                 var safeName = escapeHomeHtml(heroName);
                 var safeSrc = escapeHomeHtml(getHomeHeroImage(heroName));
                 return '<img src="' + safeSrc + '" alt="' + safeName + '" title="' + safeName + '"' +
-                    ' class="w-11 h-11 rounded shadow-sm border border-slate-300 object-cover bg-slate-100"' +
+                    ' class="home-tier-avatar w-11 h-11 rounded shadow-sm border border-slate-300 object-cover bg-slate-100"' +
                     ' onerror="this.src=\'https://via.placeholder.com/48/2f3640/ffffff?text=?\'">';
             }
 
@@ -1102,7 +1832,7 @@
                     heroHtml = '<span class="text-xs text-slate-400 px-2">Chưa có tướng</span>';
                 }
 
-                return '<div class="flex border border-slate-200 rounded-lg bg-slate-50/50">' +
+                return '<div class="home-tier-preview-row flex border border-slate-200 rounded-lg bg-slate-50/50 overflow-hidden">' +
                     '<div class="w-16 flex-shrink-0 flex items-center justify-center rounded-l-lg" style="background-color:' + color + '">' +
                         '<span class="text-white font-bold text-2xl">' + label + '</span>' +
                     '</div>' +
@@ -1149,7 +1879,7 @@
                     var safeName = escapeHomeHtml(heroName);
                     var safeSrc = escapeHomeHtml(getHomeHeroImage(heroName));
                     return '<img src="' + safeSrc + '" alt="' + safeName + '" title="' + safeName + '"' +
-                        ' class="w-8 h-8 rounded-md border border-slate-300 object-cover bg-slate-100"' +
+                        ' class="home-compact-tier-avatar w-8 h-8 rounded-md border border-slate-300 object-cover bg-slate-100"' +
                         ' onerror="this.src=\'https://via.placeholder.com/40/2f3640/ffffff?text=?\'">';
                 }).join('');
 
@@ -1160,7 +1890,7 @@
                     heroHtml = '<span class="text-xs text-slate-400">Chưa có tướng</span>';
                 }
 
-                return '<div class="flex items-stretch border border-slate-200 rounded-lg bg-white/80 overflow-hidden">' +
+                return '<div class="home-compact-tier-preview flex items-stretch border border-slate-200 rounded-lg bg-white/80 overflow-hidden">' +
                     '<div class="w-12 flex-shrink-0 flex items-center justify-center" style="background-color:' + color + '">' +
                         '<span class="text-white font-bold text-sm">' + label + '</span>' +
                     '</div>' +
@@ -1177,7 +1907,7 @@
                 var ratingCount = Number(item.ratingCount || 0).toLocaleString('vi-VN');
                 var createdAt = formatHomeFeedDate(item.createdAt) || 'Mới cập nhật';
 
-                return '<a href="' + escapeHomeHtml(homeFeedDetailHref(item)) + '" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group hover:shadow-md transition-shadow">' +
+                return '<a href="' + escapeHomeHtml(homeFeedDetailHref(item)) + '" class="home-community-card bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group">' +
                     '<div class="p-4 bg-slate-50/80 border-b border-slate-100 space-y-2 min-h-48">' +
                         previewHtml +
                     '</div>' +
@@ -1202,7 +1932,7 @@
                 var createdAt = formatHomeFeedDate(item.createdAt) || 'Mới cập nhật';
                 var image = item.image || '/images/backgrounds/bg-map.jpg';
 
-                return '<a href="' + escapeHomeHtml(homeFeedDetailHref(item)) + '" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group hover:shadow-md transition-shadow">' +
+                return '<a href="' + escapeHomeHtml(homeFeedDetailHref(item)) + '" class="home-community-card bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group">' +
                     '<img src="' + escapeHomeHtml(image) + '" alt="' + escapeHomeHtml(item.title || 'Guide') + '" class="w-full h-48 object-cover" onerror="this.src=\'/images/backgrounds/bg-map.jpg\'">' +
                     '<div class="p-5 flex flex-col flex-grow">' +
                         '<div class="flex items-center justify-between gap-3 mb-3">' +
@@ -1228,7 +1958,7 @@
             function renderHomeCommunityFeedState(message, isError) {
                 var container = document.getElementById('home-community-feed');
                 if (!container) return;
-                container.innerHTML = '<div class="md:col-span-2 xl:col-span-3 bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-12 text-center text-sm ' +
+                container.innerHTML = '<div class="home-community-state md:col-span-2 xl:col-span-3 px-6 py-12 text-center text-sm ' +
                     (isError ? 'text-red-400' : 'text-slate-400') + '">' + escapeHomeHtml(message) + '</div>';
             }
 
@@ -1263,18 +1993,13 @@
 
             function renderHomeTierMessage(message, isError) {
                 var container = document.getElementById('home-tier-preview');
-                var badge = document.getElementById('home-tier-badge');
                 if (!container) return;
-                container.innerHTML = '<div class="border border-slate-200 rounded-lg bg-slate-50/50 px-4 py-10 text-center text-sm ' +
+                container.innerHTML = '<div class="home-tier-preview-row border border-slate-200 rounded-lg bg-slate-50/50 px-4 py-10 text-center text-sm ' +
                     (isError ? 'text-red-400' : 'text-slate-400') + '">' + escapeHomeHtml(message) + '</div>';
-                if (badge) {
-                    badge.textContent = isError ? 'Lỗi dữ liệu' : 'Chưa có dữ liệu';
-                }
             }
 
             function renderHomeTierList(payload) {
                 var container = document.getElementById('home-tier-preview');
-                var badge = document.getElementById('home-tier-badge');
                 if (!container) return;
 
                 var rows = getHomePreviewRows(getContentDataFromPayload(payload));
@@ -1285,9 +2010,6 @@
                 }
 
                 container.innerHTML = rows.map(renderHomeTierRow).join('');
-                if (badge) {
-                    badge.textContent = payload.updatedAt ? 'Đã đồng bộ' : 'Tier List chính';
-                }
             }
 
             async function fetchHomeTierList() {
@@ -1377,8 +2099,129 @@
                 }
             }
 
+            function renderEsportsDots() {
+                var dots = document.querySelector('[data-esports-dots]');
+                if (!dots) return;
+
+                dots.innerHTML = esportsSliderState.slides.map(function(slide, index) {
+                    return '<button type="button" class="home-aer-slider-dot ' +
+                        (index === esportsSliderState.index ? 'is-active' : '') +
+                        '" data-esports-dot="' + index + '" aria-label="Mở slide AOV Esports ' + (index + 1) + '"></button>';
+                }).join('');
+
+                dots.querySelectorAll('[data-esports-dot]').forEach(function(dot) {
+                    dot.addEventListener('click', function() {
+                        goToEsportsSlide(parseInt(dot.dataset.esportsDot, 10), true);
+                    });
+                });
+            }
+
+            function renderEsportsSlide(index) {
+                var slider = document.querySelector('[data-esports-slider]');
+                if (!slider || !esportsSliderState.slides.length) return;
+
+                var slide = esportsSliderState.slides[index] || esportsSliderState.slides[0];
+                var bg = slider.querySelector('[data-esports-slide-bg]');
+                var badge = slider.querySelector('[data-esports-slide-badge]');
+                var title = slider.querySelector('[data-esports-slide-title]');
+                var subtitle = slider.querySelector('[data-esports-slide-subtitle]');
+                var link = slider.querySelector('[data-esports-slide-link]');
+
+                if (badge) badge.textContent = slide.badge || 'AOV ESPORTS';
+                if (title) title.textContent = slide.title || 'Bảng xếp hạng AER 2026';
+                if (subtitle) subtitle.textContent = slide.subtitle || '';
+                if (link) {
+                    link.href = slide.href || '/html/esports.html';
+                    link.innerHTML = escapeHomeHtml(slide.cta || 'Xem bảng xếp hạng') + ' <span aria-hidden="true">→</span>';
+                }
+
+                if (bg) {
+                    var imageUrl = slide.image || HOME_AER_FALLBACK_BACKGROUND;
+                    var image = new Image();
+                    slider.classList.add('is-transitioning');
+                    image.onload = function() {
+                        bg.style.setProperty('--home-aer-slide-bg', 'url("' + imageUrl + '")');
+                        window.setTimeout(function() {
+                            slider.classList.remove('is-transitioning');
+                        }, 60);
+                    };
+                    image.onerror = function() {
+                        console.warn('Home esports slide background failed:', imageUrl);
+                        bg.style.setProperty('--home-aer-slide-bg', 'url("' + HOME_AER_FALLBACK_BACKGROUND + '")');
+                        slider.classList.remove('is-transitioning');
+                    };
+                    image.src = imageUrl;
+                }
+
+                renderEsportsDots();
+            }
+
+            function goToEsportsSlide(index, resetTimer) {
+                if (!esportsSliderState.slides.length) return;
+                esportsSliderState.index = (index + esportsSliderState.slides.length) % esportsSliderState.slides.length;
+                renderEsportsSlide(esportsSliderState.index);
+                if (resetTimer) startEsportsAutoplay();
+            }
+
+            function nextEsportsSlide() {
+                goToEsportsSlide(esportsSliderState.index + 1, false);
+            }
+
+            function prevEsportsSlide() {
+                goToEsportsSlide(esportsSliderState.index - 1, true);
+            }
+
+            function stopEsportsAutoplay() {
+                if (esportsSliderState.timer) {
+                    clearInterval(esportsSliderState.timer);
+                    esportsSliderState.timer = null;
+                }
+            }
+
+            function startEsportsAutoplay() {
+                stopEsportsAutoplay();
+                if (esportsSliderState.paused || esportsSliderState.slides.length < 2) return;
+                esportsSliderState.timer = setInterval(nextEsportsSlide, HOME_ESPORTS_INTERVAL);
+            }
+
+            function initEsportsSlider() {
+                var slider = document.querySelector('[data-esports-slider]');
+                if (!slider || !esportsSliderState.slides.length) return;
+
+                renderEsportsSlide(esportsSliderState.index);
+
+                var prev = slider.querySelector('[data-esports-prev]');
+                var next = slider.querySelector('[data-esports-next]');
+                if (prev) prev.addEventListener('click', function() { prevEsportsSlide(); });
+                if (next) next.addEventListener('click', function() { goToEsportsSlide(esportsSliderState.index + 1, true); });
+
+                slider.addEventListener('mouseenter', function() {
+                    esportsSliderState.paused = true;
+                    stopEsportsAutoplay();
+                });
+
+                slider.addEventListener('mouseleave', function() {
+                    esportsSliderState.paused = false;
+                    startEsportsAutoplay();
+                });
+
+                slider.addEventListener('touchstart', function(event) {
+                    esportsSliderState.touchStartX = event.changedTouches[0].clientX;
+                }, { passive: true });
+
+                slider.addEventListener('touchend', function(event) {
+                    var diff = event.changedTouches[0].clientX - esportsSliderState.touchStartX;
+                    if (Math.abs(diff) > 42) {
+                        goToEsportsSlide(esportsSliderState.index + (diff < 0 ? 1 : -1), true);
+                    }
+                }, { passive: true });
+
+                startEsportsAutoplay();
+            }
+
             // Gọi ngay khi DOM sẵn sàng
             function initHomeWidgets() {
+                initEsportsSlider();
                 fetchHomeLeaderboard();
                 fetchHomeTierList();
                 fetchHomeCommunityFeed();

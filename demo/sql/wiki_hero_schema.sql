@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS hero_attributes (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Bảng trung gian Hero ↔ Role (N-N)
+-- Phuong an A: this mapping table is for sub roles only.
 CREATE TABLE IF NOT EXISTS hero_role_mapping (
     hero_id BIGINT NOT NULL,
     role_id BIGINT NOT NULL,
@@ -46,6 +47,7 @@ CREATE TABLE IF NOT EXISTS hero_attribute_mapping (
 -- Thêm cột hero_class nếu chưa tồn tại
 -- (Spring JPA ddl-auto=update sẽ tự thêm, nhưng chạy thủ công cũng an toàn)
 ALTER TABLE heroes ADD COLUMN IF NOT EXISTS hero_class VARCHAR(30) DEFAULT NULL;
+ALTER TABLE heroes ADD COLUMN IF NOT EXISTS primary_role_id BIGINT DEFAULT NULL;
 
 -- =============================
 -- 2. Seed: 5 Vị trí đi đường

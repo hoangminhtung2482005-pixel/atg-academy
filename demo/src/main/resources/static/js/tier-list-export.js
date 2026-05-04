@@ -70,26 +70,25 @@ function getTierExportHeroName(hero) {
 }
 
 function getTierExportHeroImage(hero) {
-    if (hero && typeof hero === 'object' && isSameDomainTierExportUrl(hero.avatarUrl)) {
-        return hero.avatarUrl;
-    }
-
-    const heroName = typeof normalizeHeroName === 'function'
-        ? normalizeHeroName(getTierExportHeroName(hero))
-        : getTierExportHeroName(hero);
-    if (!heroName) return TIER_EXPORT_FALLBACK_IMAGE;
-
-    if (typeof heroImageMap !== 'undefined') {
-        const filename = heroImageMap[heroName] || `${heroName}.jpg`;
-        return `/images/heroes/${encodeURI(filename).replace(/'/g, '%27')}?v=3`;
-    }
-
-    if (typeof getHeroImgUrl === 'function') {
-        const resolved = getHeroImgUrl(heroName);
-        return isSameDomainTierExportUrl(resolved) ? resolved : TIER_EXPORT_FALLBACK_IMAGE;
+    if (typeof resolveHeroImageUrl === 'function') {
+        return resolveHeroImageUrl(hero, { absolute: true });
     }
 
     return TIER_EXPORT_FALLBACK_IMAGE;
+}
+
+function getTierExportFallbackImage() {
+    if (typeof normalizeHeroImageUrl === 'function') {
+        return normalizeHeroImageUrl(TIER_EXPORT_FALLBACK_IMAGE, { absolute: true });
+    }
+    return new URL(TIER_EXPORT_FALLBACK_IMAGE, window.location.origin).href;
+}
+
+function getTierExportLogoImage() {
+    if (typeof normalizeHeroImageUrl === 'function') {
+        return normalizeHeroImageUrl(TIER_EXPORT_LOGO_IMAGE, { absolute: true });
+    }
+    return new URL(TIER_EXPORT_LOGO_IMAGE, window.location.origin).href;
 }
 
 function normalizeTierExportRows(contentData) {
@@ -101,6 +100,9 @@ function normalizeTierExportRows(contentData) {
         } catch (error) {
             return { columns: [], rows: [] };
         }
+    }
+    if (typeof normalizeTierRoleColumnOrder === 'function') {
+        data = normalizeTierRoleColumnOrder(data);
     }
     if (Array.isArray(data.rows)) {
         return {
@@ -171,7 +173,7 @@ function buildTierExportBoardHtml(contentData) {
             const heroHtml = heroes.map(hero => {
                 const name = getTierExportHeroName(hero);
                 const image = getTierExportHeroImage(hero);
-                return `<img class="hero-avatar-chip tier-export-hero" src="${escapeTierExportHtml(image)}" alt="${escapeTierExportHtml(name)}" title="${escapeTierExportHtml(name)}" loading="eager" onerror="this.onerror=null;this.src='${TIER_EXPORT_FALLBACK_IMAGE}'">`;
+                return `<img class="hero-avatar-chip tier-export-hero" src="${escapeTierExportHtml(image)}" alt="${escapeTierExportHtml(name)}" title="${escapeTierExportHtml(name)}" data-hero-name="${escapeTierExportHtml(name)}" data-fallback-src="${escapeTierExportHtml(getTierExportFallbackImage())}" loading="eager" crossorigin="anonymous" referrerpolicy="no-referrer">`;
             }).join('');
             html += `<div class="tier-export-cell tier-export-heroes tier-export-content${rowClass}">${heroHtml || '<span class="tier-export-placeholder">-</span>'}</div>`;
         }
@@ -223,7 +225,7 @@ function renderTierListExportArea(payload) {
         <div class="tier-export-card">
             <header class="tier-export-header">
                 <div class="tier-export-brand">
-                    <img src="${TIER_EXPORT_LOGO_IMAGE}" alt="ATG Academy" onerror="this.onerror=null;this.src='${TIER_EXPORT_FALLBACK_IMAGE}'">
+                    <img src="${getTierExportLogoImage()}" alt="ATG Academy" data-fallback-src="${escapeTierExportHtml(getTierExportFallbackImage())}" loading="eager" crossorigin="anonymous" referrerpolicy="no-referrer">
                     <strong>ATG Academy</strong>
                 </div>
                 <div class="tier-export-watermark">ATG Academy</div>
@@ -246,19 +248,63 @@ function renderTierListExportArea(payload) {
 
 function waitForTierExportImages(root) {
     const images = Array.from(root.querySelectorAll('img'));
+    const fallbackImage = getTierExportFallbackImage();
     return Promise.all(images.map(img => new Promise(resolve => {
-        if (img.complete && img.naturalWidth > 0) {
-            resolve();
-            return;
-        }
-        img.onload = () => resolve();
-        img.onerror = () => {
-            if (!img.src.endsWith('/images/ui/default.png')) {
-                img.src = TIER_EXPORT_FALLBACK_IMAGE;
+        const finish = () => resolve();
+        const cleanup = (loadHandler, errorHandler) => {
+            img.removeEventListener('load', loadHandler);
+            img.removeEventListener('error', errorHandler);
+        };
+        const waitForFallback = () => {
+            const onFallbackLoad = () => cleanup(onFallbackLoad, onFallbackError) || finish();
+            const onFallbackError = () => cleanup(onFallbackLoad, onFallbackError) || finish();
+            img.addEventListener('load', onFallbackLoad, { once: true });
+            img.addEventListener('error', onFallbackError, { once: true });
+        };
+        const handleError = () => {
+            const heroName = img.dataset.heroName || img.alt || '';
+            const failedUrl = img.currentSrc || img.src || '';
+            if (heroName) {
+                if (typeof warnHeroImageFailure === 'function') {
+                    warnHeroImageFailure(heroName, failedUrl);
+                } else {
+                    console.warn('Hero image failed:', heroName, failedUrl);
+                }
+            }
+
+            const targetFallback = img.dataset.fallbackSrc || fallbackImage;
+            const normalizedCurrent = typeof normalizeHeroImageUrl === 'function'
+                ? normalizeHeroImageUrl(failedUrl, { absolute: true })
+                : failedUrl;
+            const normalizedFallback = typeof normalizeHeroImageUrl === 'function'
+                ? normalizeHeroImageUrl(targetFallback, { absolute: true })
+                : targetFallback;
+
+            if (normalizedCurrent === normalizedFallback) {
+                finish();
                 return;
             }
-            resolve();
+
+            waitForFallback();
+            img.src = targetFallback;
         };
+
+        if (img.complete) {
+            if (img.naturalWidth > 0) {
+                finish();
+                return;
+            }
+            handleError();
+            return;
+        }
+
+        const onLoad = () => cleanup(onLoad, onError) || finish();
+        const onError = () => {
+            cleanup(onLoad, onError);
+            handleError();
+        };
+        img.addEventListener('load', onLoad, { once: true });
+        img.addEventListener('error', onError, { once: true });
     })));
 }
 
@@ -289,7 +335,9 @@ async function exportTierListImage(payload, button) {
         const canvas = await html2canvas(area.firstElementChild, {
             backgroundColor: '#ffffff',
             scale: 2,
-            useCORS: false,
+            useCORS: true,
+            allowTaint: false,
+            imageTimeout: 15000,
             logging: false
         });
         const slugOrId = payload?.slug || payload?.id || slugifyTierExport(payload?.title);

@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
@@ -26,6 +27,7 @@ import lombok.ToString;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 @Entity
@@ -77,6 +79,14 @@ public class Hero {
     @Column(columnDefinition = "TEXT")
     private String lore;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "primary_role_id")
+    @ToString.Exclude
+    private HeroRole primaryRole;
+
+    /**
+     * Sub roles. Primary lane role is stored in {@code heroes.primary_role_id}.
+     */
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "hero_role_mapping",
@@ -125,7 +135,19 @@ public class Hero {
 
     @Transient
     public String getRolesAsString() {
-        if (roles == null || roles.isEmpty()) {
+        List<HeroRole> laneRoles = new ArrayList<>();
+        if (primaryRole != null) {
+            laneRoles.add(primaryRole);
+        }
+        if (roles != null) {
+            roles.stream()
+                    .filter(Objects::nonNull)
+                    .filter(role -> primaryRole == null || !Objects.equals(primaryRole.getId(), role.getId()))
+                    .sorted((left, right) -> left.getCode().compareToIgnoreCase(right.getCode()))
+                    .forEach(laneRoles::add);
+        }
+
+        if (laneRoles.isEmpty()) {
             if (classes != null && !classes.isEmpty()) {
                 return classes.stream()
                         .map(HeroClass::resolveDisplayName)
@@ -135,10 +157,18 @@ public class Hero {
             }
             return heroClass != null ? heroClass : "";
         }
-        return roles.stream()
+        return laneRoles.stream()
                 .map(HeroRole::getName)
-                .sorted()
                 .reduce((a, b) -> a + ", " + b)
                 .orElse("");
+    }
+
+    @Transient
+    public Set<HeroRole> getSubRoles() {
+        return roles;
+    }
+
+    public void setSubRoles(Set<HeroRole> subRoles) {
+        this.roles = subRoles != null ? subRoles : new HashSet<>();
     }
 }

@@ -38,6 +38,56 @@
 </nav>
 
 <style>
+nav {
+    box-shadow: 0 1px 0 rgba(226, 232, 240, 0.78);
+}
+
+nav a[data-page] {
+    position: relative;
+    transition: color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+nav a[data-page]::after {
+    background: linear-gradient(90deg, #2563eb, #38bdf8);
+    border-radius: 999px;
+    bottom: 10px;
+    content: "";
+    height: 3px;
+    left: 4px;
+    opacity: 0;
+    position: absolute;
+    right: 4px;
+    transform: scaleX(0.45);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+nav a[data-page]:hover,
+nav a[data-page]:focus-visible {
+    color: #0f172a !important;
+    transform: translateY(-1px);
+}
+
+nav a[data-page]:hover::after,
+nav a[data-page]:focus-visible::after,
+nav a[data-page].active::after {
+    opacity: 1;
+    transform: scaleX(1);
+}
+
+nav input[type="text"] {
+    border: 1px solid transparent;
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, width 0.2s ease;
+}
+
+nav input[type="text"]:hover {
+    background: #ffffff;
+    border-color: #bfdbfe;
+}
+
+nav input[type="text"]:focus {
+    width: 13rem;
+}
+
 /* Active state for navigation links applied by header-loader.js */
 nav a.active {
     color: #2563eb !important; /* text-blue-600 */
@@ -71,6 +121,14 @@ nav a.active {
 .account-trigger:hover {
     border-color: #2563eb;
     box-shadow: 0 6px 18px rgba(37, 99, 235, 0.12);
+    transform: translateY(-1px);
+}
+.account-trigger:focus-visible,
+.google-login-fallback-btn:focus-visible,
+.account-popup-item:focus-visible {
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18);
+    outline: 2px solid transparent;
+    outline-offset: 2px;
 }
 .account-trigger-icon {
     align-items: center;
@@ -223,6 +281,7 @@ nav a.active {
 .account-popup-item:hover {
     background: #eff6ff;
     border-color: #2563eb;
+    transform: translateX(2px);
 }
 .account-popup-item-icon {
     align-items: center;
@@ -262,6 +321,12 @@ nav a.active {
     font-size: 0.875rem;
     font-weight: 600;
     padding: 8px 14px;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+.google-login-fallback-btn:hover {
+    border-color: #2563eb;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.12);
+    transform: translateY(-1px);
 }
 .google-login-error {
     color: #dc2626;

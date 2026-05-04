@@ -1,5 +1,5 @@
 const TIER_DETAIL_API='/api/tier-lists';
-const DETAIL_HERO_FALLBACK_IMAGE='/images/ui/logo.png';
+const DETAIL_HERO_FALLBACK_IMAGE='/images/ui/default.png';
 
 let tierDetailId=null;
 let tierDetailData=null;
@@ -169,6 +169,7 @@ function renderAdminRating(){
 }
 
 function getDetailHeroImage(hero){
+    if(typeof resolveHeroImageUrl==='function') return resolveHeroImageUrl(hero);
     if(hero&&typeof hero==='object'&&hero.avatarUrl) return hero.avatarUrl;
     const heroName=getHeroNameFromValue(hero);
     return heroName?getHeroImgUrl(heroName):DETAIL_HERO_FALLBACK_IMAGE;
@@ -178,23 +179,24 @@ function renderHeroCell(hero){
     const name=getHeroNameFromValue(hero);
     return `
         <div class="hero-avatar-chip detail-hero-chip" title="${escapeDetailHtml(name)}" aria-label="${escapeDetailHtml(name)}">
-            <img class="tier-detail-hero-avatar" src="${escapeDetailHtml(getDetailHeroImage(hero))}" alt="${escapeDetailHtml(name)}" title="${escapeDetailHtml(name)}" loading="lazy" onerror="this.onerror=null;this.src='${DETAIL_HERO_FALLBACK_IMAGE}'">
+            <img class="tier-detail-hero-avatar" src="${escapeDetailHtml(getDetailHeroImage(hero))}" alt="${escapeDetailHtml(name)}" title="${escapeDetailHtml(name)}" data-hero-name="${escapeDetailHtml(name)}" loading="lazy" onerror="handleTierHeroImageError(this, this.dataset.heroName, '${DETAIL_HERO_FALLBACK_IMAGE}')">
         </div>
     `;
 }
 
 function normalizeTierRows(contentData){
     if(!contentData) return {columns:[],rows:[]};
-    if(Array.isArray(contentData.rows)){
+    const data=typeof normalizeTierRoleColumnOrder==='function'?normalizeTierRoleColumnOrder(contentData):contentData;
+    if(Array.isArray(data.rows)){
         return {
-            columns:Array.isArray(contentData.columns)?contentData.columns:[],
-            rows:contentData.rows
+            columns:Array.isArray(data.columns)?data.columns:[],
+            rows:data.rows
         };
     }
-    if(Array.isArray(contentData.tiers)){
+    if(Array.isArray(data.tiers)){
         return {
             columns:[{label:'Tướng'}],
-            rows:contentData.tiers.map(tier=>({
+            rows:data.tiers.map(tier=>({
                 label:tier.label,
                 color:tier.color,
                 cells:[tier.heroes||[]]
