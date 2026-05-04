@@ -109,7 +109,10 @@ function applyTierListRoleUI(){
 
 // Listen for header loaded + auth changes
 document.addEventListener('headerLoaded',()=>{ setTimeout(applyTierListRoleUI,300); });
-document.addEventListener('authChanged',applyTierListRoleUI);
+document.addEventListener('authChanged',()=>{
+    applyTierListRoleUI();
+    renderCommunityCards();
+});
 window.addEventListener('storage',applyTierListRoleUI);
 
 function getTierFilterText(value){
@@ -619,6 +622,34 @@ function showTierToast(message,type='success'){
     showTierToast._timer=setTimeout(()=>toast.classList.remove('is-visible'),2600);
 }
 
+function getTierListCurrentUser(){
+    if(typeof getAuthUser==='function') return getAuthUser();
+    try{
+        const raw=localStorage.getItem('aov_user');
+        return raw?JSON.parse(raw):null;
+    }catch(error){
+        return null;
+    }
+}
+
+function canCurrentUserDeleteTierList(tierList){
+    if(!tierList||tierList.isOfficial) return false;
+    if(tierList.canDelete===true) return true;
+    const user=getTierListCurrentUser();
+    if(!user) return false;
+    if(user.role==='Admin') return true;
+    const author=tierList.author||{};
+    return (user.email&&author.email&&String(user.email).toLowerCase()===String(author.email).toLowerCase())
+        || (user.id&&author.id&&String(user.id)===String(author.id));
+}
+
+function tierDeleteErrorMessage(status,fallback){
+    if(status===401) return 'Vui lòng đăng nhập để xóa Tier List.';
+    if(status===403) return 'Bạn không có quyền xóa Tier List này.';
+    if(status===404) return 'Tier List không tồn tại hoặc đã bị xóa.';
+    return fallback||'Không xóa được Tier List.';
+}
+
 function openCommunityTierListDetail(id){
     if(!id) return;
     window.location.href=`/html/tier-list-detail.html?id=${encodeURIComponent(id)}`;
@@ -691,6 +722,9 @@ async function renderCommunityCards(){
         const badgeHtml=adminRating
             ? `<div class="admin-endorsement"><span class="admin-badge-icon">AD</span> Đánh giá của Admin: ${formatRatingValue(adminRating)}/5</div>`
             : `<div class="admin-endorsement is-empty"><span class="admin-badge-icon">AD</span> Chưa có đánh giá từ Admin</div>`;
+        const deleteHtml=canCurrentUserDeleteTierList(tl)
+            ? `<button type="button" class="tier-export-btn tier-danger-btn tier-card-delete-btn" onclick="deleteCommunityTierListFromCard(event,${tl.id},this)">Xóa</button>`
+            : '';
         card.innerHTML=`
             <div class="tier-card-thumbnail">${thumbHtml}</div>
             <div class="tier-card-body">
@@ -708,6 +742,7 @@ async function renderCommunityCards(){
                 ${badgeHtml}
                 <div class="tier-card-actions">
                     <button type="button" class="tier-export-btn tier-card-export-btn" onclick="exportCommunityTierListFromCard(event,${tl.id},this)">Tải ảnh</button>
+                    ${deleteHtml}
                 </div>
             </div>`;
         grid.appendChild(card);
@@ -722,6 +757,41 @@ function exportCommunityTierListFromCard(event,id,button){
     const tierList=communityTierListCache.get(String(id));
     if(!tierList) return;
     exportTierListImage(tierList,button);
+}
+
+async function deleteCommunityTierListFromCard(event,id,button){
+    if(event){
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const tierList=communityTierListCache.get(String(id));
+    if(!canCurrentUserDeleteTierList(tierList)){
+        showTierToast('Bạn không có quyền xóa Tier List này.','error');
+        return;
+    }
+    const confirmed=window.confirm('Bạn có chắc muốn xóa Tier List này không? Hành động này không thể hoàn tác.');
+    if(!confirmed) return;
+
+    const originalText=button?.textContent;
+    if(button){
+        button.disabled=true;
+        button.textContent='Đang xóa...';
+    }
+    try{
+        const response=await fetch(`${OFFICIAL_TIER_LIST_API}/${id}`,{method:'DELETE'});
+        if(!response.ok) throw new Error(tierDeleteErrorMessage(response.status,await readApiError(response)));
+        communityTierListCache.delete(String(id));
+        await renderCommunityCards();
+        showTierToast('Đã xóa Tier List.');
+    }catch(error){
+        console.error('Cannot delete community tier list:',error);
+        showTierToast(error.message||'Không xóa được Tier List.','error');
+    }finally{
+        if(button){
+            button.disabled=false;
+            button.textContent=originalText;
+        }
+    }
 }
 
 function previewStars(el){
@@ -1534,7 +1604,7 @@ async function applyTierListImport(){
 async function readApiError(response){
     try{
         const payload=await response.json();
-        return payload.error||payload.message||response.statusText||'Request failed';
+        return payload.error||payload.message||payload.detail||payload.title||response.statusText||'Request failed';
     }catch(e){
         return response.statusText||'Request failed';
     }

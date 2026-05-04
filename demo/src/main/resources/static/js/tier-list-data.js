@@ -168,6 +168,20 @@ const heroImageMap = HERO_IMAGE_ALIASES;
 
 const HERO_API = '/api/wiki/heroes';
 const TIER_ROLE_ORDER = Object.freeze(['DSL', 'JGL', 'MID', 'ADL', 'SUP']);
+const TIER_ROLE_ICON_BY_CODE = Object.freeze({
+    DSL: '/images/ui/top.png',
+    JGL: '/images/ui/jungle.png',
+    MID: '/images/ui/mid.png',
+    ADL: '/images/ui/adc.png',
+    SUP: '/images/ui/support.png'
+});
+const TIER_ROLE_ICON_LEGACY_MAP = Object.freeze({
+    '/images/top.png': TIER_ROLE_ICON_BY_CODE.DSL,
+    '/images/jungle.png': TIER_ROLE_ICON_BY_CODE.JGL,
+    '/images/mid.png': TIER_ROLE_ICON_BY_CODE.MID,
+    '/images/adc.png': TIER_ROLE_ICON_BY_CODE.ADL,
+    '/images/support.png': TIER_ROLE_ICON_BY_CODE.SUP
+});
 const TIER_LANE_ROLE_LABELS = Object.freeze({
     DSL: 'Đường Tà Thần',
     JGL: 'Đi Rừng',
@@ -262,6 +276,33 @@ function normalizeTierRoleText(value) {
         .trim();
 }
 
+function normalizeTierRoleIconPath(icon, roleCode = '') {
+    const fallbackIcon = TIER_ROLE_ICON_BY_CODE[roleCode] || '';
+    if (!icon) return fallbackIcon;
+
+    try {
+        const parsed = new URL(String(icon), window.location.origin);
+        if (parsed.protocol === 'data:' || parsed.protocol === 'blob:') {
+            return icon;
+        }
+        if (parsed.origin === window.location.origin) {
+            const pathname = parsed.pathname.replace(/\\/g, '/');
+            const legacyIcon = TIER_ROLE_ICON_LEGACY_MAP[pathname.toLowerCase()];
+            if (legacyIcon) return legacyIcon;
+            if (Object.values(TIER_ROLE_ICON_BY_CODE).includes(pathname)) {
+                return pathname;
+            }
+            return pathname;
+        }
+        return parsed.href;
+    } catch (error) {
+        const normalized = String(icon).trim().split(/[?#]/)[0].replace(/\\/g, '/');
+        const legacyIcon = TIER_ROLE_ICON_LEGACY_MAP[normalized.toLowerCase()];
+        if (legacyIcon) return legacyIcon;
+        return normalized || fallbackIcon;
+    }
+}
+
 function getTierColumnRoleCode(column) {
     const rawValues = [
         column?.label,
@@ -301,11 +342,17 @@ function normalizeTierRoleColumnOrder(contentData) {
         return data;
     }
 
-    const columns = data.columns.map((column, index) => ({
-        column,
-        index,
-        roleCode: getTierColumnRoleCode(column)
-    }));
+    const columns = data.columns.map((column, index) => {
+        const roleCode = getTierColumnRoleCode(column);
+        return {
+            column: {
+                ...column,
+                icon: normalizeTierRoleIconPath(column?.icon, roleCode)
+            },
+            index,
+            roleCode
+        };
+    });
     const knownColumns = TIER_ROLE_ORDER
         .map(roleCode => columns.find(item => item.roleCode === roleCode))
         .filter(Boolean);

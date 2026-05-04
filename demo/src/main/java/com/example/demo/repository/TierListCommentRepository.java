@@ -12,4 +12,6 @@ public interface TierListCommentRepository extends JpaRepository<TierListComment
     List<TierListComment> findByTierListIdOrderByCreatedAtAsc(Long tierListId);
 
     long countByTierListId(Long tierListId);
+
+    void deleteByTierListId(Long tierListId);
 }

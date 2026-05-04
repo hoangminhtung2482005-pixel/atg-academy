@@ -24,4 +24,6 @@ public interface TierListRatingRepository extends JpaRepository<TierListRating, 
 
     /** Đếm tổng lượt đánh giá */
     long countByTierListId(Long tierListId);
+
+    void deleteByTierListId(Long tierListId);
 }

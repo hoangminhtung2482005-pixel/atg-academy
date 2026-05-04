@@ -74,6 +74,9 @@ public class TierListCommunityService {
         response.put("createdAt", tierList.getCreatedAt());
         response.put("updatedAt", tierList.getUpdatedAt());
         response.put("author", buildUserResponse(tierList.getAuthor()));
+        response.put("isOwner", isOwner(tierList, authentication));
+        response.put("canEdit", canEdit(tierList, authentication));
+        response.put("canDelete", canDelete(tierList, authentication));
         response.put("communityRating", average);
         response.put("totalRatings", ratingCount);
         response.put("averageUserRating", average);
@@ -186,6 +189,26 @@ public class TierListCommunityService {
     }
 
     @Transactional
+    public void deleteTierList(Long tierListId, GoogleUserPrincipal principal) {
+        if (principal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Chua dang nhap");
+        }
+
+        TierList tierList = findTierList(tierListId);
+        if (tierList.isOfficial()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Khong xoa Tier List chinh thuc bang endpoint nay");
+        }
+        if (!isOwner(tierList, principal) && !principal.isAdmin()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Khong co quyen xoa Tier List nay");
+        }
+
+        adminRatingRepository.deleteByTierListId(tierListId);
+        commentRepository.deleteByTierListId(tierListId);
+        ratingRepository.deleteByTierListId(tierListId);
+        tierListRepository.delete(tierList);
+    }
+
+    @Transactional
     public User findOrCreateUser(GoogleUserPrincipal principal) {
         return userRepository.findByEmail(principal.email()).map(existing -> {
             boolean changed = false;
@@ -241,6 +264,28 @@ public class TierListCommunityService {
         response.put("email", user.getEmail());
         response.put("avatar", user.getAvatarUrl() != null ? user.getAvatarUrl() : "");
         return response;
+    }
+
+    private boolean canEdit(TierList tierList, Authentication authentication) {
+        return currentPrincipal(authentication)
+                .map(principal -> isOwner(tierList, principal) || principal.isAdmin())
+                .orElse(false);
+    }
+
+    private boolean canDelete(TierList tierList, Authentication authentication) {
+        return !tierList.isOfficial() && canEdit(tierList, authentication);
+    }
+
+    private boolean isOwner(TierList tierList, Authentication authentication) {
+        return currentPrincipal(authentication)
+                .map(principal -> isOwner(tierList, principal))
+                .orElse(false);
+    }
+
+    private boolean isOwner(TierList tierList, GoogleUserPrincipal principal) {
+        return principal != null
+                && tierList.getAuthor() != null
+                && principal.email().equalsIgnoreCase(tierList.getAuthor().getEmail());
     }
 
     private Map<String, Object> buildAdminRatingDetail(TierList tierList) {

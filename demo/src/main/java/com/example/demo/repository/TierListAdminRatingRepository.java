@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface TierListAdminRatingRepository extends JpaRepository<TierListAdminRating, Long> {
 
     Optional<TierListAdminRating> findByTierListId(Long tierListId);
+
+    void deleteByTierListId(Long tierListId);
 }

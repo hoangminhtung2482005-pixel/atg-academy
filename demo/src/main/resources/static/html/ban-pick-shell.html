@@ -1,0 +1,393 @@
+<main id="ban-pick-section">
+        <section class="mode-selector-panel is-hidden" id="mode-selector-panel">
+            <div class="mode-selector-header">
+                <span class="phase-progress">Ban/Pick Lab</span>
+                <h1>Chọn chế độ cấm chọn</h1>
+            </div>
+            <div class="mode-options">
+                <label class="mode-option" for="mode-free">
+                    <input type="radio" id="mode-free" name="draftMode" value="free" onchange="renderModeOptions()">
+                    <span>
+                        <strong>Cấm chọn tự do</strong>
+                        <small>Tự do cấm/chọn không theo lượt, phù hợp để thử nghiệm chiến
+                            thuật.</small>
+                    </span>
+                </label>
+                <label class="mode-option is-selected" for="mode-standard">
+                    <input type="radio" id="mode-standard" name="draftMode" value="standard" checked
+                        onchange="renderModeOptions()">
+                    <span>
+                        <strong>Cấm chọn tiêu chuẩn</strong>
+                        <small>Theo thứ tự cấm/chọn chuẩn, có bộ đếm thời gian từng lượt.</small>
+                    </span>
+                </label>
+                <label class="mode-option" for="mode-solo-1v1">
+                    <input type="radio" id="mode-solo-1v1" name="draftMode" value="solo-1v1"
+                        onchange="renderModeOptions()">
+                    <span>
+                        <strong>Solo Ban/Pick 1v1 Online</strong>
+                        <small>Tạo hoặc tham gia phòng online, tung xúc xắc chọn bên rồi draft theo lượt
+                            tiêu
+                            chuẩn.</small>
+                    </span>
+                </label>
+            </div>
+            <button type="button" class="control-btn primary mode-start-btn" onclick="beginDraftFromMode()">Bắt
+                đầu</button>
+        </section>
+
+        <section class="pvp-setup-panel is-hidden" id="pvp-setup-panel">
+            <div class="mode-selector-header">
+                <span class="phase-progress">Solo online</span>
+                <h1>Solo Ban/Pick 1v1 Online</h1>
+            </div>
+            <div class="online-login-gate is-hidden" id="online-login-gate">
+                <strong>Bạn cần đăng nhập để tạo hoặc tham gia phòng solo.</strong>
+                <p>Đăng nhập Google ở góc phải, sau đó quay lại phòng online.</p>
+                <button type="button" class="control-btn primary" onclick="handleCustomGoogleLogin()">Đăng
+                    nhập</button>
+            </div>
+            <div class="online-room-shell" id="online-room-shell">
+                <div class="online-room-actions" id="online-room-actions">
+                    <article class="online-action-card">
+                        <span>A</span>
+                        <h2>Tạo phòng</h2>
+                        <p>Tạo phòng mới và gửi link cho đối thủ.</p>
+                        <div class="online-series-selector" aria-label="Chọn thể thức series">
+                            <strong>Thể thức series</strong>
+                            <div class="online-series-options">
+                                <button type="button" class="series-type-btn is-active" data-series-type="BO1"
+                                    onclick="setOnlineSeriesType('BO1')">BO1</button>
+                                <button type="button" class="series-type-btn" data-series-type="BO3"
+                                    onclick="setOnlineSeriesType('BO3')">BO3</button>
+                                <button type="button" class="series-type-btn" data-series-type="BO5"
+                                    onclick="setOnlineSeriesType('BO5')">BO5</button>
+                                <button type="button" class="series-type-btn" data-series-type="BO7"
+                                    onclick="setOnlineSeriesType('BO7')">BO7</button>
+                            </div>
+                        </div>
+                        <button type="button" class="control-btn primary" id="create-room-btn"
+                            onclick="createOnlineRoom()">Tạo phòng</button>
+                    </article>
+                    <article class="online-action-card">
+                        <span>B</span>
+                        <h2>Tham gia phòng</h2>
+                        <p>Nhập mã phòng hoặc mở link mới.</p>
+                        <div class="online-join-row">
+                            <input type="text" id="join-room-code" placeholder="ABC123" maxlength="12">
+                            <button type="button" class="control-btn primary" id="join-room-btn"
+                                onclick="joinOnlineRoom()">Tham gia</button>
+                        </div>
+                    </article>
+                </div>
+                <div class="online-room-card is-hidden" id="online-room-card">
+                    <div class="online-room-head">
+                        <div>
+                            <span class="phase-progress">Mã phòng</span>
+                            <strong id="online-room-code">-</strong>
+                        </div>
+                        <button type="button" class="control-btn" onclick="copyOnlineRoomLink()">Sao chép link</button>
+                    </div>
+                    <div class="online-room-link" id="online-room-link">-</div>
+                    <div class="online-realtime-indicator" id="online-realtime-indicator">Realtime chưa kết nối
+                    </div>
+                    <div class="online-lobby-grid">
+                        <div class="online-player-card blue">
+                            <span>Chủ phòng</span>
+                            <strong id="online-host-player">Đang chờ</strong>
+                            <small id="online-host-ready">Chưa sẵn sàng</small>
+                            <small id="online-blue-player">Bên Xanh: Chưa xác định</small>
+                        </div>
+                        <div class="online-player-card red">
+                            <span>Người tham gia</span>
+                            <strong id="online-guest-player">Đang chờ đối thủ</strong>
+                            <small id="online-guest-ready">Chưa sẵn sàng</small>
+                            <small id="online-red-player">Bên Đỏ: Chưa xác định</small>
+                        </div>
+                        <div class="online-status-card">
+                            <span>Trạng thái</span>
+                            <strong id="online-room-status">WAITING</strong>
+                            <small id="online-room-message">Đang chờ đối thủ...</small>
+                        </div>
+                    </div>
+                    <div class="draft-controls online-lobby-controls">
+                        <button type="button" class="control-btn" id="online-roll-side-btn"
+                            onclick="rollOnlineSide()">Tung xúc xắc chọn bên</button>
+                        <button type="button" class="control-btn primary" id="online-ready-room-btn"
+                            onclick="readyOnlineRoom()">Sẵn sàng</button>
+                        <button type="button" class="control-btn primary" id="online-start-room-btn"
+                            onclick="startOnlineRoom()">Bắt đầu cấm chọn</button>
+                        <button type="button" class="control-btn" onclick="copyOnlineRoomLink()">Sao chép lời
+                            mời</button>
+                        <button type="button" class="control-btn" onclick="changeMode()">Về chọn chế
+                            độ</button>
+                    </div>
+                </div>
+                <div class="online-room-feedback" id="online-room-feedback" aria-live="polite"></div>
+            </div>
+            <div class="draft-controls">
+                <button type="button" class="control-btn" onclick="changeMode()">Đổi chế độ</button>
+            </div>
+        </section>
+
+        <section class="pvp-match-panel is-hidden" id="pvp-match-panel" aria-live="polite">
+            <div class="pvp-side-card blue" id="pvp-blue-card">
+                <span>Bên Xanh</span>
+                <strong id="pvp-blue-player">Người chơi Xanh</strong>
+            </div>
+            <div class="pvp-center-card">
+                <span id="pvp-phase-progress">Lượt 1 / 15</span>
+                <strong id="pvp-phase-label">Xanh cấm 1</strong>
+                <small id="pvp-turn-owner">Lượt của Người chơi Xanh - Bên Xanh</small>
+                <b id="pvp-timer-display">60s</b>
+            </div>
+            <div class="pvp-side-card red" id="pvp-red-card">
+                <span>Bên Đỏ</span>
+                <strong id="pvp-red-player">Người chơi Đỏ</strong>
+            </div>
+        </section>
+
+        <section class="online-series-panel is-hidden" id="online-series-panel" aria-live="polite">
+            <div class="online-series-overview">
+                <span id="online-series-type-label">BO1</span>
+                <strong id="online-series-game-label">Ván 1 / 1</strong>
+                <small id="online-series-reset-label" hidden>Ván 7: reset giới hạn tướng đã chọn.</small>
+            </div>
+            <div class="online-used-picks blue">
+                <strong>Đội Xanh đã dùng</strong>
+                <div id="online-blue-used-picks">Chưa có</div>
+            </div>
+            <div class="online-used-picks red">
+                <strong>Đội Đỏ đã dùng</strong>
+                <div id="online-red-used-picks">Chưa có</div>
+            </div>
+        </section>
+
+        <div class="banpick-toast" id="banpick-toast" role="status" aria-live="polite"></div>
+
+        <section class="draft-summary-panel is-hidden" id="draft-summary-panel">
+            <div class="mode-selector-header">
+                <span class="phase-progress" id="summary-series-progress">Solo Ban/Pick 1v1 Online</span>
+                <h1>Tổng kết draft</h1>
+            </div>
+            <div class="summary-grid">
+                <article class="summary-team blue">
+                    <h2 id="summary-blue-player">Người chơi Xanh</h2>
+                    <div>
+                        <strong>Cấm</strong>
+                        <div class="summary-hero-list" id="summary-blue-bans">Chưa có</div>
+                    </div>
+                    <div>
+                        <strong>Chọn</strong>
+                        <div class="summary-hero-list" id="summary-blue-picks">Chưa có</div>
+                    </div>
+                </article>
+                <article class="summary-team red">
+                    <h2 id="summary-red-player">Người chơi Đỏ</h2>
+                    <div>
+                        <strong>Cấm</strong>
+                        <div class="summary-hero-list" id="summary-red-bans">Chưa có</div>
+                    </div>
+                    <div>
+                        <strong>Chọn</strong>
+                        <div class="summary-hero-list" id="summary-red-picks">Chưa có</div>
+                    </div>
+                </article>
+            </div>
+            <div class="draft-controls">
+                <button type="button" class="control-btn primary" id="online-series-action-btn"
+                    onclick="handleOnlineSeriesSummaryAction()">Ván tiếp theo</button>
+                <button type="button" class="control-btn primary" onclick="restartPvpDraft()">Draft lại</button>
+                <button type="button" class="control-btn primary" id="share-draft-btn" onclick="shareDraftResult()">Chia
+                    sẻ draft</button>
+                <button type="button" class="control-btn" onclick="changeMode()">Đổi chế độ</button>
+            </div>
+        </section>
+
+        <section class="draft-status-panel is-hidden" id="draft-status-panel" aria-live="polite">
+            <div class="status-panel-top-row">
+                <div class="status-side status-side--left">
+                    <span class="mode-badge" id="current-mode-label">Cấm chọn tiêu chuẩn</span>
+                    <div class="phase-counter-card">
+                        <span class="status-kicker">Tiến trình</span>
+                        <strong id="phase-progress">Lượt 1/15</strong>
+                    </div>
+                </div>
+
+                <div class="status-side status-side--center">
+                    <span class="status-kicker">Lượt hiện tại</span>
+                    <strong id="phase-label">Xanh cấm 1</strong>
+                    <div class="phase-meta-compact">
+                        <span class="phase-chip blue" id="phase-team">Đội Xanh</span>
+                        <span class="phase-chip neutral" id="phase-action">Cấm</span>
+                        <span class="phase-chip neutral" id="phase-remaining">Còn 1</span>
+                    </div>
+                </div>
+
+                <div class="status-side status-side--right">
+                    <div class="timer-readout-compact standard-only">
+                        <span>Đếm ngược</span>
+                        <strong id="timer-display">60s</strong>
+                    </div>
+
+                    <div class="controls-compact">
+                        <div class="duration-setting standard-only">
+                            <input type="number" id="phaseDurationInput" min="10" max="180" step="5" value="60"
+                                title="Thời gian (s)">
+                            <span>s</span>
+                            <button type="button" onclick="applyPhaseDuration()">Cập nhật</button>
+                        </div>
+                        <div class="draft-controls">
+                            <button type="button" class="control-btn primary standard-only" id="timer-start-btn"
+                                onclick="startTimer()">Bắt đầu</button>
+                            <button type="button" class="control-btn standard-only" id="timer-pause-btn"
+                                onclick="pauseTimer()">Tạm dừng</button>
+                            <button type="button" class="control-btn standard-only" id="manual-next-phase-btn"
+                                onclick="manualNextPhase()">Tiếp</button>
+                            <button type="button" class="control-btn danger" onclick="resetDraft()">Làm lại</button>
+                            <button type="button" class="control-btn" onclick="changeMode()">Thoát</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="status" class="draft-warning">Chọn tướng từ danh sách để bắt đầu lượt draft.
+            </div>
+
+            <div class="lineup-adjustment-notice is-hidden" id="lineup-adjustment-notice">
+                <strong>Sắp xếp đội hình</strong>
+                <p>Hai đội có 30 giây để đưa tướng về đúng vị trí.</p>
+                <div class="lineup-confirmation-status">
+                    <span id="blue-lineup-status">Đội Xanh: Chưa xác nhận</span>
+                    <span id="red-lineup-status">Đội Đỏ: Chưa xác nhận</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="lineup-adjustment-panel is-hidden" id="lineup-adjustment-panel" role="dialog" aria-modal="true"
+            aria-labelledby="lineup-modal-title" aria-describedby="lineup-modal-subtitle">
+            <div class="lineup-overlay-scrim"></div>
+            <article class="lineup-modal" id="lineup-modal">
+                <div class="lineup-team-header">
+                    <span class="lineup-team-badge" id="lineup-team-label">Đội Xanh</span>
+                    <span id="lineup-confirmed-state">Chưa xác nhận</span>
+                </div>
+                <div class="lineup-modal-title">
+                    <h2 id="lineup-modal-title">Xác nhận đội hình</h2>
+                    <p id="lineup-modal-subtitle">Kéo thả tướng để sắp xếp đúng vị trí.</p>
+                </div>
+                <div class="lineup-confirmed-message is-hidden" id="lineup-confirmed-message">Bạn đã xác nhận
+                    đội hình.
+                </div>
+                <div class="lineup-order-list" id="lineup-order-list"></div>
+            </article>
+        </section>
+
+        <div class="lineup-action-bar is-hidden" id="lineup-action-bar" aria-live="polite">
+            <div class="lineup-action-bar-body">
+                <strong id="lineup-bar-countdown">Còn 30s</strong>
+                <button type="button" class="control-btn primary" id="lineup-confirm-btn"
+                    onclick="confirmLineupAdjustment()">Xác nhận đội hình</button>
+                <small id="lineup-opponent-status">Đối thủ: Chưa xác nhận</small>
+            </div>
+        </div>
+
+        <div class="container draft-board is-hidden" id="draft-board">
+            <div class="team-panel blue">
+                <div class="team-header">
+                    <h2 class="team-header-blue">Đội Xanh</h2>
+                </div>
+                <div class="team-content">
+                    <div class="bans-col team-panel-block">
+                        <div class="section-title">BANS</div>
+                        <div class="bans-grid-vertical">
+                            <div id="blue-ban-0" class="slot ban-slot" data-slot-order="1"></div>
+                            <div id="blue-ban-1" class="slot ban-slot" data-slot-order="2"></div>
+                            <div id="blue-ban-2" class="slot ban-slot" data-slot-order="3"></div>
+                            <div id="blue-ban-3" class="slot ban-slot" data-slot-order="4"></div>
+                        </div>
+                    </div>
+                    <div class="picks-col-wrapper team-panel-block">
+                        <div class="section-title">PICKS</div>
+                        <div class="picks-col">
+                            <div id="blue-pick-0" class="slot role-top" data-slot-order="1"></div>
+                            <div id="blue-pick-1" class="slot role-jungle" data-slot-order="2"></div>
+                            <div id="blue-pick-2" class="slot role-mid" data-slot-order="3"></div>
+                            <div id="blue-pick-3" class="slot role-adc" data-slot-order="4"></div>
+                            <div id="blue-pick-4" class="slot role-support" data-slot-order="5"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hero-pool-container">
+                <div class="hero-pool-sticky-header">
+                    <div class="draft-hero-toolbar-copy">
+                        <span class="status-kicker">Bể tướng</span>
+                        <strong>Tìm nhanh và khóa tướng cho lựa chọn hiện tại</strong>
+                    </div>
+                    <label class="hero-search-wrap" for="searchInput">
+                        <span aria-hidden="true">🔍</span>
+                        <input type="text" id="searchInput" placeholder="Tìm kiếm tướng..." oninput="filterHeroes()">
+                    </label>
+                    <div class="role-filters" id="role-filters">
+                        <button class="role-btn active" data-role-filter="Tất cả" onclick="setRoleFilter('Tất cả')">Tất cả</button>
+                        <button class="role-btn" data-role-filter="DSL" onclick="setRoleFilter('DSL')">DSL</button>
+                        <button class="role-btn" data-role-filter="JGL" onclick="setRoleFilter('JGL')">JGL</button>
+                        <button class="role-btn" data-role-filter="MID" onclick="setRoleFilter('MID')">MID</button>
+                        <button class="role-btn" data-role-filter="ADL" onclick="setRoleFilter('ADL')">ADL</button>
+                        <button class="role-btn" data-role-filter="SUP" onclick="setRoleFilter('SUP')">SUP</button>
+                    </div>
+                </div>
+                <div class="hero-grid" id="hero-grid"></div>
+
+
+                <div class="confirm-dock" id="confirm-dock">
+                    <div class="confirm-dock-body">
+                        <div class="preview-summary">
+                            <span class="status-kicker">Xem trước</span>
+                            <strong id="preview-label">Đang chọn: Chưa chọn tướng</strong>
+                        </div>
+                        <div class="preview-meta">
+                            <span class="preview-action-label" id="preview-action-label">Chọn</span>
+                            <strong class="draft-action-bar-timer" id="draft-action-bar-timer">60s</strong>
+                        </div>
+                        <div class="preview-actions">
+                            <button type="button" class="control-btn primary" id="confirm-preview-btn"
+                                onclick="confirmPreviewSelection()" disabled>Xác nhận chọn</button>
+                            <button type="button" class="control-btn" id="cancel-preview-btn"
+                                onclick="cancelPreviewSelection()" disabled>Hủy chọn</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="team-panel red">
+                <div class="team-header">
+                    <h2 class="team-header-red">Đội Đỏ</h2>
+                </div>
+                <div class="team-content">
+                    <div class="picks-col-wrapper team-panel-block">
+                        <div class="section-title">PICKS</div>
+                        <div class="picks-col">
+                            <div id="red-pick-0" class="slot role-top" data-slot-order="1"></div>
+                            <div id="red-pick-1" class="slot role-jungle" data-slot-order="2"></div>
+                            <div id="red-pick-2" class="slot role-mid" data-slot-order="3"></div>
+                            <div id="red-pick-3" class="slot role-adc" data-slot-order="4"></div>
+                            <div id="red-pick-4" class="slot role-support" data-slot-order="5"></div>
+                        </div>
+                    </div>
+                    <div class="bans-col team-panel-block">
+                        <div class="section-title">BANS</div>
+                        <div class="bans-grid-vertical">
+                            <div id="red-ban-0" class="slot ban-slot" data-slot-order="1"></div>
+                            <div id="red-ban-1" class="slot ban-slot" data-slot-order="2"></div>
+                            <div id="red-ban-2" class="slot ban-slot" data-slot-order="3"></div>
+                            <div id="red-ban-3" class="slot ban-slot" data-slot-order="4"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+

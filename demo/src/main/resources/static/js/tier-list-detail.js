@@ -37,7 +37,7 @@ function formatDetailDate(value){
 async function readDetailApiError(response){
     try{
         const payload=await response.json();
-        return payload.error||payload.message||response.statusText||'Request failed';
+        return payload.error||payload.message||payload.detail||payload.title||response.statusText||'Request failed';
     }catch(error){
         return response.statusText||'Request failed';
     }
@@ -82,6 +82,30 @@ function getDetailUser(){
 function isDetailAdmin(){
     const user=getDetailUser();
     return user?.role==='Admin';
+}
+
+function canCurrentUserDeleteTierList(data=tierDetailData){
+    if(!data||data.isOfficial) return false;
+    if(data.canDelete===true) return true;
+    const user=getDetailUser();
+    if(!user) return false;
+    if(user.role==='Admin') return true;
+    const author=data.author||{};
+    return (user.email&&author.email&&String(user.email).toLowerCase()===String(author.email).toLowerCase())
+        || (user.id&&author.id&&String(user.id)===String(author.id));
+}
+
+function renderDeleteControls(){
+    const button=document.getElementById('tier-detail-delete-btn');
+    if(!button) return;
+    button.hidden=!canCurrentUserDeleteTierList();
+}
+
+function tierDeleteErrorMessage(status, fallback){
+    if(status===401) return 'Vui lòng đăng nhập để xóa Tier List.';
+    if(status===403) return 'Bạn không có quyền xóa Tier List này.';
+    if(status===404) return 'Tier List không tồn tại hoặc đã bị xóa.';
+    return fallback||'Không xóa được Tier List.';
 }
 
 async function loadTierDetail(){
@@ -288,6 +312,7 @@ function renderTierDetail(){
     renderRatingSummary();
     renderAdminRating();
     renderTierBoard();
+    renderDeleteControls();
     renderCommentComposer();
     renderComments();
 }
@@ -360,6 +385,36 @@ async function saveTierAdminRating(){
     }
 }
 
+async function deleteCurrentTierList(){
+    if(!tierDetailData||!tierDetailId) return;
+    if(!canCurrentUserDeleteTierList()){
+        showDetailToast('Bạn không có quyền xóa Tier List này.','error');
+        return;
+    }
+    const confirmed=window.confirm('Bạn có chắc muốn xóa Tier List này không? Hành động này không thể hoàn tác.');
+    if(!confirmed) return;
+
+    const button=document.getElementById('tier-detail-delete-btn');
+    const originalText=button?.textContent;
+    if(button){
+        button.disabled=true;
+        button.textContent='Đang xóa...';
+    }
+    try{
+        const response=await fetch(`${TIER_DETAIL_API}/${tierDetailId}`,{method:'DELETE'});
+        if(!response.ok) throw new Error(tierDeleteErrorMessage(response.status,await readDetailApiError(response)));
+        window.location.href='/html/tier-list.html';
+    }catch(error){
+        console.error('Cannot delete tier list:',error);
+        showDetailToast(error.message||'Không xóa được Tier List.','error');
+    }finally{
+        if(button){
+            button.disabled=false;
+            button.textContent=originalText;
+        }
+    }
+}
+
 async function submitTierComment(){
     const input=document.getElementById('tier-comment-input');
     const button=document.getElementById('tier-comment-submit');
@@ -397,6 +452,7 @@ async function refreshAuthSensitiveBlocks(){
         await loadTierSummary();
         renderRatingSummary();
         renderAdminRating();
+        renderDeleteControls();
         renderCommentComposer();
     }catch(error){
         console.error('Cannot refresh tier detail auth blocks:',error);
@@ -416,6 +472,7 @@ async function initTierDetail(){
         setDetailState('');
         renderTierDetail();
         document.getElementById('tier-admin-save-btn').onclick=saveTierAdminRating;
+        document.getElementById('tier-detail-delete-btn').onclick=deleteCurrentTierList;
     }catch(error){
         console.error('Cannot load tier detail:',error);
         setDetailState(`Không tải được Tier List: ${error.message}`,true);
