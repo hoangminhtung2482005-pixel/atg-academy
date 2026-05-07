@@ -4,10 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ban/Pick Modes - AoV Tactics & Guides</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <title>Đang chuyển Ban/Pick - AoV Tactics & Guides</title>
+    <meta http-equiv="refresh" content="0; url=/html/ban-pick-free.html">
     <script>
         (function () {
             const params = new URLSearchParams(window.location.search);
@@ -20,75 +18,23 @@
                 'solo-1v1': '/html/ban-pick-solo.html'
             };
 
-            let nextUrl = '';
+            let nextUrl = '/html/ban-pick-free.html';
             if (roomCode) {
                 nextUrl = `/html/ban-pick-solo.html?room=${encodeURIComponent(roomCode)}`;
             } else if (modeTargets[rawMode]) {
                 nextUrl = modeTargets[rawMode];
             }
 
-            if (nextUrl) {
-                window.location.replace(nextUrl);
-            }
+            window.location.replace(nextUrl);
         })();
     </script>
 </head>
 
 <body>
-    <div id="header-placeholder"></div>
-
-    <main class="banpick-landing">
-        <section class="banpick-landing-hero">
-            <span class="phase-progress">Ban/Pick Lab</span>
-            <h1>Chọn chế độ ban/pick phù hợp với mục tiêu draft</h1>
-            <p>Giữ nguyên logic cấm/chọn, filter/search và ảnh hero hiện có, nhưng tách route rõ ràng để vào thẳng đúng chế độ.</p>
-        </section>
-
-        <section class="banpick-mode-grid" aria-label="Danh sách chế độ ban pick">
-            <article class="banpick-mode-card">
-                <span class="banpick-mode-pill">Free Mode</span>
-                <h2>Cấm chọn tự do</h2>
-                <p>Tự do kéo thả hero vào slot ban/pick để thử nghiệm chiến thuật nhanh mà không bị ràng buộc theo lượt.</p>
-                <ul class="banpick-mode-points">
-                    <li>Không ép turn order</li>
-                    <li>Giữ nguyên grid, filter và ảnh hero</li>
-                    <li>Phù hợp test counter pick nhanh</li>
-                </ul>
-                <a class="banpick-mode-link" href="/html/ban-pick-free.html">Mở chế độ tự do</a>
-            </article>
-
-            <article class="banpick-mode-card banpick-mode-card--featured">
-                <span class="banpick-mode-pill">Default</span>
-                <h2>Cấm chọn tiêu chuẩn</h2>
-                <p>Draft theo thứ tự chuẩn với bộ đếm thời gian, preview hero và xác nhận ban/pick từng lượt.</p>
-                <ul class="banpick-mode-points">
-                    <li>Layout 3 cột cân bằng</li>
-                    <li>Topbar gọn, status rõ lượt</li>
-                    <li>Phù hợp luyện draft thi đấu</li>
-                </ul>
-                <a class="banpick-mode-link" href="/html/ban-pick-standard.html">Mở chế độ tiêu chuẩn</a>
-            </article>
-
-            <article class="banpick-mode-card">
-                <span class="banpick-mode-pill">Online 1v1</span>
-                <h2>Solo Ban/Pick 1v1 Online</h2>
-                <p>Tạo hoặc tham gia phòng, tung xúc xắc chọn bên và đồng bộ draft online theo đúng flow solo hiện có.</p>
-                <ul class="banpick-mode-points">
-                    <li>Giữ nguyên room flow và sync realtime</li>
-                    <li>Vào thẳng lobby hoặc room link</li>
-                    <li>Không crash khi chưa login</li>
-                </ul>
-                <a class="banpick-mode-link" href="/html/ban-pick-solo.html">Mở chế độ solo online</a>
-            </article>
-        </section>
+    <main>
+        <p>Đang chuyển tới chế độ Ban/Pick mặc định.</p>
+        <p><a href="/html/ban-pick-free.html">Mở Free Mode</a></p>
     </main>
-
-    <footer>
-        © 2026 AoV Tactics & Guides. All rights reserved.
-    </footer>
-
-    <script src="/js/auth.js?v=30260424-account-profile"></script>
-    <script src="/js/header-loader.js?v=20260505-banpick-dropdown"></script>
 </body>
 
 </html>

@@ -56,14 +56,14 @@ ATG Academy (module Maven: demo)
 │  └─ Luồng tổng quát: HTML/JS -> /api/* -> controller -> service/repository -> MySQL; riêng ban/pick online thêm /ws
 ├─ Chức năng người dùng
 │  ├─ Đăng nhập Google; file: static/js/auth.js, security/GoogleJwt*
-│  ├─ Quản lý tài khoản; file: UserProfileController, UserProfileService, static/html/account.html
+│  ├─ Quản lý tài khoản: hồ sơ + panel `Nội dung của bạn` đếm/list content chính chủ; file: UserProfileController, UserProfileService, static/html/account.html
 │  ├─ Trang chủ feed; file: HomeFeedController, HomeFeedService, static/html/index.html
 │  ├─ Wiki tướng; file: WikiController, WikiService, static/html/wiki.html
-│  ├─ Tier List chính thức; file: TierListController, TierListCommunityService, static/html/tier-list.html
-│  ├─ Tier List cộng đồng: tạo/xem/đánh giá/bình luận; file: TierListController, static/js/tier-list-app.js, tier-list-detail.js
+│  ├─ Tier List chính thức: `tier-list.html` giữ vai trò trang chính/official meta và điểm vào chung của module Tier List; file: TierListController, TierListCommunityService, static/html/tier-list.html
+│  ├─ Tier List cộng đồng: tách thành 3 static page `tier-list-recommended.html`, `tier-list-all.html`, `tier-list-mine.html`, dùng dropdown điều hướng chung thay cho 3 tab trong cùng page; detail dùng một rating panel chung, user lưu community rating còn Admin lưu admin rating; file: TierListController, AdminTierListController, static/html/tier-list-community-shell.html, static/js/tier-list-community-page.js, static/js/tier-list-app.js, tier-list-detail.js
 │  ├─ Guides: list/filter/detail/tạo; file: GuideController, static/html/giao-an.html, tactics-guides.html, create-guide.html
 │  ├─ Esports public: BXH đội và match feed; file: EsportsController, static/html/esports.html
-│  ├─ Ban/Pick Lab offline UI; file: static/html/ban-pick.html
+│  ├─ Ban/Pick mode navigation: dropdown navbar vào thẳng `ban-pick-free.html`, `ban-pick-standard.html`, `ban-pick-solo.html`; `ban-pick.html` chỉ còn fallback redirect cho link cũ
 │  └─ Ban/Pick 1v1 online: room/join/realtime/history/profile/leaderboard; file: BanPickRoomController, BanPickHistoryController, BanPickRoomWebSocketController
 ├─ Chức năng quản trị
 │  ├─ Dashboard admin; file: static/html/admin.html, admin-heroes.html
@@ -83,9 +83,9 @@ ATG Academy (module Maven: demo)
 │  ├─ Tier List
 │  │  ├─ Mục đích: meta chính thức + community tier list
 │  │  ├─ File: TierListController, TierListCommunityService, HeroContentDataService
-│  │  ├─ API: /api/tier-lists/*
+│  │  ├─ API: /api/tier-lists/*; `/community` giữ vai trò highlight tối đa 6 item, `/community/all` trả toàn bộ community tier list, `/me` trả community tier list của user hiện tại; official/community payload có `creatorName` + `creator_name`
 │  │  ├─ DB: tier_lists, tier_list_ratings, tier_list_comments, tier_list_admin_ratings
-│  │  └─ Luồng: contentData JSON -> normalize/enrich hero refs -> response + rating/comment summary
+│  │  └─ Luồng: GET /official -> `tier-list.html` render title `Tier List Meta`; từ khối Community trên trang chính, dropdown điều hướng mở page riêng `tier-list-recommended.html` -> GET /community (tối đa 6 slot nổi bật theo rating user 30 ngày, số lượt rating, số 5 sao, admin rating, 2 newest), `tier-list-all.html` -> GET /community/all, `tier-list-mine.html` -> GET /me; mọi view đều bỏ official, còn page `Của tôi` yêu cầu đăng nhập và hiển thị message nếu là guest
 │  ├─ Guide
 │  │  ├─ Mục đích: tạo và đọc giáo án chiến thuật
 │  │  ├─ File: GuideController, GuideRepository, static/html/create-guide.html
@@ -93,10 +93,10 @@ ATG Academy (module Maven: demo)
 │  │  ├─ DB: guides; có thêm bang_ngoc/phu_hieu/vat_pham và huong_dan_* nhưng chưa thấy dùng runtime rõ ràng
 │  │  └─ Luồng: frontend gửi contentData JSON -> backend lưu guide + author + hero + metadata
 │  ├─ Home Feed
-│  │  ├─ Mục đích: ghép tier list cộng đồng mới + guide mới publish lên trang chủ
-│  │  ├─ File: HomeFeedController, HomeFeedService
-│  │  ├─ API: GET /api/home/feed
-│  │  └─ Luồng: lấy 6 tier list + 6 guides -> merge -> sort theo createdAt
+│  │  ├─ Mục đích: giữ feed hỗn hợp cho nội dung trang chủ và cấp riêng 3 slot Tier List cộng đồng nổi bật cho section homepage
+│  │  ├─ File: HomeFeedController, HomeFeedService, TierListRatingRepository, TierListAdminRatingRepository, static/html/index.html
+│  │  ├─ API: GET /api/home/feed, GET /api/home/community-tier-highlights
+│  │  └─ Luồng: /api/home/feed vẫn lấy 6 tier list + 6 guides -> merge -> sort theo createdAt; /api/home/community-tier-highlights chọn tối đa 3 tier list cộng đồng theo newest -> top average user rating 30 ngày -> top admin rating 30 ngày, bỏ official và tránh trùng
 │  ├─ Esports Ranking
 │  │  ├─ Mục đích: xếp hạng đội theo Elo, quản trị trận đấu
 │  │  ├─ File: EsportsController, EsportsAdminService, EloCalculationService, EsportsDataSeeder
@@ -126,7 +126,7 @@ ATG Academy (module Maven: demo)
 │  ├─ Start: mvnw.cmd spring-boot:run
 │  ├─ Startup hook: EsportsDataSeeder seed teams/matches nếu DB esports trống
 │  ├─ Startup hook: HeroDataStartupLogger cảnh báo nếu chưa seed hero
-│  └─ Static routes: StaticPageRedirectController redirect /, /guides, /tier-list, /ban-pick/* sang static/html
+│  └─ Static routes: StaticPageRedirectController redirect /, /guides, /tier-list, /tier-list/recommended, /tier-list/all, /tier-list/mine; `/ban-pick` và `/ban-pick.html` chuyển an toàn về mode phù hợp/default Free Mode, còn các route `/ban-pick/*` profile/result/leaderboard vẫn sang static/html như cũ
 └─ Điểm cần lưu ý
    ├─ GuideController lọc guide bằng findAll().stream(); rủi ro scale
    ├─ Có 2 API admin attribute với semantics xóa khác nhau; cần xác minh thêm
@@ -143,15 +143,15 @@ ATG Academy (module Maven: demo)
 | Nhóm chức năng | Chức năng cụ thể | Mô tả | File/thư mục liên quan | API/route | Entity/database | Ghi chú |
 |---|---|---|---|---|---|---|
 | Xác thực | Đăng nhập Google | Frontend nhận Google credential, lưu localStorage, tự gắn Bearer token vào `/api/**` | `static/js/auth.js`, `security/*` | toàn bộ `/api/**` private | `users` | Guest UI dùng role `Custom` |
-| Tài khoản | Xem/sửa hồ sơ cá nhân | Đổi `displayName`, `level` | `UserProfileController`, `UserProfileService`, `static/html/account.html` | `/api/users/me/profile` | `users` | `level` chỉ cho `Normal/Vip` |
-| Trang chủ | Community feed | Ghép tier list cộng đồng mới nhất và guide đã publish | `HomeFeedController`, `HomeFeedService`, `static/html/index.html` | `/api/home/feed` | `tier_lists`, `guides` | Không thấy endpoint `/api/meta` |
+| Tài khoản | Xem/sửa hồ sơ cá nhân + nội dung của bạn | Đổi `displayName`, `level`; sidebar dashboard hiển thị số guide đã đăng và community tier list đã đăng của user hiện tại | `UserProfileController`, `UserProfileService`, `GuideRepository`, `TierListRepository`, `static/html/account.html` | `/api/users/me/profile`, `/api/users/me/content-summary` | `users`, `guides`, `tier_lists` | Content summary dùng security principal, chỉ tính guide published và tier list không official của chính user |
+| Trang chủ | Community feed | Section homepage dùng 3 Tier List cộng đồng nổi bật; feed hỗn hợp cũ vẫn giữ cho backend | `HomeFeedController`, `HomeFeedService`, `TierListRatingRepository`, `TierListAdminRatingRepository`, `static/html/index.html` | `/api/home/feed`, `/api/home/community-tier-highlights` | `tier_lists`, `guides`, `tier_list_ratings`, `tier_list_admin_ratings` | `/api/home/community-tier-highlights` bỏ official, tránh trùng và có thể trả ít hơn 3 item |
 | Wiki | Danh mục + chi tiết tướng | Trả catalog tướng, class/role/attribute, skill, matchup, guide liên quan | `WikiController`, `WikiService`, `static/html/wiki.html` | `/api/wiki/heroes*` | `heroes`, `hero_skills`, `hero_matchups` | Tab khác trong `wiki.html` đang placeholder |
-| Tier list | Meta chính thức | Admin tạo/sửa tier list official; public đọc | `TierListController`, `HeroContentDataService`, `static/js/tier-list-app.js` | `/api/tier-lists/official`, `POST /api/tier-lists` | `tier_lists` | `contentData` lưu JSON |
-| Tier list | Community tier list | User tạo tier list, xem detail, rate, comment | `TierListController`, `TierListCommunityService`, `tier-list-detail.js` | `/api/tier-lists/*` | `tier_lists`, `tier_list_ratings`, `tier_list_comments`, `tier_list_admin_ratings` | Có endpoint legacy `/rate`, `/admin-rate` |
+| Tier list | Meta chính thức | Admin tạo/sửa tier list official; public đọc; `tier-list.html` giữ vai trò trang chính của module Tier List và chỉ còn khối điều hướng sang Community pages | `TierListController`, `HeroContentDataService`, `static/html/tier-list.html`, `static/js/tier-list-app.js` | `/api/tier-lists/official`, `POST /api/tier-lists` | `tier_lists` | `contentData` lưu JSON; official/meta không đổi API |
+| Tier list | Community tier list | User tạo tier list; danh sách cộng đồng tách thành `tier-list-recommended.html`, `tier-list-all.html`, `tier-list-mine.html`; dropdown là navigation chính giữa 3 page; xem detail, rate, comment; Admin dùng cùng rating panel trên detail page để lưu admin rating | `TierListController`, `AdminTierListController`, `TierListCommunityService`, `TierListRatingRepository`, `TierListAdminRatingRepository`, `static/html/tier-list-community-shell.html`, `static/html/tier-list-recommended.html`, `static/html/tier-list-all.html`, `static/html/tier-list-mine.html`, `static/js/tier-list-community-page.js`, `static/js/tier-list-app.js`, `static/html/tier-list-detail.html`, `tier-list-detail.js` | `/api/tier-lists/*`, `/api/admin/tier-lists/{id}/admin-rating` | `tier_lists`, `tier_list_ratings`, `tier_list_comments`, `tier_list_admin_ratings` | `/community` giữ logic highlight tối đa 6 item; `/community/all` trả full community list; `/me` chỉ trả tier list không official của user đang đăng nhập và guest sẽ nhận yêu cầu đăng nhập; API/DB không đổi |
 | Guide | Danh sách/chi tiết guide | Search/filter theo `status`, `heroId`, `lane`, `category`, `search`, `sort` | `GuideController`, `GuideRepository`, `static/js/tactics-guides.js` | `GET /api/guides*` | `guides` | Filter đang chạy in-memory |
 | Guide | Tạo guide | Tạo giáo án từ form frontend; lưu metadata + `contentData` JSON | `GuideController`, `static/html/create-guide.html` | `POST /api/guides` | `guides`, `users`, `heroes` | Không thấy update/delete/moderation |
 | Esports | BXH public | Trả danh sách đội xếp theo Elo và recent matches | `EsportsController`, `static/html/esports.html` | `/api/esports/teams`, `/matches/recent` | `esports_teams`, `esports_matches` | `esports.html` hiện dùng team list; recent feed cần xác minh thêm |
-| Ban/Pick | Room draft online | Create room, join, ready, roll side, start, confirm pick/ban, reorder lineup, next game, reset | `BanPickRoomController`, `BanPickRoomService`, `BanPickRoomWebSocketController`, `ban-pick.html` | `/api/ban-pick/rooms/*`, `/ws` | `ban_pick_rooms`, `ban_pick_actions`, `ban_pick_room_participants` | Module phức tạp nhất |
+| Ban/Pick | Room draft online | Create room, join, ready, roll side, start, confirm pick/ban, reorder lineup, next game, reset | `BanPickRoomController`, `BanPickRoomService`, `BanPickRoomWebSocketController`, `ban-pick-free.html`, `ban-pick-standard.html`, `ban-pick-solo.html`, `ban-pick-shell.html` | `/api/ban-pick/rooms/*`, `/ws` | `ban_pick_rooms`, `ban_pick_actions`, `ban_pick_room_participants` | Navbar dropdown là luồng chuyển mode chính; `ban-pick.html` chỉ còn redirect/fallback |
 | Ban/Pick | Lịch sử/BXH cá nhân | Lưu draft finished, ghi người thắng, profile, leaderboard | `BanPickHistoryController`, `BanPickHistoryService`, `ban-pick-profile.html`, `ban-pick-result.html` | `/api/ban-pick/history*`, `/leaderboard`, `/profile` | `draft_histories`, `player_stats` | Rating người chơi tăng/giảm ±15 |
 | Admin | Quản lý user | List/search/filter user, chỉnh `name/avatar/role/status/note` | `AdminUserController`, `AdminUserService`, `static/html/admin.html` | `/api/admin/users*` | `users` | Admin không thể tự hạ role/khoá chính mình |
 | Admin | Quản lý hero wiki | Sửa basic info, class, role, attribute, difficulty | `AdminWikiHeroController`, `AdminWikiHeroService`, `static/html/admin-heroes.html` | `/api/admin/wiki/heroes*` | `heroes`, join tables hero_* | Có gợi ý role theo class |
@@ -162,22 +162,26 @@ ATG Academy (module Maven: demo)
 
 | Method | Endpoint | Controller/Handler | Service | Request input suy luận được | Response output suy luận được | Mục đích |
 |---|---|---|---|---|---|---|
-| GET | `/api/home/feed` | `HomeFeedController` | `HomeFeedService` | none | `HomeFeedItemResponse[]` | Feed trang chủ |
+| GET | `/api/home/feed` | `HomeFeedController` | `HomeFeedService` | none | `HomeFeedItemResponse[]` | Feed trang chủ hỗn hợp tier list + guide |
+| GET | `/api/home/community-tier-highlights` | `HomeFeedController` | `HomeFeedService` | none | `HomeFeedItemResponse[]` | Tối đa 3 Tier List cộng đồng nổi bật cho homepage |
 | GET | `/api/wiki/heroes` | `WikiController` | `WikiService` | none | `HeroSummaryDto[]` | Catalog tướng |
 | GET | `/api/wiki/heroes/{slug}` | `WikiController` | `WikiService` | `slug` | `HeroDetailDto` | Chi tiết tướng |
 | GET | `/api/guides` | `GuideController` | controller trực tiếp | `status, heroId, category, lane, search, sort` | list guide summary/detail map | List/filter guide |
 | GET | `/api/guides/{id}` | `GuideController` | controller trực tiếp | `id` | guide map | Chi tiết guide; tăng view |
 | POST | `/api/guides` | `GuideController` | controller trực tiếp | `title, heroId/heroName, lane, category, excerpt, coverImageUrl, status, contentData` | created guide map | Tạo guide |
 | GET | `/api/tier-lists/official` | `TierListController` | `TierListCommunityService` | none | tier list map hoặc `{exists:false}` | Tier list chính thức |
-| GET | `/api/tier-lists/community` | `TierListController` | `TierListCommunityService` | none | `List<Map>` | Tier list cộng đồng |
+| GET | `/api/tier-lists/community` | `TierListController` | `TierListCommunityService` | none | `List<Map>` | Tối đa 6 Tier List cộng đồng nổi bật: top điểm TB 30 ngày, nhiều rating 30 ngày, nhiều 5 sao 30 ngày, top admin rating 30 ngày, 2 newest; bỏ official và tránh trùng |
+| GET | `/api/tier-lists/community/all` | `TierListController` | `TierListCommunityService` | none | `List<Map>` | Trả toàn bộ Tier List cộng đồng theo thứ tự mới nhất, bỏ official, giữ cùng response shape của card hiện tại |
+| GET | `/api/tier-lists/me` | `TierListController` | `TierListCommunityService` | bearer auth từ user hiện tại | `List<Map>` | Trả Tier List cộng đồng do chính user đang đăng nhập tạo, bỏ official; guest/unauthorized nhận 401 |
 | GET | `/api/tier-lists/{id}` | `TierListController` | `TierListCommunityService` | `id` | tier list map | Detail tier list |
 | GET, POST | `/api/tier-lists/{id}/comments` | `TierListController` | `TierListCommunityService` | POST: `content/comment` | GET: list comment; POST: comment map | Đọc/gửi bình luận |
 | GET | `/api/tier-lists/{id}/ratings`, `/api/tier-lists/{id}/ratings/summary` | `TierListController` | `TierListCommunityService` | `id` | summary map | Lấy thống kê rating |
 | POST | `/api/tier-lists/{id}/ratings`, `/api/tier-lists/{id}/rate` | `TierListController` | `TierListCommunityService` | `ratingValue/stars` | summary map | User chấm điểm |
 | POST | `/api/tier-lists` | `TierListController` | `TierListCommunityService` + `HeroContentDataService` | `title, description, isOfficial, contentData` | tier list map | Tạo tier list; admin có thể tạo official |
 | PUT | `/api/tier-lists/{id}` | `TierListController` | `TierListCommunityService` + `HeroContentDataService` | `title, description, contentData` | tier list map | Sửa tier list |
-| PUT | `/api/tier-lists/{id}/admin-rate`, `/api/admin/tier-lists/{id}/admin-rating` | `TierListController`, `AdminTierListController` | `TierListCommunityService` | `ratingValue/stars/adminRating, note` | admin rating summary | Admin endorsement |
+| PUT | `/api/tier-lists/{id}/admin-rate`, `/api/admin/tier-lists/{id}/admin-rating` | `TierListController`, `AdminTierListController` | `TierListCommunityService` | `ratingValue/stars/adminRating, note(optional)` | admin rating summary | Admin endorsement; detail page Admin star click gửi vào endpoint này |
 | GET, PUT | `/api/users/me/profile` | `UserProfileController` | `UserProfileService` | PUT: `displayName, level` | `UserProfileResponse` | Hồ sơ user |
+| GET | `/api/users/me/content-summary` | `UserProfileController` | `UserProfileService` | none | `UserContentSummaryResponse` | Account dashboard panel `Nội dung của bạn`; đếm/list guide published và tier list cộng đồng thuộc user đang đăng nhập |
 | GET | `/api/esports/teams` | `EsportsController` | repo trực tiếp | none | `EsportsTeam[]` | BXH public |
 | GET | `/api/esports/matches/recent` | `EsportsController` | repo trực tiếp | `limit` | `RecentMatchDto[]` | Feed trận gần đây |
 | POST | `/api/ban-pick/rooms` | `BanPickRoomController` | `BanPickRoomService` | `seriesType` | `BanPickCreateRoomResponse` | Tạo phòng online |
@@ -248,3 +252,181 @@ Ghi chú realtime:
   - Hoàn thiện hoặc loại bỏ các placeholder chưa có backend thật: tab `spells/items/arcana/enchantments` trong `wiki.html`, `guide admin/moderation`.
   - Đưa secret/config ra biến môi trường; hiện `application.properties` đang commit trực tiếp DB password và Google client id.
   - Bổ sung test cho `Guides`, `Tier Lists`, `Esports`, `Security`, và `WebSocket/BanPick` end-to-end.
+
+**8. UI/UX Design System**
+
+```text
+UI/UX Design System
+|- Muc dich
+|  |- Tao baseline giao dien chung cho ATG Academy theo `docs/ui-style-guide.md`
+|  |- Chuyen hoa Apple-like style thanh premium game/esports academy, khong copy Apple 100%
+|  `- Giam tinh trang moi trang mot kieu button/card/search rieng
+|- Nguoi dung lien quan
+|  |- Public users: trang chu, wiki, tier list, esports, guides, ban/pick
+|  |- Authenticated users: profile, community tier list, guide creation, ban/pick online
+|  `- Admin users: dashboard, hero admin, attribute admin, esports data admin
+|- File chinh
+|  |- Style guide: `docs/ui-style-guide.md`
+|  |- Agent rule: `docs/AGENTS.md`
+|  `- CSS base: `demo/src/main/resources/static/css/style.css`
+|- Component/token base hien tai
+|  |- CSS variables: `--atg-primary`, `--atg-primary-focus`, `--atg-canvas`, `--atg-canvas-parchment`, `--atg-ink`, `--atg-hairline`
+|  |- Spacing/radius/shadow/font tokens: `--atg-space-*`, `--atg-radius-*`, `--atg-shadow-*`, `--atg-font-*`
+|  |- Legacy aliases: `--blue-color`, `--red-color`, `--bg-color`, `--panel-bg`, `--text-color`, `--gold-color`
+|  `- Base classes: `.atg-page`, `.atg-section`, `.atg-section-header`, `.atg-card`, `.atg-button-*`, `.atg-search`, `.atg-table`, `.atg-modal`, `.atg-empty-state`, `.atg-error-state`
+|- Luong hoat dong chinh
+|  |- Giai doan 1: them token va class base, chua thay doi HTML/JS workflow
+|  |- Giai doan 2: header va homepage se ap dung token/component base
+|  |- Giai doan 3: tier list, wiki, esports ap dung component base nhung giu mat do du lieu
+|  |- Giai doan 4: ban/pick ap dung visual system nhung uu tien thao tac nhanh va can bang hai doi
+|  `- Giai doan 5: admin ap dung dashboard style sach, it mau, de thao tac
+|- API/database
+|  |- Khong co API endpoint moi
+|  |- Khong co controller/service/entity/repository moi
+|  `- Khong doi database/table/entity/schema/seed
+|- Quyen truy cap
+|  `- Khong doi auth/authorization; chi la CSS/design system baseline
+`- Rui ro/can test thu cong
+   |- Cac bien legacy duoc map sang token moi nen mau chu/accent co the thay doi tren nhieu trang
+   |- Can review bang mat header, homepage, tier list, wiki, esports, ban/pick, admin trong cac giai doan sau
+   `- Can kiem tra responsive va focus-visible tren desktop/tablet/mobile sau khi tung nhom trang ap dung component base
+```
+
+**9. Tier List Import / Export**
+
+```text
+Tier List Import / Export
+|- Feature name
+|  `- Tier List Meta Import/Export + Official creator metadata
+|- Purpose
+|  |- Cho Admin dan du lieu import chi voi 2 cot: Ten tuong + Tier
+|  |- Khi apply, he thong tu xep hero vao cot DSL -> JGL -> MID -> ADL -> SUP theo Primary Role trong database
+|  `- Public Tier List page va file export anh dung chung title `Tier List Meta` va metadata creator lay tu payload official
+|- Related users
+|  |- Public users
+|  `- Admin
+|- Main HTML, JavaScript, CSS files
+|  |- `demo/src/main/resources/static/html/tier-list.html`
+|  |- `demo/src/main/resources/static/html/tier-list-detail.html`
+|  |- `demo/src/main/resources/static/js/tier-list-app.js`
+|  |- `demo/src/main/resources/static/js/tier-list-export.js`
+|  `- `demo/src/main/resources/static/css/style.css`
+|- Related controller, service, entity, repository files
+|  |- Controller: `demo/src/main/java/com/example/demo/controller/TierListController.java`
+|  |- Service: `demo/src/main/java/com/example/demo/service/TierListCommunityService.java`
+|  |- Service: `demo/src/main/java/com/example/demo/service/HeroContentDataService.java`
+|  |- Entity: `demo/src/main/java/com/example/demo/entity/Hero.java`, `demo/src/main/java/com/example/demo/entity/HeroRole.java`, `demo/src/main/java/com/example/demo/entity/TierList.java`
+|  `- Repository: `demo/src/main/java/com/example/demo/repository/HeroRepository.java`, `demo/src/main/java/com/example/demo/repository/TierListRepository.java`
+|- API endpoints
+|  |- `GET /api/tier-lists/official`
+|  |- `POST /api/tier-lists`
+|  |- `GET /api/tier-lists/{id}`
+|  `- Official import now supports body flag `importMode=PRIMARY_ROLE`; official/community response also exposes `creatorName` + `creator_name`
+|- Database table or entity
+|  |- `tier_lists`
+|  |- `users`
+|  |- `heroes`
+|  `- `hero_roles`
+|- Main workflow
+|  |- Public user mo trang Tier List -> frontend goi `GET /api/tier-lists/official` -> render title `Tier List Meta` + subtitle `Cập nhật bởi Admin [creator]`
+|  |- Admin mo trang Tier List, dan input 2 cot `Ten tuong + Tier`
+|  |- Frontend preview tu resolve hero trong hero catalog va map cot bang `primaryRole`
+|  |- Apply gui `contentData` + `importMode=PRIMARY_ROLE`
+|  |- Backend rebuild official tier list rows theo Primary Role truoc khi serialize vao `tier_lists.content_data`
+|  `- Export anh dung `html2canvas`, cho font/image load xong va render text Unicode NFC de giu chu Tieng Viet dung trong title + creator metadata
+|- Access permissions
+|  |- Public xem official page va export detail/community tier list cua minh
+|  `- Admin only cho import/save official
+`- Risk notes or manual testing areas
+   |- Hero khong tim thay hoac thieu Primary Role se khong vao duoc preview/apply
+   |- Can test input bang space, tab, va comma cho format 2 cot
+   |- Can test subtitle official khi author co dau Tieng Viet va khi payload chi tra ve `author.name`
+   `- Can test preview, official board, va file export sau khi save de dam bao cot role, title, va creator metadata hien dung
+```
+
+**10. Ban/Pick Navigation & Routing**
+
+```text
+Ban/Pick Navigation & Routing
+|- Header / Navigation
+|  |- Navbar dropdown `Ban/Pick` la cach vao va chuyen mode chinh cho Ban/Pick
+|  |- Dropdown di thang toi `ban-pick-free.html`, `ban-pick-standard.html`, `ban-pick-solo.html`
+|  `- Active nav state van dua tren filename `ban-pick-*`, khong can landing page trung gian
+|- Ban/Pick Free Mode
+|  |- Wrapper page: `demo/src/main/resources/static/html/ban-pick-free.html`
+|  `- Khong con nut `Đổi chế độ` / `Thoát` chi de quay ve `ban-pick.html`; user doi mode qua navbar dropdown
+|- Ban/Pick Standard Mode
+|  |- Wrapper page: `demo/src/main/resources/static/html/ban-pick-standard.html`
+|  `- Khong con nut `Đổi chế độ` / `Thoát` chi de quay ve `ban-pick.html`; luong pick/ban, timer, reset giu nguyen
+|- Ban/Pick Solo Online
+|  |- Wrapper page: `demo/src/main/resources/static/html/ban-pick-solo.html`
+|  |- Khong con nut quay ve landing page trong lobby/summary/status shell
+|  |- Shareable room link di thang toi `/html/ban-pick-solo.html?room={roomCode}`
+|  `- Cac nut nghiep vu room nhu join, ready, start, reset, next game, lineup confirm van giu nguyen
+|- Routing / Static Pages
+|  |- `/ban-pick` redirect ve `/html/ban-pick-free.html` khi khong co query
+|  |- `/ban-pick?mode=standard|solo|free` redirect den mode tuong ung
+|  |- `/ban-pick?room={roomCode}` va `/ban-pick.html?room={roomCode}` redirect vao thang Solo room
+|  |- `/html/ban-pick.html` khong con render chooser page; chi redirect legacy theo `room` / `mode` hoac ve Free Mode
+|  `- Khong them API moi, khong doi DB, khong doi draft/room state machine
+`- UI/UX Design notes
+   |- Loai bo cac action chi dung de quay ve landing page cu, giu layout draft gon hon
+   `- Chuyen mode thong qua navbar dropdown de dong nhat dieu huong desktop/mobile
+```
+
+**11. Community Tier List Pages**
+
+```text
+Community Tier List Pages
+|- Feature name
+|  `- Community Tier List static pages + dropdown navigation
+|- Purpose
+|  |- Tach Community Tier List thanh 3 HTML rieng de tranh nhet 3 view vao cung mot section
+|  `- Giu `tier-list.html` lam trang official/main page, con dropdown la navigation chinh cho recommended/all/mine
+|- Related users
+|  |- Public users xem `Tier list đề xuất` va `Tất cả tier list`
+|  `- Authenticated users xem them `Tier list bản thân` va tao/xoa tier list cua minh
+|- Main HTML, JavaScript, and CSS files
+|  |- `demo/src/main/resources/static/html/tier-list.html`
+|  |- `demo/src/main/resources/static/html/tier-list-community-shell.html`
+|  |- `demo/src/main/resources/static/html/tier-list-recommended.html`
+|  |- `demo/src/main/resources/static/html/tier-list-all.html`
+|  |- `demo/src/main/resources/static/html/tier-list-mine.html`
+|  |- `demo/src/main/resources/static/html/tier-list-detail.html`
+|  |- `demo/src/main/resources/static/js/tier-list-app.js`
+|  |- `demo/src/main/resources/static/js/tier-list-community-page.js`
+|  |- `demo/src/main/resources/static/js/header-loader.js`
+|  `- `demo/src/main/resources/static/css/style.css`
+|- Related controller, service, entity, and repository files
+|  |- Controller: `demo/src/main/java/com/example/demo/controller/StaticPageRedirectController.java`
+|  |- Controller: `demo/src/main/java/com/example/demo/controller/TierListController.java`
+|  |- Service: `demo/src/main/java/com/example/demo/service/TierListCommunityService.java`
+|  |- Entity: `demo/src/main/java/com/example/demo/entity/TierList.java`
+|  `- Repository: `demo/src/main/java/com/example/demo/repository/TierListRepository.java`
+|- API endpoints
+|  |- `GET /api/tier-lists/community` cho page `tier-list-recommended.html`
+|  |- `GET /api/tier-lists/community/all` cho page `tier-list-all.html`
+|  |- `GET /api/tier-lists/me` cho page `tier-list-mine.html`
+|  `- Khong them API moi; `tier-list.html` van dung `GET /api/tier-lists/official`
+|- Database table or entity
+|  |- `tier_lists`
+|  |- `tier_list_ratings`
+|  |- `tier_list_comments`
+|  `- `tier_list_admin_ratings`
+|- Main workflow
+|  |- User mo `/tier-list` hoac `tier-list.html` -> xem official/meta va dropdown Community Tier List
+|  |- Chon `Tier list đề xuất` -> route `/tier-list/recommended` -> redirect sang `tier-list-recommended.html` -> frontend fetch `/api/tier-lists/community`
+|  |- Chon `Tất cả tier list` -> route `/tier-list/all` -> redirect sang `tier-list-all.html` -> frontend fetch `/api/tier-lists/community/all`
+|  |- Chon `Tier list bản thân` -> route `/tier-list/mine` -> redirect sang `tier-list-mine.html` -> frontend fetch `/api/tier-lists/me`
+|  |- `tier-list-community-page.js` load shell chung, doc `body[data-community-view]`, set title/subtitle/dropdown hien tai, roi nap `tier-list-app.js`
+|  `- `tier-list-app.js` tai su dung renderer card/rating/delete/modal tao tier list; khong con doi tab trong cung mot section
+|- Access permissions
+|  |- Public xem official, recommended, all, detail, rating summary, export
+|  |- `mine` yeu cau user da dang nhap; guest se thay message `Vui lòng đăng nhập để xem tier list của bạn.`
+|  `- Quyen xoa tier list van theo owner/Admin nhu truoc
+`- Risk notes or manual testing areas
+   |- Can test dropdown active/current value tren `tier-list.html`, `tier-list-recommended.html`, `tier-list-all.html`, `tier-list-mine.html`
+   |- Can test `header-loader.js` de nav `Tier List` van active tren `tier-list-detail.html` va 3 page community moi
+   |- Can test modal `Tạo Tier List` tren official page va 3 page community de chac rang hero pool van load dung
+   `- Khong doi API/DB/schema; can verify homepage community highlights va account dashboard khong bi anh huong
+```

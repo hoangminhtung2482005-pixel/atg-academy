@@ -16,7 +16,8 @@ public record HomeFeedItemResponse(
         String description,
         String image,
         Integer readTime,
-        String category
+        String category,
+        String badgeLabel
 ) {
 
     public static HomeFeedItemResponse tier(Long id,
@@ -26,6 +27,17 @@ public record HomeFeedItemResponse(
                                             Double rating,
                                             Long ratingCount,
                                             List<Map<String, Object>> preview) {
+        return tier(id, title, author, createdAt, rating, ratingCount, preview, null);
+    }
+
+    public static HomeFeedItemResponse tier(Long id,
+                                            String title,
+                                            String author,
+                                            LocalDateTime createdAt,
+                                            Double rating,
+                                            Long ratingCount,
+                                            List<Map<String, Object>> preview,
+                                            String badgeLabel) {
         return new HomeFeedItemResponse(
                 "tier",
                 id,
@@ -38,7 +50,8 @@ public record HomeFeedItemResponse(
                 null,
                 null,
                 null,
-                null
+                null,
+                badgeLabel
         );
     }
 
@@ -61,7 +74,8 @@ public record HomeFeedItemResponse(
                 description,
                 image,
                 readTime,
-                category
+                category,
+                null
         );
     }
 }

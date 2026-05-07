@@ -2,8 +2,11 @@ package com.example.demo.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Controller
 public class StaticPageRedirectController {
@@ -16,7 +19,6 @@ public class StaticPageRedirectController {
     @GetMapping({
             "/account.html",
             "/admin.html",
-            "/ban-pick.html",
             "/ban-pick-leaderboard.html",
             "/ban-pick-profile.html",
             "/ban-pick-result.html",
@@ -27,7 +29,10 @@ public class StaticPageRedirectController {
             "/guide-detail.html",
             "/header.html",
             "/tactics-guides.html",
+            "/tier-list-all.html",
             "/tier-list-detail.html",
+            "/tier-list-mine.html",
+            "/tier-list-recommended.html",
             "/tier-list.html",
             "/wiki.html"
     })
@@ -45,9 +50,47 @@ public class StaticPageRedirectController {
         return "redirect:/html/tier-list.html";
     }
 
+    @GetMapping("/tier-list/recommended")
+    public String redirectTierListRecommendedPage() {
+        return "redirect:/html/tier-list-recommended.html";
+    }
+
+    @GetMapping("/tier-list/all")
+    public String redirectTierListAllPage() {
+        return "redirect:/html/tier-list-all.html";
+    }
+
+    @GetMapping("/tier-list/mine")
+    public String redirectTierListMinePage() {
+        return "redirect:/html/tier-list-mine.html";
+    }
+
     @GetMapping("/guides")
     public String redirectGuidesPage() {
         return "redirect:/html/giao-an.html";
+    }
+
+    @GetMapping({"/ban-pick", "/ban-pick.html"})
+    public String redirectBanPickEntry(
+            @RequestParam(required = false) String room,
+            @RequestParam(required = false) String mode
+    ) {
+        if (StringUtils.hasText(room)) {
+            return "redirect:" + UriComponentsBuilder
+                    .fromPath("/html/ban-pick-solo.html")
+                    .queryParam("room", room.trim())
+                    .build()
+                    .encode()
+                    .toUriString();
+        }
+
+        String normalizedMode = StringUtils.hasText(mode) ? mode.trim().toLowerCase() : "";
+        return switch (normalizedMode) {
+            case "standard" -> "redirect:/html/ban-pick-standard.html";
+            case "solo", "solo-1v1" -> "redirect:/html/ban-pick-solo.html";
+            case "free", "" -> "redirect:/html/ban-pick-free.html";
+            default -> "redirect:/html/ban-pick-free.html";
+        };
     }
 
     @GetMapping("/tier-list/{id}")

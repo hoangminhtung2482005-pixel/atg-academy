@@ -127,7 +127,7 @@ public class BanPickRoomController {
         if (!isDefaultPort(request)) {
             origin += ":" + request.getServerPort();
         }
-        return origin + "/html/ban-pick.html?room=" + roomCode;
+        return origin + "/html/ban-pick-solo.html?room=" + roomCode;
     }
 
     private boolean isDefaultPort(HttpServletRequest request) {

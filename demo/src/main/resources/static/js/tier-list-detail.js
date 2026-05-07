@@ -108,6 +108,43 @@ function tierDeleteErrorMessage(status, fallback){
     return fallback||'Không xóa được Tier List.';
 }
 
+function buildTierListDeleteRequest(id){
+    const url=`${TIER_DETAIL_API}/${encodeURIComponent(String(id))}`;
+    const headers=new Headers({Accept:'application/json'});
+    const token=typeof getAuthToken==='function' ? getAuthToken() : null;
+    if(token) headers.set('Authorization',`Bearer ${token}`);
+    return {
+        url,
+        options:{
+            method:'DELETE',
+            headers
+        }
+    };
+}
+
+async function logTierListDeleteFailure(url,response){
+    let body='';
+    try{
+        body=await response.clone().text();
+    }catch(error){
+        body='';
+    }
+    console.error('Delete tier list failed',{
+        url,
+        method:'DELETE',
+        status:response.status,
+        body
+    });
+}
+
+function resolveTierDeleteErrorMessage(status, fallback){
+    if(status===401) return 'Vui long dang nhap de xoa Tier List.';
+    if(status===403) return 'Ban khong co quyen xoa Tier List nay.';
+    if(status===404) return 'Tier List khong ton tai hoac da bi xoa.';
+    if(status===405) return 'Loi ky thuat: endpoint xoa Tier List khong chap nhan DELETE.';
+    return fallback||'Khong xoa duoc Tier List.';
+}
+
 async function loadTierDetail(){
     const response=await fetch(`${TIER_DETAIL_API}/${tierDetailId}`,{headers:{Accept:'application/json'},cache:'no-store'});
     if(!response.ok) throw new Error(await readDetailApiError(response));
@@ -144,52 +181,64 @@ function renderTierHeader(){
     note.hidden=!noteText;
 }
 
+function getDetailAdminRatingDetail(){
+    return (tierDetailSummary?.adminRatingDetail||tierDetailData?.adminRatingDetail)||null;
+}
+
+function getDetailAdminRatingValue(){
+    const detail=getDetailAdminRatingDetail();
+    return detail?.ratingValue??tierDetailSummary?.adminRating??tierDetailData?.adminRating??null;
+}
+
 function renderRatingSummary(){
     const summary=tierDetailSummary||tierDetailData||{};
     const average=summary.averageUserRating??summary.average??tierDetailData?.averageUserRating??0;
     const count=summary.userRatingCount??summary.count??tierDetailData?.userRatingCount??0;
     const userRating=summary.userRating??tierDetailData?.currentUserRating??0;
+    const isAdmin=isDetailAdmin();
+    const adminDetail=getDetailAdminRatingDetail();
+    const adminRating=getDetailAdminRatingValue();
+    const activeRating=isAdmin?adminRating:userRating;
+    const summaryLabel=document.querySelector('.rating-summary span');
+    const averageEl=document.getElementById('tier-detail-average');
+    const countEl=document.getElementById('tier-detail-rating-count');
+    const message=document.getElementById('tier-detail-rating-message');
 
-    document.getElementById('tier-detail-average').textContent=`${formatDetailRating(average)}/5`;
-    document.getElementById('tier-detail-rating-count').textContent=`${count} đánh giá`;
+    if(isAdmin){
+        if(summaryLabel) summaryLabel.textContent='Điểm Admin';
+        averageEl.textContent=adminRating?`${formatDetailRating(adminRating)}/5`:'Chưa có';
+        countEl.textContent=`Cộng đồng: ${formatDetailRating(average)}/5 · ${count} đánh giá`;
+    }else{
+        if(summaryLabel) summaryLabel.textContent='Đánh giá cộng đồng';
+        averageEl.textContent=`${formatDetailRating(average)}/5`;
+        countEl.textContent=`${count} đánh giá`;
+    }
 
     const stars=document.getElementById('tier-detail-stars');
     stars.innerHTML='';
     for(let i=1;i<=5;i++){
         const button=document.createElement('button');
         button.type='button';
-        button.className=i<=Number(userRating)?'active':'';
+        button.className=i<=Number(activeRating)?'active':'';
         button.textContent='★';
-        button.setAttribute('aria-label',`${i} sao`);
-        button.onclick=()=>saveTierUserRating(i);
+        button.setAttribute('aria-label',isAdmin?`Lưu điểm Admin ${i} sao`:`${i} sao`);
+        button.onclick=()=>saveTierRating(i);
         stars.appendChild(button);
     }
 
-    const message=document.getElementById('tier-detail-rating-message');
-    message.textContent=getDetailUser()?`Điểm của bạn: ${userRating?`${userRating}/5`:'chưa đánh giá'}`:'Đăng nhập để đánh giá.';
-}
-
-function renderAdminRating(){
-    const detail=(tierDetailSummary?.adminRatingDetail||tierDetailData?.adminRatingDetail)||null;
-    const ratingValue=detail?.ratingValue??tierDetailSummary?.adminRating??tierDetailData?.adminRating??null;
-    const valueEl=document.getElementById('tier-detail-admin-value');
-    const noteEl=document.getElementById('tier-detail-admin-note');
-    const form=document.getElementById('tier-detail-admin-form');
-
-    if(ratingValue){
-        valueEl.textContent=`Đánh giá của Admin: ${formatDetailRating(ratingValue)}/5`;
-    }else{
-        valueEl.textContent='Chưa có đánh giá từ Admin';
+    if(!getDetailUser()){
+        message.textContent='Đăng nhập để đánh giá.';
+        return;
     }
 
-    noteEl.textContent=detail?.note||'';
-    noteEl.hidden=!detail?.note;
-
-    form.hidden=!isDetailAdmin();
-    if(isDetailAdmin()){
-        document.getElementById('tier-admin-rating-input').value=ratingValue||'';
-        document.getElementById('tier-admin-note-input').value=detail?.note||'';
+    if(isAdmin){
+        const adminText=adminRating?`Điểm Admin hiện tại: ${formatDetailRating(adminRating)}/5`:'Chưa có điểm Admin';
+        const noteText=adminDetail?.note?` · Ghi chú: ${adminDetail.note}`:'';
+        message.textContent=`${adminText}. Bấm sao để lưu điểm Admin.${noteText}`;
+        return;
     }
+
+    message.textContent=`Điểm của bạn: ${userRating?`${userRating}/5`:'chưa đánh giá'}`;
 }
 
 function getDetailHeroImage(hero){
@@ -310,7 +359,6 @@ function renderComments(){
 function renderTierDetail(){
     renderTierHeader();
     renderRatingSummary();
-    renderAdminRating();
     renderTierBoard();
     renderDeleteControls();
     renderCommentComposer();
@@ -327,6 +375,10 @@ function exportCurrentTierDetail(button){
         adminRating:summary.adminRating??tierDetailData.adminRating,
         adminRatingDetail:summary.adminRatingDetail??tierDetailData.adminRatingDetail
     },button);
+}
+
+function saveTierRating(value){
+    return isDetailAdmin()?saveTierAdminRating(value):saveTierUserRating(value);
 }
 
 async function saveTierUserRating(value){
@@ -353,11 +405,15 @@ async function saveTierUserRating(value){
     }
 }
 
-async function saveTierAdminRating(){
-    const button=document.getElementById('tier-admin-save-btn');
-    const ratingValue=Number(document.getElementById('tier-admin-rating-input').value);
-    const note=document.getElementById('tier-admin-note-input').value.trim();
-    button.disabled=true;
+async function saveTierAdminRating(ratingValue){
+    if(!isDetailAdmin()){
+        showDetailToast('Chỉ Admin mới có thể lưu điểm Admin.','error');
+        return;
+    }
+
+    const stars=document.getElementById('tier-detail-stars');
+    const note=getDetailAdminRatingDetail()?.note||'';
+    stars.classList.add('is-saving');
     try{
         const response=await fetch(`/api/admin/tier-lists/${tierDetailId}/admin-rating`,{
             method:'PUT',
@@ -376,12 +432,12 @@ async function saveTierAdminRating(){
             adminRating:payload.adminRating,
             adminRatingDetail:payload.adminRatingDetail
         };
-        renderAdminRating();
-        showDetailToast('Đã lưu đánh giá Admin.');
+        renderRatingSummary();
+        showDetailToast('Đã lưu điểm Admin.');
     }catch(error){
-        showDetailToast(`Không lưu được đánh giá Admin: ${error.message}`,'error');
+        showDetailToast(`Không lưu được điểm Admin: ${error.message}`,'error');
     }finally{
-        button.disabled=false;
+        stars.classList.remove('is-saving');
     }
 }
 
@@ -401,8 +457,12 @@ async function deleteCurrentTierList(){
         button.textContent='Đang xóa...';
     }
     try{
-        const response=await fetch(`${TIER_DETAIL_API}/${tierDetailId}`,{method:'DELETE'});
-        if(!response.ok) throw new Error(tierDeleteErrorMessage(response.status,await readDetailApiError(response)));
+        const request=buildTierListDeleteRequest(tierDetailId);
+        const response=await fetch(request.url,request.options);
+        if(!response.ok){
+            await logTierListDeleteFailure(request.url,response);
+            throw new Error(resolveTierDeleteErrorMessage(response.status,await readDetailApiError(response)));
+        }
         window.location.href='/html/tier-list.html';
     }catch(error){
         console.error('Cannot delete tier list:',error);
@@ -451,7 +511,6 @@ async function refreshAuthSensitiveBlocks(){
     try{
         await loadTierSummary();
         renderRatingSummary();
-        renderAdminRating();
         renderDeleteControls();
         renderCommentComposer();
     }catch(error){
@@ -471,7 +530,6 @@ async function initTierDetail(){
         await Promise.all([loadTierDetail(),loadTierSummary(),loadTierComments()]);
         setDetailState('');
         renderTierDetail();
-        document.getElementById('tier-admin-save-btn').onclick=saveTierAdminRating;
         document.getElementById('tier-detail-delete-btn').onclick=deleteCurrentTierList;
     }catch(error){
         console.error('Cannot load tier detail:',error);

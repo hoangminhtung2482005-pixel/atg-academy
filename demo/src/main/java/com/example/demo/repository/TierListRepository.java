@@ -18,4 +18,8 @@ public interface TierListRepository extends JpaRepository<TierList, Long> {
     List<TierList> findByIsOfficialFalseOrderByCreatedAtDesc();
 
     List<TierList> findByIsOfficialFalseOrderByCreatedAtDesc(Pageable pageable);
+
+    long countByAuthorIdAndIsOfficialFalse(Long authorId);
+
+    List<TierList> findByAuthorIdAndIsOfficialFalseOrderByCreatedAtDesc(Long authorId);
 }

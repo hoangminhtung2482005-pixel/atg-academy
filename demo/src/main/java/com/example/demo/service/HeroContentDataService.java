@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -20,6 +21,8 @@ import java.util.stream.Collectors;
 @Service
 public class HeroContentDataService {
 
+    private static final List<String> OFFICIAL_IMPORT_ROLE_ORDER = List.of("DSL", "JGL", "MID", "ADL", "SUP");
+
     private final HeroRepository heroRepository;
 
     public HeroContentDataService(HeroRepository heroRepository) {
@@ -29,6 +32,13 @@ public class HeroContentDataService {
     @Transactional(readOnly = true)
     public Object normalizeForStorage(Object contentData) {
         return transformKnownHeroContent(contentData, loadCatalog(), false);
+    }
+
+    @Transactional(readOnly = true)
+    public Object normalizeOfficialImportForStorage(Object contentData) {
+        Catalog catalog = loadCatalog();
+        Object normalized = transformKnownHeroContent(contentData, catalog, false);
+        return rebuildOfficialTierListByPrimaryRole(normalized, catalog);
     }
 
     @Transactional(readOnly = true)
@@ -220,6 +230,89 @@ public class HeroContentDataService {
         Map<String, Object> result = new LinkedHashMap<>();
         source.forEach((key, value) -> result.put(String.valueOf(key), value));
         return result;
+    }
+
+    private Object rebuildOfficialTierListByPrimaryRole(Object contentData, Catalog catalog) {
+        if (!(contentData instanceof Map<?, ?> map) || !(map.get("rows") instanceof List<?> rows)) {
+            return contentData;
+        }
+
+        Map<String, Object> result = copyMap(map);
+        result.put("columns", buildOfficialImportColumns());
+        result.put("rows", rows.stream()
+                .map(row -> rebuildOfficialTierListRow(row, catalog))
+                .toList());
+        return result;
+    }
+
+    private Object rebuildOfficialTierListRow(Object rowValue, Catalog catalog) {
+        if (!(rowValue instanceof Map<?, ?> row)) {
+            return rowValue;
+        }
+
+        Map<String, Object> result = copyMap(row);
+        List<List<Object>> cells = new ArrayList<>();
+        OFFICIAL_IMPORT_ROLE_ORDER.forEach(role -> cells.add(new ArrayList<>()));
+
+        Object cellsValue = row.get("cells");
+        if (cellsValue instanceof List<?> sourceCells) {
+            for (int sourceCellIndex = 0; sourceCellIndex < sourceCells.size(); sourceCellIndex++) {
+                Object cellValue = sourceCells.get(sourceCellIndex);
+                if (!(cellValue instanceof List<?> heroes)) {
+                    continue;
+                }
+
+                for (Object heroValue : heroes) {
+                    Object storageRef = toHeroStorageRef(heroValue, catalog);
+                    if (storageRef == null) {
+                        continue;
+                    }
+                    int targetIndex = resolveOfficialImportRoleIndex(storageRef, catalog);
+                    if (targetIndex < 0) {
+                        targetIndex = Math.min(sourceCellIndex, OFFICIAL_IMPORT_ROLE_ORDER.size() - 1);
+                    }
+                    cells.get(targetIndex).add(storageRef);
+                }
+            }
+        }
+
+        result.put("cells", cells);
+        return result;
+    }
+
+    private int resolveOfficialImportRoleIndex(Object heroValue, Catalog catalog) {
+        return resolveHero(heroValue, catalog)
+                .map(hero -> normalizeRoleCode(hero.getPrimaryRole() != null ? hero.getPrimaryRole().getCode() : null))
+                .filter(StringUtils::hasText)
+                .map(OFFICIAL_IMPORT_ROLE_ORDER::indexOf)
+                .filter(index -> index >= 0)
+                .orElse(-1);
+    }
+
+    private String normalizeRoleCode(String roleCode) {
+        if (!StringUtils.hasText(roleCode)) {
+            return "";
+        }
+        String normalized = roleCode.trim().toUpperCase(Locale.ROOT);
+        return OFFICIAL_IMPORT_ROLE_ORDER.contains(normalized) ? normalized : "";
+    }
+
+    private List<Map<String, Object>> buildOfficialImportColumns() {
+        return List.of(
+                buildOfficialImportColumn("DSL", "/images/ui/top.png"),
+                buildOfficialImportColumn("JGL", "/images/ui/jungle.png"),
+                buildOfficialImportColumn("MID", "/images/ui/mid.png"),
+                buildOfficialImportColumn("ADL", "/images/ui/adc.png"),
+                buildOfficialImportColumn("SUP", "/images/ui/support.png")
+        );
+    }
+
+    private Map<String, Object> buildOfficialImportColumn(String label, String icon) {
+        Map<String, Object> column = new LinkedHashMap<>();
+        column.put("label", label);
+        column.put("icon", icon);
+        column.put("alt", label);
+        return column;
     }
 
     private Catalog loadCatalog() {

@@ -409,7 +409,7 @@
             document.getElementById('online-series-panel').classList.add('is-hidden');
             document.getElementById('draft-summary-panel').classList.add('is-hidden');
             if (isModeLockedPage()) {
-                window.location.assign('/html/ban-pick.html');
+                window.location.assign('/ban-pick');
                 return;
             }
             document.getElementById('mode-selector-panel').classList.remove('is-hidden');
@@ -1160,12 +1160,15 @@
         }
 
         function renderOnlineSeriesPanel() {
-            const panel = document.getElementById('online-series-panel');
-            if (!panel) return;
+            const overviewPanel = document.getElementById('online-series-panel');
+            const blueUsedPanel = document.getElementById('online-blue-used-panel');
+            const redUsedPanel = document.getElementById('online-red-used-panel');
+            const panels = [overviewPanel, blueUsedPanel, redUsedPanel].filter(Boolean);
+            if (!panels.length) return;
             const draftVisible = !document.getElementById('draft-status-panel')?.classList.contains('is-hidden');
             const summaryVisible = !document.getElementById('draft-summary-panel')?.classList.contains('is-hidden');
             const shouldShow = isOnlineRoomMode() && Boolean(onlineRoom) && (draftVisible || summaryVisible);
-            panel.classList.toggle('is-hidden', !shouldShow);
+            panels.forEach(panel => panel.classList.toggle('is-hidden', !shouldShow));
             if (!shouldShow) return;
 
             const seriesType = onlineRoom.seriesType || "BO1";
@@ -1345,18 +1348,22 @@
         }
 
         function clearSlot(slot) {
-            slot.innerText = '';
+            slot.textContent = '';
             slot.style.backgroundImage = '';
             slot.style.backgroundSize = '';
             slot.style.color = '';
             slot.style.textShadow = '';
             slot.removeAttribute('data-hero-name');
+            slot.removeAttribute('aria-label');
+            slot.removeAttribute('title');
             slot.classList.remove('pick-blue', 'pick-red', 'banned', 'active', 'drag-over', 'lock-new', 'lock-new-ban', 'lock-new-pick');
         }
 
         function fillSlot(slot, heroName, team, action, isNew = false) {
-            slot.innerText = heroName;
+            slot.textContent = '';
             slot.setAttribute('data-hero-name', heroName);
+            slot.setAttribute('aria-label', heroName);
+            slot.setAttribute('title', heroName);
 
             const heroBtn = document.getElementById(`hero-${heroName}`);
             if (heroBtn) {
@@ -2232,7 +2239,8 @@
         }
 
         function dragStartFromSlot(ev) {
-            if (currentMode !== "free" || !ev.currentTarget.innerText) {
+            const heroName = ev.currentTarget.getAttribute('data-hero-name') || '';
+            if (currentMode !== "free" || !heroName) {
                 ev.preventDefault();
                 return;
             }
@@ -2240,7 +2248,7 @@
             const draggedElement = ev.currentTarget;
             ev.dataTransfer.setData("source", "slot");
             ev.dataTransfer.setData("sourceSlotId", ev.currentTarget.id);
-            ev.dataTransfer.setData("heroName", ev.currentTarget.innerText);
+            ev.dataTransfer.setData("heroName", heroName);
             ev.dataTransfer.effectAllowed = "move";
             setTimeout(() => draggedElement.classList.add('dragging'), 0);
         }

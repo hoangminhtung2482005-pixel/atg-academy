@@ -21,4 +21,19 @@ public interface GuideRepository extends JpaRepository<Guide, Long> {
             ORDER BY guide.publishedAt DESC, guide.createdAt DESC
             """)
     List<Guide> findPublishedByHeroId(@Param("heroId") Long heroId, Pageable pageable);
+
+    @Query("""
+            SELECT COUNT(guide) FROM Guide guide
+            WHERE guide.author.id = :authorId
+            AND UPPER(COALESCE(guide.status, 'PUBLISHED')) = 'PUBLISHED'
+            """)
+    long countPublishedByAuthorId(@Param("authorId") Long authorId);
+
+    @Query("""
+            SELECT guide FROM Guide guide
+            WHERE guide.author.id = :authorId
+            AND UPPER(COALESCE(guide.status, 'PUBLISHED')) = 'PUBLISHED'
+            ORDER BY COALESCE(guide.publishedAt, guide.createdAt) DESC, guide.createdAt DESC
+            """)
+    List<Guide> findPublishedByAuthorIdOrderByLatest(@Param("authorId") Long authorId);
 }

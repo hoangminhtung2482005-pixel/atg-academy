@@ -22,8 +22,6 @@ import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -57,12 +55,18 @@ public class TierListController {
 
     @GetMapping("/community")
     public ResponseEntity<?> getCommunityTierLists(Authentication authentication) {
-        List<TierList> list = tierListRepository.findByIsOfficialFalseOrderByCreatedAtDesc();
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (TierList tierList : list) {
-            result.add(communityService.buildTierListResponse(tierList, authentication));
-        }
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(communityService.getHighlightedCommunityTierLists(authentication));
+    }
+
+    @GetMapping("/community/all")
+    public ResponseEntity<?> getAllCommunityTierLists(Authentication authentication) {
+        return ResponseEntity.ok(communityService.getAllCommunityTierLists(authentication));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getMyCommunityTierLists(Authentication authentication) {
+        GoogleUserPrincipal currentUser = getCurrentUser(authentication);
+        return ResponseEntity.ok(communityService.getCurrentUserCommunityTierLists(currentUser, authentication));
     }
 
     @GetMapping("/{id}")
@@ -121,13 +125,13 @@ public class TierListController {
                 ? tierListRepository.findFirstByIsOfficialTrueOrderByUpdatedAtDesc().orElseGet(TierList::new)
                 : new TierList();
 
-        String defaultTitle = isOfficialRequest ? "Tier List Meta Hien Tai" : "Tier List cua " + author.resolveDisplayName();
+        String defaultTitle = isOfficialRequest ? "Tier List Meta" : "Tier List cua " + author.resolveDisplayName();
         tierList.setTitle(String.valueOf(body.getOrDefault("title", defaultTitle)));
         if (body.containsKey("description") || body.containsKey("note")) {
             tierList.setDescription(readText(body, "description", "note"));
         }
         tierList.setAuthor(author);
-        tierList.setContentData(serializeContentData(heroContentDataService.normalizeForStorage(body.get("contentData"))));
+        tierList.setContentData(serializeContentData(normalizeContentDataForSave(body, isOfficialRequest)));
         tierList.setOfficial(isOfficialRequest);
         tierListRepository.save(tierList);
 
@@ -164,7 +168,7 @@ public class TierListController {
         return ResponseEntity.ok(communityService.buildTierListResponse(tierList, authentication));
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping({"/{id}", "/community/{id}"})
     public ResponseEntity<?> deleteTierList(@PathVariable Long id, Authentication authentication) {
         GoogleUserPrincipal currentUser = getCurrentUser(authentication);
         communityService.deleteTierList(id, currentUser);
@@ -199,6 +203,19 @@ public class TierListController {
             return StringUtils.hasText(text) ? text : "{}";
         }
         return objectMapper.writeValueAsString(contentData);
+    }
+
+    private Object normalizeContentDataForSave(Map<String, Object> body, boolean isOfficialRequest) {
+        Object contentData = body.get("contentData");
+        if (isOfficialRequest && isPrimaryRoleImport(body)) {
+            return heroContentDataService.normalizeOfficialImportForStorage(contentData);
+        }
+        return heroContentDataService.normalizeForStorage(contentData);
+    }
+
+    private boolean isPrimaryRoleImport(Map<String, Object> body) {
+        Object importMode = body.get("importMode");
+        return importMode != null && "PRIMARY_ROLE".equalsIgnoreCase(String.valueOf(importMode).trim());
     }
 
     private String readText(Map<String, Object> body, String... keys) {

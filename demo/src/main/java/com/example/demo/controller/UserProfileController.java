@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.user.UserContentSummaryResponse;
 import com.example.demo.dto.user.UserProfileResponse;
 import com.example.demo.dto.user.UserProfileUpdateRequest;
 import com.example.demo.security.GoogleUserPrincipal;
@@ -26,6 +27,11 @@ public class UserProfileController {
     @GetMapping("/profile")
     public UserProfileResponse getProfile(Authentication authentication) {
         return userProfileService.getCurrentProfile(currentUser(authentication));
+    }
+
+    @GetMapping("/content-summary")
+    public UserContentSummaryResponse getContentSummary(Authentication authentication) {
+        return userProfileService.getCurrentContentSummary(currentUser(authentication));
     }
 
     @PutMapping("/profile")

@@ -10,6 +10,7 @@
         const filename = path.substring(path.lastIndexOf('/') + 1).replace('.html', '');
         if (filename === 'tactics-guides') return 'giao-an';
         if (filename === 'esports-leaderboard') return 'esports';
+        if (filename.startsWith('tier-list')) return 'tier-list';
         return filename || 'index';
     }
 

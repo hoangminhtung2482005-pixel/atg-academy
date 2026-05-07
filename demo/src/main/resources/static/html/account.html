@@ -250,36 +250,130 @@
             border-radius: 14px;
             padding: 18px;
         }
-        .session-list {
+        .personal-content-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .personal-content-head p {
+            color: #64748b;
+            font-size: 0.82rem;
+            line-height: 1.45;
+            margin-top: -4px;
+        }
+        .content-summary-list {
             display: grid;
             gap: 12px;
         }
-        .session-row {
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 12px;
+        .content-summary-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 14px;
         }
-        .session-row:last-child {
-            border-bottom: 0;
-            padding-bottom: 0;
+        .content-summary-top {
+            align-items: flex-start;
+            display: flex;
+            gap: 12px;
+            justify-content: space-between;
         }
-        .session-row span {
+        .content-summary-label {
             color: #64748b;
             display: block;
-            font-size: 0.76rem;
+            font-size: 0.74rem;
             font-weight: 800;
-            margin-bottom: 4px;
+            letter-spacing: 0.02em;
+            margin-bottom: 5px;
             text-transform: uppercase;
         }
-        .session-row strong {
+        .content-summary-count {
+            color: #0f172a;
             display: block;
-            font-size: 0.9rem;
-            overflow-wrap: anywhere;
+            font-size: 1.65rem;
+            font-weight: 800;
+            line-height: 1;
         }
-        .button-row {
+        .content-summary-action {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 999px;
+            color: #2563eb;
+            cursor: pointer;
+            flex-shrink: 0;
+            font-size: 0.78rem;
+            font-weight: 800;
+            padding: 7px 12px;
+            transition: all 0.16s ease;
+        }
+        .content-summary-action:hover,
+        .content-summary-action.is-active {
+            background: #eff6ff;
+            border-color: #2563eb;
+        }
+        .content-summary-action:disabled {
+            cursor: wait;
+            opacity: 0.65;
+        }
+        .owned-content-list {
+            border-top: 1px solid #e2e8f0;
+            padding-top: 2px;
+        }
+        .owned-content-head {
+            align-items: center;
             display: flex;
             gap: 10px;
-            justify-content: flex-end;
-            margin-top: 22px;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .owned-content-head strong {
+            font-size: 0.92rem;
+        }
+        .owned-content-close {
+            background: transparent;
+            border: 0;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 800;
+            padding: 4px 0;
+        }
+        .owned-content-items {
+            display: grid;
+            gap: 8px;
+        }
+        .owned-content-item {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            color: #0f172a;
+            display: block;
+            padding: 11px 12px;
+            text-decoration: none;
+            transition: all 0.16s ease;
+        }
+        .owned-content-item:hover {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+        }
+        .owned-content-item strong {
+            display: block;
+            font-size: 0.86rem;
+            line-height: 1.35;
+        }
+        .owned-content-item span {
+            color: #64748b;
+            display: block;
+            font-size: 0.75rem;
+            margin-top: 4px;
+        }
+        .owned-content-state {
+            background: #ffffff;
+            border: 1px dashed #cbd5e1;
+            border-radius: 12px;
+            color: #64748b;
+            font-size: 0.82rem;
+            line-height: 1.45;
+            padding: 12px;
         }
         .secondary-btn,
         .danger-btn {
@@ -353,6 +447,19 @@
             text: '',
             type: 'success'
         };
+        const accountContentState = {
+            ownerEmail: '',
+            loading: false,
+            loaded: false,
+            error: '',
+            activeList: '',
+            summary: {
+                guideCount: 0,
+                tierListCount: 0,
+                guides: [],
+                tierLists: []
+            }
+        };
 
         function accountEscapeHtml(value) {
             return String(value || '')
@@ -368,12 +475,180 @@
             accountProfileMessage.type = type === 'error' ? 'error' : 'success';
         }
 
+        function resetAccountContentState(ownerEmail) {
+            accountContentState.ownerEmail = ownerEmail || '';
+            accountContentState.loading = false;
+            accountContentState.loaded = false;
+            accountContentState.error = '';
+            accountContentState.activeList = '';
+            accountContentState.summary = {
+                guideCount: 0,
+                tierListCount: 0,
+                guides: [],
+                tierLists: []
+            };
+        }
+
+        function normalizeAccountContentSummary(payload) {
+            return {
+                guideCount: Number(payload?.guideCount || 0),
+                tierListCount: Number(payload?.tierListCount || 0),
+                guides: Array.isArray(payload?.guides) ? payload.guides : [],
+                tierLists: Array.isArray(payload?.tierLists) ? payload.tierLists : []
+            };
+        }
+
+        function ensureAccountContentStateFor(user) {
+            const ownerEmail = String(user?.email || '').toLowerCase();
+            if (accountContentState.ownerEmail !== ownerEmail) {
+                resetAccountContentState(ownerEmail);
+            }
+        }
+
+        function formatAccountContentCount(value) {
+            if (accountContentState.loading && !accountContentState.loaded) {
+                return '...';
+            }
+            return Number(value || 0).toLocaleString('vi-VN');
+        }
+
+        function formatAccountContentDate(value) {
+            if (!value) return 'Chưa rõ ngày';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return 'Chưa rõ ngày';
+            return date.toLocaleDateString('vi-VN');
+        }
+
+        function renderAccountContentSummaryCard(type, label, count) {
+            const isActive = accountContentState.activeList === type;
+            const disabled = accountContentState.loading && !accountContentState.loaded ? ' disabled' : '';
+            return `
+                <article class="content-summary-card">
+                    <div class="content-summary-top">
+                        <span>
+                            <span class="content-summary-label">${accountEscapeHtml(label)}</span>
+                            <strong class="content-summary-count">${formatAccountContentCount(count)}</strong>
+                        </span>
+                        <button type="button" class="content-summary-action${isActive ? ' is-active' : ''}" onclick="showAccountContentList('${type}')"${disabled}>Xem tất cả</button>
+                    </div>
+                </article>
+            `;
+        }
+
+        function renderAccountOwnedContentList() {
+            if (accountContentState.loading && !accountContentState.loaded) {
+                return '<div class="owned-content-state">Đang tải nội dung của bạn...</div>';
+            }
+            if (accountContentState.error) {
+                return '<div class="owned-content-state">' + accountEscapeHtml(accountContentState.error) + '</div>';
+            }
+            if (!accountContentState.activeList) {
+                return '';
+            }
+
+            const isGuideList = accountContentState.activeList === 'guides';
+            const title = isGuideList ? 'Giáo án của bạn' : 'Tier List của bạn';
+            const items = isGuideList ? accountContentState.summary.guides : accountContentState.summary.tierLists;
+            const emptyText = isGuideList
+                ? 'Bạn chưa đăng giáo án nào.'
+                : 'Bạn chưa đăng Tier List cộng đồng nào.';
+
+            if (!items.length) {
+                return `
+                    <div class="owned-content-head">
+                        <strong>${title}</strong>
+                        <button type="button" class="owned-content-close" onclick="hideAccountContentList()">Đóng</button>
+                    </div>
+                    <div class="owned-content-state">${emptyText}</div>
+                `;
+            }
+
+            return `
+                <div class="owned-content-head">
+                    <strong>${title}</strong>
+                    <button type="button" class="owned-content-close" onclick="hideAccountContentList()">Đóng</button>
+                </div>
+                <div class="owned-content-items">
+                    ${items.map(item => {
+                        const dateValue = item.publishedAt || item.createdAt || item.updatedAt;
+                        const detailUrl = item.detailUrl || '#';
+                        return `
+                            <a class="owned-content-item" href="${accountEscapeHtml(detailUrl)}">
+                                <strong>${accountEscapeHtml(item.title || 'Chưa có tiêu đề')}</strong>
+                                <span>${accountEscapeHtml(formatAccountContentDate(dateValue))}</span>
+                            </a>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function renderAccountPersonalContentPanel() {
+            const summary = accountContentState.summary;
+            const ownedList = renderAccountOwnedContentList();
+            return `
+                <aside class="side-panel personal-content-panel">
+                    <div class="personal-content-head">
+                        <h2 class="section-title">Nội dung của bạn</h2>
+                        <p>Chỉ thống kê nội dung đã đăng thuộc tài khoản đang đăng nhập.</p>
+                    </div>
+                    <div class="content-summary-list">
+                        ${renderAccountContentSummaryCard('guides', 'Giáo án đã đăng', summary.guideCount)}
+                        ${renderAccountContentSummaryCard('tierLists', 'Tier List đã đăng', summary.tierListCount)}
+                    </div>
+                    ${ownedList ? `<div class="owned-content-list" id="account-owned-content-list">${ownedList}</div>` : ''}
+                </aside>
+            `;
+        }
+
+        async function loadAccountContentSummary() {
+            if (accountContentState.loading || accountContentState.loaded) {
+                return;
+            }
+
+            accountContentState.loading = true;
+            accountContentState.error = '';
+            renderAccountPage();
+
+            try {
+                const response = await fetch('/api/users/me/content-summary', {
+                    headers: { Accept: 'application/json' },
+                    cache: 'no-store'
+                });
+                if (!response.ok) {
+                    throw new Error(await readAccountApiMessage(response, 'Không thể tải nội dung của bạn.'));
+                }
+                accountContentState.summary = normalizeAccountContentSummary(await response.json());
+                accountContentState.loaded = true;
+            } catch (error) {
+                accountContentState.error = error.message || 'Không thể tải nội dung của bạn.';
+                accountContentState.loaded = true;
+            } finally {
+                accountContentState.loading = false;
+                renderAccountPage();
+            }
+        }
+
+        function showAccountContentList(type) {
+            accountContentState.activeList = accountContentState.activeList === type ? '' : type;
+            renderAccountPage();
+            if (!accountContentState.loaded && !accountContentState.loading) {
+                loadAccountContentSummary();
+            }
+        }
+
+        function hideAccountContentList() {
+            accountContentState.activeList = '';
+            renderAccountPage();
+        }
+
         function renderAccountPage() {
             const user = getAuthUser();
             if (!user) {
                 window.location.replace('/html/index.html');
                 return;
             }
+            ensureAccountContentStateFor(user);
 
             const root = document.getElementById('account-dashboard-root');
             const displayNameRaw = user.displayName || user.name || 'User';
@@ -468,37 +743,12 @@
                         </div>
                     </div>
 
-                    <aside class="side-panel">
-                        <h2 class="section-title">Thông tin tài khoản</h2>
-                        <div class="session-list">
-                            <div class="session-row">
-                                <span>Tên hiển thị</span>
-                                <strong>${formattedName}</strong>
-                            </div>
-                            <div class="session-row">
-                                <span>Cấp độ</span>
-                                <strong>${levelLabel}</strong>
-                            </div>
-                            <div class="session-row">
-                                <span>Email</span>
-                                <strong>${email}</strong>
-                            </div>
-                            <div class="session-row">
-                                <span>Provider</span>
-                                <strong>Google Identity Services</strong>
-                            </div>
-                            <div class="session-row">
-                                <span>JWT</span>
-                                <strong>Đang dùng Google ID token</strong>
-                            </div>
-                        </div>
-                        <div class="button-row">
-                            <button type="button" class="secondary-btn" onclick="window.location.href='/html/index.html'">Về trang chủ</button>
-                            <button type="button" class="danger-btn" onclick="logoutFromAccountPage()">Đăng xuất</button>
-                        </div>
-                    </aside>
+                    ${renderAccountPersonalContentPanel()}
                 </div>
             `;
+            if (!accountContentState.loaded && !accountContentState.loading) {
+                loadAccountContentSummary();
+            }
         }
 
         async function readAccountApiMessage(response, fallbackMessage) {

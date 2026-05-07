@@ -119,14 +119,9 @@
                             onclick="startOnlineRoom()">Bắt đầu cấm chọn</button>
                         <button type="button" class="control-btn" onclick="copyOnlineRoomLink()">Sao chép lời
                             mời</button>
-                        <button type="button" class="control-btn" onclick="changeMode()">Về chọn chế
-                            độ</button>
                     </div>
                 </div>
                 <div class="online-room-feedback" id="online-room-feedback" aria-live="polite"></div>
-            </div>
-            <div class="draft-controls">
-                <button type="button" class="control-btn" onclick="changeMode()">Đổi chế độ</button>
             </div>
         </section>
 
@@ -134,32 +129,29 @@
             <div class="pvp-side-card blue" id="pvp-blue-card">
                 <span>Bên Xanh</span>
                 <strong id="pvp-blue-player">Người chơi Xanh</strong>
+                <div class="online-used-picks online-used-picks--attached blue is-hidden" id="online-blue-used-panel">
+                    <strong>Đội Xanh đã dùng</strong>
+                    <div id="online-blue-used-picks">Chưa có</div>
+                </div>
             </div>
             <div class="pvp-center-card">
                 <span id="pvp-phase-progress">Lượt 1 / 15</span>
                 <strong id="pvp-phase-label">Xanh cấm 1</strong>
                 <small id="pvp-turn-owner">Lượt của Người chơi Xanh - Bên Xanh</small>
                 <b id="pvp-timer-display">60s</b>
+                <div class="online-series-overview online-series-overview--attached is-hidden" id="online-series-panel">
+                    <span id="online-series-type-label">BO1</span>
+                    <strong id="online-series-game-label">Ván 1 / 1</strong>
+                    <small id="online-series-reset-label" hidden>Ván 7: reset giới hạn tướng đã chọn.</small>
+                </div>
             </div>
             <div class="pvp-side-card red" id="pvp-red-card">
                 <span>Bên Đỏ</span>
                 <strong id="pvp-red-player">Người chơi Đỏ</strong>
-            </div>
-        </section>
-
-        <section class="online-series-panel is-hidden" id="online-series-panel" aria-live="polite">
-            <div class="online-series-overview">
-                <span id="online-series-type-label">BO1</span>
-                <strong id="online-series-game-label">Ván 1 / 1</strong>
-                <small id="online-series-reset-label" hidden>Ván 7: reset giới hạn tướng đã chọn.</small>
-            </div>
-            <div class="online-used-picks blue">
-                <strong>Đội Xanh đã dùng</strong>
-                <div id="online-blue-used-picks">Chưa có</div>
-            </div>
-            <div class="online-used-picks red">
-                <strong>Đội Đỏ đã dùng</strong>
-                <div id="online-red-used-picks">Chưa có</div>
+                <div class="online-used-picks online-used-picks--attached red is-hidden" id="online-red-used-panel">
+                    <strong>Đội Đỏ đã dùng</strong>
+                    <div id="online-red-used-picks">Chưa có</div>
+                </div>
             </div>
         </section>
 
@@ -200,7 +192,6 @@
                 <button type="button" class="control-btn primary" onclick="restartPvpDraft()">Draft lại</button>
                 <button type="button" class="control-btn primary" id="share-draft-btn" onclick="shareDraftResult()">Chia
                     sẻ draft</button>
-                <button type="button" class="control-btn" onclick="changeMode()">Đổi chế độ</button>
             </div>
         </section>
 
@@ -245,7 +236,6 @@
                             <button type="button" class="control-btn standard-only" id="manual-next-phase-btn"
                                 onclick="manualNextPhase()">Tiếp</button>
                             <button type="button" class="control-btn danger" onclick="resetDraft()">Làm lại</button>
-                            <button type="button" class="control-btn" onclick="changeMode()">Thoát</button>
                         </div>
                     </div>
                 </div>
@@ -388,6 +378,10 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="draft-page-actions" aria-label="Hành động nhanh Ban/Pick">
+            <button type="button" class="control-btn danger" onclick="resetDraft()">Làm lại</button>
         </div>
     </main>
 

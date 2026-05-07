@@ -1193,7 +1193,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
                             </svg>
                         </span>
-                        Tier List Meta Hiện Tại
+                        Tier List Meta
                     </h2>
                     <span class="home-feature-card__eyebrow">Meta chính thức</span>
                 </div>
@@ -1226,8 +1226,8 @@
         <section id="home-community-feed-section" class="mt-4">
             <div class="home-section-header">
                 <div>
-                    <h2 class="home-section-title">Tier List &amp; Giáo án cộng đồng</h2>
-                    <p class="home-section-subtitle">Các Tier List cộng đồng và giáo án mới nhất từ ATG Academy.</p>
+                    <h2 class="home-section-title">Tier List cộng đồng nổi bật</h2>
+                    <p class="home-section-subtitle">3 Tier List cộng đồng nổi bật được chọn theo dữ liệu mới nhất và đánh giá 30 ngày.</p>
                 </div>
                 <a href="/tier-list" class="home-link-action">
                     Xem tất cả
@@ -1512,7 +1512,7 @@
                     {
                         cta: 'Mở ban/pick',
                         description: 'Luyện tư duy cấm chọn với các cặp khắc chế, power pick và nhịp draft quen thuộc trong meta hiện tại.',
-                        href: '/html/ban-pick.html',
+                        href: '/ban-pick',
                         id: 'banpick-fallback',
                         image: HOME_BANNER_BACKGROUND,
                         kicker: 'Ban/Pick Lab',
@@ -1906,6 +1906,9 @@
                 var rating = Number(item.rating || 0).toFixed(1);
                 var ratingCount = Number(item.ratingCount || 0).toLocaleString('vi-VN');
                 var createdAt = formatHomeFeedDate(item.createdAt) || 'Mới cập nhật';
+                var highlightBadge = item.badgeLabel
+                    ? '<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">' + escapeHomeHtml(item.badgeLabel) + '</span>'
+                    : '';
 
                 return '<a href="' + escapeHomeHtml(homeFeedDetailHref(item)) + '" class="home-community-card bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col group">' +
                     '<div class="p-4 bg-slate-50/80 border-b border-slate-100 space-y-2 min-h-48">' +
@@ -1913,7 +1916,10 @@
                     '</div>' +
                     '<div class="p-5 flex flex-col flex-grow">' +
                         '<div class="flex items-center justify-between gap-3 mb-3">' +
-                            '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">Tier List</span>' +
+                            '<div class="flex items-center flex-wrap gap-2">' +
+                                '<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">Tier List</span>' +
+                                highlightBadge +
+                            '</div>' +
                             '<span class="text-xs text-slate-500">' + escapeHomeHtml(createdAt) + '</span>' +
                         '</div>' +
                         '<h3 class="font-bold text-lg text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">' + escapeHomeHtml(item.title || 'Tier List') + '</h3>' +
@@ -1950,8 +1956,12 @@
                 var section = document.getElementById('home-community-feed-section');
                 if (!section) return;
                 var heading = section.querySelector('h2');
+                var subtitle = section.querySelector('p');
                 if (heading) {
-                    heading.innerHTML = 'Tier List &amp; Giáo án cộng đồng';
+                    heading.textContent = 'Tier List cộng đồng nổi bật';
+                }
+                if (subtitle) {
+                    subtitle.textContent = '3 Tier List cộng đồng nổi bật được chọn theo dữ liệu mới nhất và đánh giá 30 ngày.';
                 }
             }
 
@@ -1965,29 +1975,30 @@
             function renderHomeCommunityFeed(items) {
                 var container = document.getElementById('home-community-feed');
                 if (!container) return;
+                var tierItems = Array.isArray(items)
+                    ? items.filter(function(item) {
+                        return item && item.type === 'tier';
+                    }).slice(0, 3)
+                    : [];
 
-                if (!Array.isArray(items) || items.length === 0) {
-                    renderHomeCommunityFeedState('Chưa có Tier List hoặc giáo án cộng đồng để hiển thị.', false);
+                if (tierItems.length === 0) {
+                    renderHomeCommunityFeedState('Chưa có Tier List cộng đồng nổi bật để hiển thị.', false);
                     return;
                 }
 
-                container.innerHTML = items.map(function(item) {
-                    return item.type === 'tier'
-                        ? renderHomeTierFeedCard(item)
-                        : renderHomeGuideFeedCard(item);
-                }).join('');
+                container.innerHTML = tierItems.map(renderHomeTierFeedCard).join('');
             }
 
             async function fetchHomeCommunityFeed() {
                 setHomeCommunityFeedTitle();
                 try {
-                    var response = await fetch('/api/home/feed', { headers: { Accept: 'application/json' } });
+                    var response = await fetch('/api/home/community-tier-highlights', { headers: { Accept: 'application/json' } });
                     if (!response.ok) throw new Error('HTTP ' + response.status);
                     var items = await response.json();
                     renderHomeCommunityFeed(Array.isArray(items) ? items : []);
                 } catch (error) {
                     console.error('Home community feed load error:', error);
-                    renderHomeCommunityFeedState('Không thể tải feed cộng đồng. Vui lòng thử lại sau.', true);
+                    renderHomeCommunityFeedState('Không thể tải Tier List cộng đồng nổi bật. Vui lòng thử lại sau.', true);
                 }
             }
 

@@ -22,4 +22,9 @@ public class HomeFeedController {
     public List<HomeFeedItemResponse> getFeed() {
         return homeFeedService.getHomeFeed();
     }
+
+    @GetMapping("/community-tier-highlights")
+    public List<HomeFeedItemResponse> getCommunityTierHighlights() {
+        return homeFeedService.getHighlightedCommunityTierLists();
+    }
 }

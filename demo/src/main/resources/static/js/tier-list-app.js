@@ -2,14 +2,58 @@ let currentRoleFilter='Tất cả', currentClassFilter='Tất cả', numCols=5, 
 const tempHeroInstances=[];
 let modalRoleFilter='Tất cả', modalClassFilter='Tất cả';
 const modalTempHeroInstances=[];
+let heroCatalogLoadPromise=null;
 
 const OFFICIAL_TIER_LIST_API='/api/tier-lists';
-const OFFICIAL_TIER_LIST_TITLE='Tier List Meta Hien Tai';
+const OFFICIAL_TIER_LIST_TITLE='Tier List Meta';
+const OFFICIAL_TIER_LIST_SUBTITLE_PREFIX='Cập nhật bởi Admin';
+const OFFICIAL_TIER_LIST_IMPORT_MODE='PRIMARY_ROLE';
 let officialTierListPayload=null;
 const communityTierListCache=new Map();
+const COMMUNITY_VIEW=Object.freeze({
+    RECOMMENDED:'recommended',
+    ALL:'all',
+    MINE:'mine'
+});
+const COMMUNITY_PAGE_ROUTES=Object.freeze({
+    [COMMUNITY_VIEW.RECOMMENDED]:'/tier-list/recommended',
+    [COMMUNITY_VIEW.ALL]:'/tier-list/all',
+    [COMMUNITY_VIEW.MINE]:'/tier-list/mine'
+});
+function normalizeCommunityViewValue(value){
+    const normalized=String(value||'').trim().toLowerCase();
+    if(normalized==='featured') return COMMUNITY_VIEW.RECOMMENDED;
+    if(Object.values(COMMUNITY_VIEW).includes(normalized)) return normalized;
+    return COMMUNITY_VIEW.RECOMMENDED;
+}
+const COMMUNITY_VIEW_CONFIG=Object.freeze({
+    [COMMUNITY_VIEW.RECOMMENDED]:{
+        endpoint:`${OFFICIAL_TIER_LIST_API}/community`,
+        emptyText:'Chưa có tier list đề xuất nào.',
+        guestMessage:'',
+        errorText:'Không tải được danh sách tier list đề xuất.'
+    },
+    [COMMUNITY_VIEW.ALL]:{
+        endpoint:`${OFFICIAL_TIER_LIST_API}/community/all`,
+        emptyText:'Chưa có tier list cộng đồng nào.',
+        guestMessage:'',
+        errorText:'Không tải được tất cả tier list cộng đồng.'
+    },
+    [COMMUNITY_VIEW.MINE]:{
+        endpoint:`${OFFICIAL_TIER_LIST_API}/me`,
+        emptyText:'Bạn chưa tạo tier list nào.',
+        guestMessage:'Vui lòng đăng nhập để xem tier list của bạn.',
+        errorText:'Không tải được tier list của bạn.'
+    }
+});
+let currentCommunityView=typeof document!=='undefined'
+    ? normalizeCommunityViewValue(document.body?.dataset?.communityView||COMMUNITY_VIEW.RECOMMENDED)
+    : COMMUNITY_VIEW.RECOMMENDED;
+let communityRenderRequestId=0;
 const IMPORT_TIER_ROWS=['S','A','B','C','D'];
 const IMPORT_ROLE_COLUMNS=typeof TIER_ROLE_ORDER!=='undefined'?TIER_ROLE_ORDER:['DSL','JGL','MID','ADL','SUP'];
 const IMPORT_TIER_COLORS={S:'#e74c3c',A:'#9b59b6',B:'#3498db',C:'#2ecc71',D:'#95a5a6'};
+const OFFICIAL_TIER_LIST_LEGACY_TITLES=['Tier List Meta Hien Tai','Tier List Meta Hiện Tại'];
 const IMPORT_COLUMN_META={
     DSL:{label:'DSL',icon:'/images/ui/top.png',alt:'DSL'},
     JGL:{label:'JGL',icon:'/images/ui/jungle.png',alt:'JGL'},
@@ -17,40 +61,57 @@ const IMPORT_COLUMN_META={
     SUP:{label:'SUP',icon:'/images/ui/support.png',alt:'SUP'},
     ADL:{label:'ADL',icon:'/images/ui/adc.png',alt:'ADL'}
 };
-const IMPORT_ROLE_ALIASES=[
-    {label:'DSL',code:'DSL'},
-    {label:'Top',code:'DSL'},
-    {label:'Solo',code:'DSL'},
-    {label:'JGL',code:'JGL'},
-    {label:'JG',code:'JGL'},
-    {label:'Jungle',code:'JGL'},
-    {label:'MID',code:'MID'},
-    {label:'Mid lane',code:'MID'},
-    {label:'SUP',code:'SUP'},
-    {label:'SP',code:'SUP'},
-    {label:'ADL',code:'ADL'},
-    {label:'ADC',code:'ADL'},
-    {label:'Đấu sĩ',code:'DSL'},
-    {label:'Dau si',code:'DSL'},
-    {label:'Đấu Sĩ',code:'DSL'},
-    {label:'Sát thủ',code:'JGL'},
-    {label:'Sat thu',code:'JGL'},
-    {label:'Sát Thủ',code:'JGL'},
-    {label:'Pháp sư',code:'MID'},
-    {label:'Phap su',code:'MID'},
-    {label:'Pháp Sư',code:'MID'},
-    {label:'Trợ thủ',code:'SUP'},
-    {label:'Tro thu',code:'SUP'},
-    {label:'Support',code:'SUP'},
-    {label:'Đỡ đòn',code:'SUP'},
-    {label:'Do don',code:'SUP'},
-    {label:'Tank',code:'SUP'},
-    {label:'Xạ thủ',code:'ADL'},
-    {label:'Xa thu',code:'ADL'},
-    {label:'Marksman',code:'ADL'},
-    {label:'AD',code:'ADL'}
-];
 let lastTierImportPreview=null;
+let modalTierDragActive=false;
+
+function normalizeTierListText(value){
+    return String(value??'').normalize('NFC').trim();
+}
+
+function getOfficialTierListTitleKey(value){
+    return normalizeTierListText(value)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g,'')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g,' ')
+        .trim();
+}
+
+function normalizeOfficialTierListTitle(value){
+    const normalized=normalizeTierListText(value);
+    if(!normalized) return OFFICIAL_TIER_LIST_TITLE;
+    const titleKey=getOfficialTierListTitleKey(normalized);
+    if(OFFICIAL_TIER_LIST_LEGACY_TITLES.some(legacy=>getOfficialTierListTitleKey(legacy)===titleKey)){
+        return OFFICIAL_TIER_LIST_TITLE;
+    }
+    return normalized;
+}
+
+function getOfficialTierListCreatorName(payload){
+    const creatorName=normalizeTierListText(payload?.creatorName||payload?.creator_name||payload?.author?.name||'');
+    return creatorName||'ATG Academy';
+}
+
+function normalizeOfficialTierListPayload(payload){
+    if(!payload||typeof payload!=='object') return payload;
+    return {
+        ...payload,
+        title:normalizeOfficialTierListTitle(payload.title),
+        creatorName:getOfficialTierListCreatorName(payload)
+    };
+}
+
+function updateOfficialTierListHeading(payload=officialTierListPayload){
+    const titleEl=document.querySelector('.official-title');
+    if(titleEl){
+        titleEl.textContent=normalizeOfficialTierListTitle(payload?.title);
+    }
+
+    const subtitleEl=document.querySelector('.official-subtitle');
+    if(subtitleEl){
+        subtitleEl.textContent=`${OFFICIAL_TIER_LIST_SUBTITLE_PREFIX} ${getOfficialTierListCreatorName(payload)}`;
+    }
+}
 
 function normalizeHeroName(name){
     const aliases={"Flowborn":"Flowborn (Marksman)","Flowborn ADL":"Flowborn (Marksman)","Flowborn MID":"Flowborn (Marksman)","Ngo Khong":"Wukong","Trieu Van":"Zanis","Dieu Thuyen":"Diaochan","Lu Bo":"Lu Bu","Roule":"Rouie","Governa":"Goverra","Tochi":"Tachi","Richter":"Riktor","KilGroth":"Kil'Groth"};
@@ -62,6 +123,22 @@ function getUserRole(){
     const u=localStorage.getItem('aov_user');
     if(!u) return 'Custom';
     try{ return JSON.parse(u).role||'Custom'; }catch(e){ return 'Custom'; }
+}
+
+async function ensureTierHeroCatalogLoaded(force=false){
+    if(!force&&heroes.length>0) return;
+    if(!force&&heroCatalogLoadPromise){
+        await heroCatalogLoadPromise;
+        return;
+    }
+    heroCatalogLoadPromise=(async()=>{
+        await loadHeroesFromApi();
+    })();
+    try{
+        await heroCatalogLoadPromise;
+    }finally{
+        heroCatalogLoadPromise=null;
+    }
 }
 
 function setOfficialGridEditable(isEditable){
@@ -113,7 +190,10 @@ document.addEventListener('authChanged',()=>{
     applyTierListRoleUI();
     renderCommunityCards();
 });
-window.addEventListener('storage',applyTierListRoleUI);
+window.addEventListener('storage',()=>{
+    applyTierListRoleUI();
+    renderCommunityCards();
+});
 
 function getTierFilterText(value){
     if(typeof normalizeHeroFilterText==='function') return normalizeHeroFilterText(value);
@@ -176,6 +256,47 @@ function getHeroPoolConfig(pool='official'){
         get classFilter(){ return isModal?modalClassFilter:currentClassFilter; },
         set classFilter(value){ if(isModal) modalClassFilter=value; else currentClassFilter=value; }
     };
+}
+
+function setModalDragOutActive(active){
+    modalTierDragActive=Boolean(active);
+    const modal=document.getElementById('create-modal');
+    const zone=document.getElementById('modal-drop-out-zone');
+    modal?.classList.toggle('is-dragging-tier',modalTierDragActive);
+    zone?.classList.toggle('is-active',modalTierDragActive);
+    if(!modalTierDragActive) zone?.classList.remove('is-over');
+}
+
+function returnTierHeroToPoolById(sourceId,pool='modal'){
+    if(!sourceId) return false;
+    const element=document.getElementById(sourceId);
+    if(!element) return false;
+    const actualPool=pool|| (element.closest('#modal-tier-grid')?'modal':'official');
+    element.remove();
+    markHeroPoolSelection(actualPool);
+    filterHeroPool(actualPool);
+    return true;
+}
+
+function initModalDragOutZone(){
+    const zone=document.getElementById('modal-drop-out-zone');
+    if(!zone||zone.dataset.bound==='true') return;
+    zone.dataset.bound='true';
+    zone.addEventListener('dragover',event=>{
+        if(!modalTierDragActive) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect='move';
+        zone.classList.add('is-over');
+    });
+    zone.addEventListener('dragleave',event=>{
+        if(!zone.contains(event.relatedTarget)) zone.classList.remove('is-over');
+    });
+    zone.addEventListener('drop',event=>{
+        if(!modalTierDragActive) return;
+        event.preventDefault();
+        returnTierHeroToPoolById(event.dataTransfer.getData('sourceId'),'modal');
+        setModalDragOutActive(false);
+    });
 }
 
 function parseHeroPayload(raw){
@@ -399,24 +520,42 @@ document.addEventListener('keydown',event=>{
 
 async function initApp(){
     const grid=document.getElementById('hero-grid');
-    if(!grid) return;
-    await loadHeroesFromApi();
-    grid.innerHTML='';
-    if(heroes.length===0){
-        grid.innerHTML='<div class="draft-warning" style="grid-column:1/-1">Chua co du lieu tuong trong database. Hay chay sql/seed_heroes.sql roi tai lai trang.</div>';
+    const officialGrid=document.getElementById('tier-grid');
+    const communityGrid=document.getElementById('community-grid');
+
+    currentCommunityView=normalizeCommunityViewValue(document.body?.dataset?.communityView||currentCommunityView);
+    initCommunityNavigation();
+
+    if(grid){
+        await ensureTierHeroCatalogLoaded();
+        grid.innerHTML='';
+        if(heroes.length===0){
+            grid.innerHTML='<div class="draft-warning" style="grid-column:1/-1">Chua co du lieu tuong trong database. Hay chay sql/seed_heroes.sql roi tai lai trang.</div>';
+        }
+        heroes.forEach(hero=>{
+            grid.appendChild(createHeroPoolButton(hero));
+        });
+        renderClassFilterOptions();
+        renderTempHeroPool();
     }
-    heroes.forEach(hero=>{
-        grid.appendChild(createHeroPoolButton(hero));
-    });
-    renderClassFilterOptions();
-    renderTempHeroPool();
-    document.querySelectorAll('#tier-grid .tier-heroes').forEach(c=>{
-        c.ondragover=allowDrop; c.ondragenter=dragEnter; c.ondragleave=dragLeave; c.ondrop=dropOnTierList;
-    });
-    document.body.ondragover=(ev)=>ev.preventDefault();
-    document.body.ondrop=(ev)=>{
+
+    if(officialGrid){
+        document.querySelectorAll('#tier-grid .tier-heroes').forEach(c=>{
+            c.ondragover=allowDrop; c.ondragenter=dragEnter; c.ondragleave=dragLeave; c.ondrop=dropOnTierList;
+        });
+    }
+
+    if(officialGrid||document.getElementById('create-modal')){
+        document.body.ondragover=(ev)=>ev.preventDefault();
+        document.body.ondrop=(ev)=>{
+        const source=ev.dataTransfer.getData("source");
+        if(source==='modal-tier'&&!ev.target.closest('#modal-tier-grid .modal-drop')){
+            ev.preventDefault();
+            returnTierHeroToPoolById(ev.dataTransfer.getData("sourceId"),'modal');
+            setModalDragOutActive(false);
+            return;
+        }
         if(!ev.target.closest('.tier-heroes')){
-            const source=ev.dataTransfer.getData("source");
             if(source==='tier'){
                 const sid=ev.dataTransfer.getData("sourceId");
                 const el=document.getElementById(sid); if(el) el.remove();
@@ -425,23 +564,37 @@ async function initApp(){
             }
         }
     };
-    renderCommunityCards();
-    loadOfficialTierList();
-    initTierListImportUi();
+    }
+
+    if(communityGrid){
+        await renderCommunityCards();
+    }
+    if(officialGrid){
+        loadOfficialTierList();
+    }
+    if(document.getElementById('tier-import-panel')){
+        initTierListImportUi();
+    }
     setTimeout(applyTierListRoleUI,200);
 }
 
 function dragStartFromList(ev,value,source='list'){
+    setModalDragOutActive(false);
     const heroRef=value&&typeof value==='object'?value:getHeroRefForDrag(value);
     setHeroDragData(ev,source,heroRef);
     setTimeout(()=>ev.target.classList.add('dragging'),0);
 }
 function dragStartFromTier(ev,value){
+    setModalDragOutActive(false);
     const heroRef=getHeroRefForDrag(value&&typeof value==='object'?value:getTierHeroRef(ev.target));
     setHeroDragData(ev,'tier',heroRef,ev.target.id);
     setTimeout(()=>ev.target.classList.add('dragging'),0);
 }
-function dragEnd(ev){ ev.target.classList.remove('dragging'); document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over')); }
+function dragEnd(ev){
+    ev.target.classList.remove('dragging');
+    document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'));
+    setModalDragOutActive(false);
+}
 function allowDrop(ev){ ev.preventDefault(); ev.dataTransfer.dropEffect="move"; }
 function dragEnter(ev){ ev.preventDefault(); if(ev.currentTarget.classList.contains('tier-heroes')) ev.currentTarget.classList.add('drag-over'); }
 function dragLeave(ev){ ev.currentTarget.classList.remove('drag-over'); }
@@ -650,34 +803,154 @@ function tierDeleteErrorMessage(status,fallback){
     return fallback||'Không xóa được Tier List.';
 }
 
+function buildTierListDeleteRequest(id){
+    const url=`${OFFICIAL_TIER_LIST_API}/${encodeURIComponent(String(id))}`;
+    const headers=new Headers({Accept:'application/json'});
+    const token=typeof getAuthToken==='function' ? getAuthToken() : null;
+    if(token) headers.set('Authorization',`Bearer ${token}`);
+    return {
+        url,
+        options:{
+            method:'DELETE',
+            headers
+        }
+    };
+}
+
+async function logTierListDeleteFailure(url,response){
+    let body='';
+    try{
+        body=await response.clone().text();
+    }catch(error){
+        body='';
+    }
+    console.error('Delete tier list failed',{
+        url,
+        method:'DELETE',
+        status:response.status,
+        body
+    });
+}
+
+function resolveTierDeleteErrorMessage(status,fallback){
+    if(status===401) return 'Vui long dang nhap de xoa Tier List.';
+    if(status===403) return 'Ban khong co quyen xoa Tier List nay.';
+    if(status===404) return 'Tier List khong ton tai hoac da bi xoa.';
+    if(status===405) return 'Loi ky thuat: endpoint xoa Tier List khong chap nhan DELETE.';
+    return fallback||'Khong xoa duoc Tier List.';
+}
+
 function openCommunityTierListDetail(id){
     if(!id) return;
     window.location.href=`/html/tier-list-detail.html?id=${encodeURIComponent(id)}`;
 }
 
-async function loadCommunityTierLists(){
+function getCommunityViewConfig(view=currentCommunityView){
+    return COMMUNITY_VIEW_CONFIG[normalizeCommunityViewValue(view)]||COMMUNITY_VIEW_CONFIG[COMMUNITY_VIEW.RECOMMENDED];
+}
+
+function getCommunityPageRoute(view){
+    return COMMUNITY_PAGE_ROUTES[normalizeCommunityViewValue(view)]||COMMUNITY_PAGE_ROUTES[COMMUNITY_VIEW.RECOMMENDED];
+}
+
+function syncCommunityNavigation(){
+    const select=document.getElementById('community-nav-select');
+    if(!select) return;
+    const currentValue=document.getElementById('community-grid')?currentCommunityView:'';
+    select.value=currentValue;
+}
+
+function initCommunityNavigation(){
+    const select=document.getElementById('community-nav-select');
+    if(!select||select.dataset.bound==='true'){
+        syncCommunityNavigation();
+        return;
+    }
+    select.dataset.bound='true';
+    syncCommunityNavigation();
+    select.addEventListener('change',event=>{
+        const rawValue=String(event.target.value||'').trim();
+        if(!rawValue) return;
+        window.location.assign(getCommunityPageRoute(rawValue));
+    });
+}
+
+function setCommunityStatus(message,type='info'){
+    const status=document.getElementById('community-status');
+    if(!status) return;
+    status.hidden=!message;
+    status.textContent=message||'';
+    status.classList.toggle('is-warning',type==='warning');
+    status.classList.toggle('is-error',type==='error');
+}
+
+function setCommunityEmptyState(message){
+    const empty=document.getElementById('community-empty');
+    if(!empty) return;
+    const text=empty.querySelector('.community-empty-text');
+    if(text) text.textContent=message||'Chưa có tier list cộng đồng nào.';
+}
+
+async function setCommunityView(view){
+    window.location.assign(getCommunityPageRoute(view));
+}
+
+async function loadCommunityTierLists(view=currentCommunityView){
+    view=normalizeCommunityViewValue(view);
+    const config=getCommunityViewConfig(view);
+    if(view===COMMUNITY_VIEW.MINE&&!getTierListCurrentUser()){
+        return {items:[],requiresAuth:true};
+    }
     try{
-        const response=await fetch(`${OFFICIAL_TIER_LIST_API}/community`,{headers:{Accept:'application/json'},cache:'no-store'});
-        if(!response.ok) throw new Error(await readApiError(response));
+        const response=await fetch(config.endpoint,{headers:{Accept:'application/json'},cache:'no-store'});
+        if(!response.ok){
+            if(view===COMMUNITY_VIEW.MINE&&response.status===401){
+                return {items:[],requiresAuth:true};
+            }
+            throw new Error(await readApiError(response));
+        }
         const payload=await response.json();
-        return Array.isArray(payload)?payload:[];
+        const items=Array.isArray(payload)?payload.filter(tl=>tl&&!tl.isOfficial):[];
+        return {items};
     }catch(error){
-        console.error('Cannot load community tier lists:',error);
-        return [];
+        console.error(`Cannot load community tier lists for view "${view}":`,error);
+        return {items:[],error:config.errorText};
     }
 }
 
 async function renderCommunityCards(){
+    const requestId=++communityRenderRequestId;
     const grid=document.getElementById('community-grid');
     const countEl=document.getElementById('community-count');
     const emptyEl=document.getElementById('community-empty');
     if(!grid) return;
-    const communityLists=await loadCommunityTierLists();
+    currentCommunityView=normalizeCommunityViewValue(currentCommunityView);
+    const config=getCommunityViewConfig();
+    syncCommunityNavigation();
     communityTierListCache.clear();
     grid.innerHTML='';
-    if(communityLists.length===0){ emptyEl.style.display='block'; countEl.textContent='0'; return; }
-    emptyEl.style.display='none';
-    countEl.textContent=communityLists.length;
+    if(countEl) countEl.textContent='0';
+    if(emptyEl) emptyEl.style.display='none';
+    setCommunityStatus('');
+
+    const {items:communityLists,error,requiresAuth}=await loadCommunityTierLists(currentCommunityView);
+    if(requestId!==communityRenderRequestId) return;
+
+    if(requiresAuth){
+        setCommunityStatus(config.guestMessage,'warning');
+        return;
+    }
+    if(error){
+        setCommunityStatus(error,'error');
+        return;
+    }
+    if(communityLists.length===0){
+        setCommunityEmptyState(config.emptyText);
+        if(emptyEl) emptyEl.style.display='block';
+        return;
+    }
+
+    if(countEl) countEl.textContent=String(communityLists.length);
     communityLists.forEach(tl=>{
         communityTierListCache.set(String(tl.id),tl);
         const card=document.createElement('div'); card.className='tier-card';
@@ -725,9 +998,14 @@ async function renderCommunityCards(){
         const deleteHtml=canCurrentUserDeleteTierList(tl)
             ? `<button type="button" class="tier-export-btn tier-danger-btn tier-card-delete-btn" onclick="deleteCommunityTierListFromCard(event,${tl.id},this)">Xóa</button>`
             : '';
+        const highlightBadge=tl.highlightBadge||tl.badgeLabel||'';
+        const highlightBadgeHtml=highlightBadge
+            ? `<div class="tier-card-highlight-badge">${escapeTierHtml(highlightBadge)}</div>`
+            : '';
         card.innerHTML=`
             <div class="tier-card-thumbnail">${thumbHtml}</div>
             <div class="tier-card-body">
+                ${highlightBadgeHtml}
                 <div class="tier-card-title">${escapeTierHtml(tl.title)}</div>
                 <div class="tier-card-author">
                     <img src="${escapeTierHtml(tl.author?.avatar||'')}" alt="${escapeTierHtml(tl.author?.name||'ATG Member')}" referrerpolicy="no-referrer">
@@ -778,8 +1056,12 @@ async function deleteCommunityTierListFromCard(event,id,button){
         button.textContent='Đang xóa...';
     }
     try{
-        const response=await fetch(`${OFFICIAL_TIER_LIST_API}/${id}`,{method:'DELETE'});
-        if(!response.ok) throw new Error(tierDeleteErrorMessage(response.status,await readApiError(response)));
+        const request=buildTierListDeleteRequest(id);
+        const response=await fetch(request.url,request.options);
+        if(!response.ok){
+            await logTierListDeleteFailure(request.url,response);
+            throw new Error(resolveTierDeleteErrorMessage(response.status,await readApiError(response)));
+        }
         communityTierListCache.delete(String(id));
         await renderCommunityCards();
         showTierToast('Đã xóa Tier List.');
@@ -840,11 +1122,15 @@ async function rateStar(event,id,stars){
 }
 
 // === Modal ===
-function openCreateModal(){
+async function openCreateModal(){
     const u=localStorage.getItem('aov_user');
     if(!u){ alert('Vui lòng đăng nhập để tạo Tier List!'); return; }
-    document.getElementById('create-modal').classList.add('active');
+    const modal=document.getElementById('create-modal');
+    modal?.classList.add('active');
     document.body.style.overflow='hidden';
+    const grid=document.getElementById('modal-hero-grid');
+    if(grid) grid.innerHTML='<div class="draft-warning" style="grid-column:1/-1">Dang tai danh sach tuong...</div>';
+    await ensureTierHeroCatalogLoaded();
     initModalHeroes();
 }
 function closeCreateModal(){
@@ -859,12 +1145,17 @@ function initModalHeroes(){
     const grid=document.getElementById('modal-hero-grid');
     if(!grid) return;
     grid.innerHTML='';
+    if(heroes.length===0){
+        grid.innerHTML='<div class="draft-warning" style="grid-column:1/-1">Chua tai duoc danh sach tuong. Vui long thu lai.</div>';
+        return;
+    }
     heroes.forEach(hero=>{
         grid.appendChild(createHeroPoolButton(hero,{modal:true,pool:'modal'}));
     });
     renderClassFilterOptions('modal');
     renderTempHeroPool('modal');
     markHeroPoolSelection('modal');
+    initModalDragOutZone();
     document.querySelectorAll('#modal-tier-grid .modal-drop').forEach(c=>{
         c.ondragover=allowDrop; c.ondragenter=dragEnter; c.ondragleave=dragLeave;
         c.ondrop=(ev)=>{
@@ -1034,7 +1325,9 @@ function createTierHeroElement(heroValue,{pool='official'}={}){
     el.title=heroRef.tempInstance?`${heroName} (bản tạm)`:heroName;
     el.draggable=true;
     el.ondragstart=(e)=>{
-        setHeroDragData(e,pool==='modal'?'modal-tier':'tier',heroRef,el.id);
+        const source=pool==='modal'?'modal-tier':'tier';
+        setHeroDragData(e,source,heroRef,el.id);
+        setModalDragOutActive(source==='modal-tier');
         setTimeout(()=>e.target.classList.add('dragging'),0);
     };
     el.ondragend=dragEnd;
@@ -1145,7 +1438,8 @@ function markOfficialHeroSelection(){
     markHeroPoolSelection('official');
 }
 
-function renderOfficialTierList(contentData){
+function renderOfficialTierList(contentData,payload=officialTierListPayload){
+    updateOfficialTierListHeading(payload);
     const parsed=parseTierListContentData(contentData);
     const data=typeof normalizeTierRoleColumnOrder==='function'?normalizeTierRoleColumnOrder(parsed):parsed;
     if(!data||!Array.isArray(data.columns)||!Array.isArray(data.rows)||data.columns.length===0) return;
@@ -1214,35 +1508,13 @@ function toAliasCandidate(value){
         .join(' ');
 }
 
-function getTierImportRoleAliases(){
-    return IMPORT_ROLE_ALIASES
-        .map(alias=>({
-            ...alias,
-            normalized:normalizeImportText(alias.label),
-            tokenCount:String(alias.label).trim().split(/\s+/).filter(Boolean).length
-        }))
-        .sort((a,b)=>b.tokenCount-a.tokenCount||b.normalized.length-a.normalized.length);
-}
-
-function normalizeTierImportRole(roleName){
-    const normalized=normalizeImportText(roleName);
-    const alias=getTierImportRoleAliases().find(item=>item.normalized===normalized);
-    return alias?.code||null;
-}
-
-function findRoleAliasAtLineEnd(tokens){
-    const aliases=getTierImportRoleAliases();
-    for(const alias of aliases){
-        if(tokens.length<alias.tokenCount) continue;
-        const candidate=tokens.slice(tokens.length-alias.tokenCount).join(' ');
-        if(normalizeImportText(candidate)===alias.normalized) return alias;
-    }
-    return null;
-}
-
 function isTierImportHeaderLine(line){
     const normalized=normalizeImportText(String(line||'').replace(/[\t,]+/g,' '));
     return [
+        'tuong tier',
+        'hero tier',
+        'name tier',
+        'champion tier',
         'tuong role tier',
         'tuong vai tro tier',
         'tuong vi tri tier',
@@ -1258,33 +1530,21 @@ function splitTierImportLine(line){
 
     if(trimmed.includes('\t')){
         const parts=trimmed.split(/\t+/).map(part=>part.trim()).filter(Boolean);
-        if(parts.length<3) return null;
-        return {heroName:parts[0],roleName:parts[1],tier:parts[2]};
+        if(parts.length!==2) return null;
+        return {heroName:parts[0],tier:parts[1]};
     }
 
     if(trimmed.includes(',')){
         const parts=trimmed.split(',').map(part=>part.trim()).filter(Boolean);
-        if(parts.length<3) return null;
-        return {heroName:parts[0],roleName:parts[1],tier:parts[2]};
+        if(parts.length!==2) return null;
+        return {heroName:parts[0],tier:parts[1]};
     }
 
     const tokens=trimmed.split(/\s+/).filter(Boolean);
-    if(tokens.length<3) return null;
-    const tier=tokens[tokens.length-1];
-    const beforeTier=tokens.slice(0,-1);
-    const roleAlias=findRoleAliasAtLineEnd(beforeTier);
-    if(roleAlias){
-        return {
-            heroName:beforeTier.slice(0,beforeTier.length-roleAlias.tokenCount).join(' '),
-            roleName:beforeTier.slice(beforeTier.length-roleAlias.tokenCount).join(' '),
-            tier
-        };
-    }
-
+    if(tokens.length<2) return null;
     return {
-        heroName:tokens.slice(0,-2).join(' '),
-        roleName:tokens[tokens.length-2],
-        tier
+        heroName:tokens.slice(0,-1).join(' '),
+        tier:tokens[tokens.length-1]
     };
 }
 
@@ -1364,126 +1624,9 @@ function buildTierImportContentData(validItems){
     };
 }
 
-function parseTierImportText(rawText){
-    const lookup=buildTierImportHeroLookup();
-    const errors=[];
-    const unresolvedHeroes=[];
-    const roleMismatches=[];
-    const validItems=[];
-    const seenHeroIds=new Set();
-    let linesRead=0;
-
-    String(rawText||'').split(/\r?\n/).forEach((line,index)=>{
-        const lineNumber=index+1;
-        const trimmed=line.trim();
-        if(!trimmed||isTierImportHeaderLine(trimmed)) return;
-        linesRead++;
-
-        const parts=splitTierImportLine(trimmed);
-        if(!parts||!parts.heroName||!parts.roleName||!parts.tier){
-            errors.push({lineNumber,message:`Dòng ${lineNumber}: không đọc được đủ 3 cột Tướng, Role, Tier.`});
-            return;
-        }
-
-        const tier=String(parts.tier||'').trim().toUpperCase();
-        const roleCode=normalizeTierImportRole(parts.roleName);
-        if(!IMPORT_TIER_ROWS.includes(tier)){
-            errors.push({lineNumber,message:`Dòng ${lineNumber}: tier "${parts.tier}" không hợp lệ. Chỉ nhận S, A, B, C, D.`});
-            return;
-        }
-        if(!roleCode){
-            errors.push({lineNumber,message:`Dòng ${lineNumber}: role "${parts.roleName}" không hợp lệ hoặc chưa được map.`});
-            return;
-        }
-
-        const hero=findHeroForTierImport(parts.heroName,lookup);
-        if(!hero){
-            unresolvedHeroes.push({lineNumber,heroName:parts.heroName,roleName:parts.roleName,roleCode,tier});
-            return;
-        }
-
-        const primaryRoleCode=typeof getHeroPrimaryRoleCode==='function'?getHeroPrimaryRoleCode(hero):(hero.primaryRoleCode||hero.role||'');
-        if(primaryRoleCode&&primaryRoleCode!==roleCode){
-            roleMismatches.push({
-                lineNumber,
-                heroName:hero.name,
-                importRoleCode:roleCode,
-                primaryRoleCode
-            });
-        }
-
-        const heroKey=hero.id!==undefined&&hero.id!==null?`id:${hero.id}`:`name:${normalizeImportText(hero.name)}`;
-        if(seenHeroIds.has(heroKey)){
-            errors.push({lineNumber,message:`Dòng ${lineNumber}: tướng "${parts.heroName}" bị trùng, đã bỏ qua dòng này.`});
-            return;
-        }
-        seenHeroIds.add(heroKey);
-        validItems.push({lineNumber,hero,heroName:hero.name,roleName:parts.roleName,roleCode,tier});
-    });
-
-    if(linesRead===0){
-        errors.push({lineNumber:0,message:'Chưa có dòng dữ liệu hợp lệ để import.'});
-    }
-
-    const contentData=buildTierImportContentData(validItems);
-    return {
-        contentData,
-        validItems,
-        errors,
-        unresolvedHeroes,
-        roleMismatches,
-        summary:{
-            linesRead,
-            validItems:validItems.length,
-            errors:errors.length,
-            unresolvedHeroes:unresolvedHeroes.length,
-            roleMismatches:roleMismatches.length
-        }
-    };
-}
-
 function setTierImportApplyEnabled(enabled){
     const button=document.getElementById('tier-import-apply-btn');
     if(button) button.disabled=!enabled;
-}
-
-function renderTierImportSummary(result){
-    const target=document.getElementById('tier-import-summary');
-    if(!target) return;
-    target.innerHTML=`
-        <div class="tier-import-stats">
-            <div class="tier-import-stat"><span>Dòng đã đọc</span><strong>${result.summary.linesRead}</strong></div>
-            <div class="tier-import-stat"><span>Hero hợp lệ</span><strong>${result.summary.validItems}</strong></div>
-            <div class="tier-import-stat"><span>Lỗi dữ liệu</span><strong>${result.summary.errors}</strong></div>
-            <div class="tier-import-stat"><span>Không tìm thấy</span><strong>${result.summary.unresolvedHeroes}</strong></div>
-            <div class="tier-import-stat"><span>Khác Primary Role</span><strong>${result.summary.roleMismatches||0}</strong></div>
-        </div>`;
-}
-
-function renderTierImportIssues(result){
-    const blocks=[];
-    if(result.errors.length){
-        blocks.push(`
-            <div class="tier-import-list-block">
-                <strong>Lỗi dữ liệu (${result.errors.length})</strong>
-                <ul>${result.errors.map(error=>`<li>${escapeTierHtml(error.message)}</li>`).join('')}</ul>
-            </div>`);
-    }
-    if(result.unresolvedHeroes.length){
-        blocks.push(`
-            <div class="tier-import-list-block">
-                <strong>Không tìm thấy tướng (${result.unresolvedHeroes.length})</strong>
-                <ul>${result.unresolvedHeroes.map(item=>`<li>Dòng ${item.lineNumber}: ${escapeTierHtml(item.heroName)} (${escapeTierHtml(item.roleName)} -> ${item.roleCode}, tier ${item.tier})</li>`).join('')}</ul>
-            </div>`);
-    }
-    if(result.roleMismatches&&result.roleMismatches.length){
-        blocks.push(`
-            <div class="tier-import-list-block">
-                <strong>Role import khác Primary Role (${result.roleMismatches.length})</strong>
-                <ul>${result.roleMismatches.map(item=>`<li>Dòng ${item.lineNumber}: ${escapeTierHtml(item.heroName)} import ${item.importRoleCode}, Primary Role hiện tại ${item.primaryRoleCode}</li>`).join('')}</ul>
-            </div>`);
-    }
-    return blocks.join('');
 }
 
 function renderTierImportPreviewTable(result){
@@ -1519,24 +1662,6 @@ function renderTierImportPreviewTable(result){
         </div>`;
 }
 
-function renderTierImportResult(result){
-    const feedback=document.getElementById('tier-import-feedback');
-    const preview=document.getElementById('tier-import-preview');
-    if(feedback){
-        const hasWarnings=result.errors.length>0||result.unresolvedHeroes.length>0||(result.roleMismatches&&result.roleMismatches.length>0);
-        const type=result.summary.validItems===0?'error':(hasWarnings?'warning':'success');
-        const message=result.summary.validItems===0
-            ? 'Không có hero hợp lệ để áp dụng. Kiểm tra lỗi bên dưới.'
-            : (hasWarnings?'Preview đã tạo cho phần hợp lệ. Có lỗi hoặc tướng chưa tìm thấy cần kiểm tra.':'Preview hợp lệ, có thể áp dụng vào Tier List chính thức.');
-        feedback.innerHTML=`<div class="tier-import-alert ${type}">${escapeTierHtml(message)}</div>`;
-    }
-    renderTierImportSummary(result);
-    if(preview){
-        preview.innerHTML=renderTierImportPreviewTable(result)+renderTierImportIssues(result);
-    }
-    setTierImportApplyEnabled(result.summary.validItems>0);
-}
-
 async function previewTierListImport(){
     if(getUserRole()!=='Admin'){
         alert('Chỉ Admin mới được import Tier List chính.');
@@ -1550,28 +1675,144 @@ async function previewTierListImport(){
     renderTierImportResult(result);
 }
 
+function parseTierImportText(rawText){
+    const lookup=buildTierImportHeroLookup();
+    const errors=[];
+    const unresolvedHeroes=[];
+    const validItems=[];
+    const seenHeroIds=new Set();
+    let linesRead=0;
+
+    String(rawText||'').split(/\r?\n/).forEach((line,index)=>{
+        const lineNumber=index+1;
+        const trimmed=line.trim();
+        if(!trimmed||isTierImportHeaderLine(trimmed)) return;
+        linesRead++;
+
+        const parts=splitTierImportLine(trimmed);
+        if(!parts||!parts.heroName||!parts.tier){
+            errors.push({lineNumber,message:`Dong ${lineNumber}: khong doc duoc du 2 cot Ten tuong va Tier.`});
+            return;
+        }
+
+        const tier=String(parts.tier||'').trim().toUpperCase();
+        if(!IMPORT_TIER_ROWS.includes(tier)){
+            errors.push({lineNumber,message:`Dong ${lineNumber}: tier "${parts.tier}" khong hop le. Chi nhan S, A, B, C, D.`});
+            return;
+        }
+
+        const hero=findHeroForTierImport(parts.heroName,lookup);
+        if(!hero){
+            unresolvedHeroes.push({lineNumber,heroName:parts.heroName,tier});
+            return;
+        }
+
+        const primaryRoleCode=typeof getHeroPrimaryRoleCode==='function'?getHeroPrimaryRoleCode(hero):(hero.primaryRoleCode||hero.role||'');
+        if(!primaryRoleCode||!IMPORT_ROLE_COLUMNS.includes(primaryRoleCode)){
+            errors.push({lineNumber,message:`Dong ${lineNumber}: tuong "${hero.name}" chua co Primary Role hop le trong he thong.`});
+            return;
+        }
+
+        const heroKey=hero.id!==undefined&&hero.id!==null?`id:${hero.id}`:`name:${normalizeImportText(hero.name)}`;
+        if(seenHeroIds.has(heroKey)){
+            errors.push({lineNumber,message:`Dong ${lineNumber}: tuong "${parts.heroName}" bi trung, da bo qua dong nay.`});
+            return;
+        }
+
+        seenHeroIds.add(heroKey);
+        validItems.push({lineNumber,hero,heroName:hero.name,roleCode:primaryRoleCode,tier});
+    });
+
+    if(linesRead===0){
+        errors.push({lineNumber:0,message:'Chua co dong du lieu hop le de import.'});
+    }
+
+    const contentData=buildTierImportContentData(validItems);
+    return {
+        contentData,
+        validItems,
+        errors,
+        unresolvedHeroes,
+        summary:{
+            linesRead,
+            validItems:validItems.length,
+            errors:errors.length,
+            unresolvedHeroes:unresolvedHeroes.length
+        }
+    };
+}
+
+function renderTierImportSummary(result){
+    const target=document.getElementById('tier-import-summary');
+    if(!target) return;
+    target.innerHTML=`
+        <div class="tier-import-stats">
+            <div class="tier-import-stat"><span>Dong da doc</span><strong>${result.summary.linesRead}</strong></div>
+            <div class="tier-import-stat"><span>Hero hop le</span><strong>${result.summary.validItems}</strong></div>
+            <div class="tier-import-stat"><span>Loi du lieu</span><strong>${result.summary.errors}</strong></div>
+            <div class="tier-import-stat"><span>Khong tim thay</span><strong>${result.summary.unresolvedHeroes}</strong></div>
+        </div>`;
+}
+
+function renderTierImportIssues(result){
+    const blocks=[];
+    if(result.errors.length){
+        blocks.push(`
+            <div class="tier-import-list-block">
+                <strong>Loi du lieu (${result.errors.length})</strong>
+                <ul>${result.errors.map(error=>`<li>${escapeTierHtml(error.message)}</li>`).join('')}</ul>
+            </div>`);
+    }
+    if(result.unresolvedHeroes.length){
+        blocks.push(`
+            <div class="tier-import-list-block">
+                <strong>Khong tim thay tuong (${result.unresolvedHeroes.length})</strong>
+                <ul>${result.unresolvedHeroes.map(item=>`<li>Dong ${item.lineNumber}: ${escapeTierHtml(item.heroName)} (tier ${item.tier})</li>`).join('')}</ul>
+            </div>`);
+    }
+    return blocks.join('');
+}
+
+function renderTierImportResult(result){
+    const feedback=document.getElementById('tier-import-feedback');
+    const preview=document.getElementById('tier-import-preview');
+    if(feedback){
+        const hasWarnings=result.errors.length>0||result.unresolvedHeroes.length>0;
+        const type=result.summary.validItems===0?'error':(hasWarnings?'warning':'success');
+        const message=result.summary.validItems===0
+            ? 'Khong co hero hop le de ap dung. Kiem tra loi ben duoi.'
+            : (hasWarnings?'Preview da tao cho phan hop le. He thong se xep cot theo Primary Role tu database.':'Preview hop le, co the ap dung vao Tier List chinh thuc.');
+        feedback.innerHTML=`<div class="tier-import-alert ${type}">${escapeTierHtml(message)}</div>`;
+    }
+    renderTierImportSummary(result);
+    if(preview){
+        preview.innerHTML=renderTierImportPreviewTable(result)+renderTierImportIssues(result);
+    }
+    setTierImportApplyEnabled(result.summary.validItems>0);
+}
+
 async function applyTierListImport(){
     if(getUserRole()!=='Admin'){
-        alert('Chỉ Admin mới được áp dụng import Tier List chính.');
+        alert('Chi Admin moi duoc ap dung import Tier List chinh.');
         return;
     }
     if(!lastTierImportPreview?.contentData||lastTierImportPreview.summary.validItems===0){
-        alert('Hãy bấm "Xem trước" và đảm bảo có ít nhất 1 hero hợp lệ trước khi áp dụng.');
+        alert('Hay bam "Xem truoc" va dam bao co it nhat 1 hero hop le truoc khi ap dung.');
         return;
     }
 
     const summary=lastTierImportPreview.summary;
-    const warning=(summary.errors||summary.unresolvedHeroes||summary.roleMismatches)
-        ? `\nCòn ${summary.errors} lỗi dữ liệu, ${summary.unresolvedHeroes} tướng không tìm thấy và ${summary.roleMismatches||0} dòng role import khác Primary Role. Những dòng lỗi sẽ không được lưu; dòng khác Primary Role vẫn dùng role import cho tier list.`
+    const warning=(summary.errors||summary.unresolvedHeroes)
+        ? `\nCon ${summary.errors} loi du lieu va ${summary.unresolvedHeroes} tuong khong tim thay. Nhung dong loi se khong duoc luu.`
         : '';
-    const confirmed=confirm(`Áp dụng ${summary.validItems} hero hợp lệ vào Tier List chính thức?${warning}\nDữ liệu official hiện tại sẽ được thay bằng bản preview.`);
+    const confirmed=confirm(`Ap dung ${summary.validItems} hero hop le vao Tier List chinh thuc?${warning}\nTier giu nguyen theo preview va cot se duoc sap theo Primary Role DSL -> JGL -> MID -> ADL -> SUP.`);
     if(!confirmed) return;
 
     const button=document.getElementById('tier-import-apply-btn');
     const originalText=button?.textContent;
     if(button){
         button.disabled=true;
-        button.textContent='Đang áp dụng...';
+        button.textContent='Dang ap dung...';
     }
 
     try{
@@ -1581,17 +1822,18 @@ async function applyTierListImport(){
             body:JSON.stringify({
                 title:OFFICIAL_TIER_LIST_TITLE,
                 isOfficial:true,
+                importMode:OFFICIAL_TIER_LIST_IMPORT_MODE,
                 contentData:lastTierImportPreview.contentData
             })
         });
         if(!response.ok) throw new Error(await readApiError(response));
-        officialTierListPayload=await response.json();
-        renderOfficialTierList(officialTierListPayload.contentData||lastTierImportPreview.contentData);
+        officialTierListPayload=normalizeOfficialTierListPayload(await response.json());
+        renderOfficialTierList(officialTierListPayload.contentData||lastTierImportPreview.contentData,officialTierListPayload);
         await loadOfficialTierList();
-        showTierToast(`Đã áp dụng ${summary.validItems} hero vào Tier List chính.`);
+        showTierToast(`Da ap dung ${summary.validItems} hero vao Tier List chinh.`);
     }catch(error){
         console.error('Cannot apply tier list import:',error);
-        alert(`Không áp dụng được Tier List import: ${error.message}`);
+        alert(`Khong ap dung duoc Tier List import: ${error.message}`);
         setTierImportApplyEnabled(true);
     }finally{
         if(button){
@@ -1599,6 +1841,31 @@ async function applyTierListImport(){
             button.disabled=false;
         }
     }
+}
+
+function initTierListImportUi(){
+    const input=document.getElementById('tier-import-input');
+    const importDescription=document.querySelector('#tier-import-panel .tier-import-head p');
+    const importHeading=document.querySelector('#tier-import-panel .tier-import-head h2');
+    if(importHeading) importHeading.textContent='Import tu bang du lieu';
+    if(importDescription){
+        importDescription.textContent='Dan du lieu 2 cot: Ten tuong va Tier. Role se duoc he thong tu xac dinh theo Primary Role.';
+    }
+    if(input){
+        input.placeholder='Ten tuong\tTier\nBillow\tS\nRyoma\tA\nMarja\tS';
+    }
+    if(!input||input.dataset.bound==='true') return;
+    input.dataset.bound='true';
+    input.addEventListener('input',()=>{
+        lastTierImportPreview=null;
+        setTierImportApplyEnabled(false);
+        const feedback=document.getElementById('tier-import-feedback');
+        const summary=document.getElementById('tier-import-summary');
+        const preview=document.getElementById('tier-import-preview');
+        if(feedback) feedback.innerHTML='<div class="tier-import-alert warning">Du lieu da thay doi. Bam "Xem truoc" de parse lai truoc khi ap dung.</div>';
+        if(summary) summary.innerHTML='';
+        if(preview) preview.innerHTML='';
+    });
 }
 
 async function readApiError(response){
@@ -1617,22 +1884,23 @@ async function loadOfficialTierList(){
 
         const payload=await response.json();
         if(payload.exists===false) return;
-        officialTierListPayload=payload;
-        renderOfficialTierList(payload.contentData);
+        officialTierListPayload=normalizeOfficialTierListPayload(payload);
+        renderOfficialTierList(officialTierListPayload.contentData,officialTierListPayload);
     }catch(error){
         console.error('Cannot load official tier list:',error);
     }
 }
 
 function exportOfficialTierList(button){
-    const payload={
+    const payload=normalizeOfficialTierListPayload({
         ...(officialTierListPayload||{}),
         id:officialTierListPayload?.id||'official',
         title:officialTierListPayload?.title||OFFICIAL_TIER_LIST_TITLE,
-        author:officialTierListPayload?.author||{name:'ATG Academy'},
+        author:officialTierListPayload?.author||{name:getOfficialTierListCreatorName(officialTierListPayload||{})},
+        creatorName:getOfficialTierListCreatorName(officialTierListPayload||{}),
         createdAt:officialTierListPayload?.createdAt||officialTierListPayload?.updatedAt||new Date().toISOString(),
         contentData:serializeOfficialTierList()
-    };
+    });
     exportTierListImage(payload,button);
 }
 
@@ -1704,8 +1972,9 @@ window.saveOfficialTierList=async function saveOfficialTierList(){
 
         if(!response.ok) throw new Error(await readApiError(response));
 
-        const payload=await response.json();
-        renderOfficialTierList(payload.contentData);
+        const payload=normalizeOfficialTierListPayload(await response.json());
+        officialTierListPayload=payload;
+        renderOfficialTierList(payload.contentData,payload);
         alert('Da luu Tier List chinh. Nguoi ngoai vao trang se thay ngay.');
     }catch(error){
         console.error('Cannot save official tier list:',error);
@@ -1718,6 +1987,7 @@ window.saveOfficialTierList=async function saveOfficialTierList(){
     }
 };
 
+window.setCommunityView=setCommunityView;
 window.previewTierListImport=previewTierListImport;
 window.applyTierListImport=applyTierListImport;
 

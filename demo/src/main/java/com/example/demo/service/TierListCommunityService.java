@@ -20,15 +20,29 @@ import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class TierListCommunityService {
+
+    private static final int COMMUNITY_HIGHLIGHT_LIMIT = 6;
+    private static final int COMMUNITY_NEWEST_SLOT_COUNT = 2;
+    private static final int RECENT_RATING_WINDOW_DAYS = 30;
+    private static final String TOP_AVERAGE_BADGE = "Top \u0111i\u1ec3m TB 30 ng\u00e0y";
+    private static final String MOST_RATINGS_BADGE = "Nhi\u1ec1u \u0111\u00e1nh gi\u00e1 30 ng\u00e0y";
+    private static final String MOST_FIVE_STAR_BADGE = "Nhi\u1ec1u 5 sao 30 ng\u00e0y";
+    private static final String ADMIN_RATING_BADGE = "Admin \u0111\u00e1nh gi\u00e1 cao";
+    private static final String NEWEST_BADGE = "M\u1edbi \u0111\u0103ng";
 
     private final TierListRepository tierListRepository;
     private final TierListRatingRepository ratingRepository;
@@ -55,6 +69,78 @@ public class TierListCommunityService {
     }
 
     @Transactional(readOnly = true)
+    public List<Map<String, Object>> getHighlightedCommunityTierLists(Authentication authentication) {
+        List<TierList> communityTiers = tierListRepository.findByIsOfficialFalseOrderByCreatedAtDesc()
+                .stream()
+                .filter(tierList -> tierList != null && !tierList.isOfficial())
+                .sorted(this::compareTierNewest)
+                .toList();
+
+        if (communityTiers.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, TierList> tiersById = communityTiers.stream()
+                .filter(tierList -> tierList.getId() != null)
+                .collect(Collectors.toMap(
+                        TierList::getId,
+                        Function.identity(),
+                        (first, ignored) -> first,
+                        LinkedHashMap::new
+                ));
+
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(RECENT_RATING_WINDOW_DAYS);
+        List<TierListRatingRepository.RecentCommunityTierListRatingSummary> ratingSummaries =
+                Optional.ofNullable(ratingRepository.findRecentCommunityTierListRatingSummaries(cutoff)).orElse(List.of());
+        List<TierListAdminRatingRepository.RecentCommunityTierListAdminRatingSummary> adminRatingSummaries =
+                Optional.ofNullable(adminRatingRepository.findRecentCommunityTierListAdminRatingSummaries(cutoff)).orElse(List.of());
+
+        Set<Long> selectedIds = new LinkedHashSet<>();
+        List<Map<String, Object>> highlights = new ArrayList<>(COMMUNITY_HIGHLIGHT_LIMIT);
+
+        addRecentUserRatingHighlight(ratingSummaries, tiersById, selectedIds, highlights, authentication,
+                TOP_AVERAGE_BADGE, this::compareByRecentAverageRating);
+        addRecentUserRatingHighlight(ratingSummaries, tiersById, selectedIds, highlights, authentication,
+                MOST_RATINGS_BADGE, this::compareByRecentRatingCount);
+        addRecentUserRatingHighlight(
+                ratingSummaries.stream().filter(summary -> safeLong(summary.getFiveStarCount()) > 0).toList(),
+                tiersById,
+                selectedIds,
+                highlights,
+                authentication,
+                MOST_FIVE_STAR_BADGE,
+                this::compareByRecentFiveStarCount
+        );
+        addRecentAdminRatingHighlight(adminRatingSummaries, tiersById, selectedIds, highlights, authentication);
+        addNewestCommunityHighlights(communityTiers, selectedIds, highlights, authentication);
+
+        return highlights;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getAllCommunityTierLists(Authentication authentication) {
+        return mapCommunityTierLists(tierListRepository.findByIsOfficialFalseOrderByCreatedAtDesc(), authentication);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getCurrentUserCommunityTierLists(GoogleUserPrincipal principal,
+                                                                      Authentication authentication) {
+        if (principal == null) {
+            return List.of();
+        }
+
+        Optional<User> currentUser = userRepository.findByEmail(principal.email());
+        if (currentUser.isEmpty() || currentUser.get().getId() == null) {
+            return List.of();
+        }
+
+        return mapCommunityTierLists(
+                tierListRepository.findByAuthorIdAndIsOfficialFalseOrderByCreatedAtDesc(currentUser.get().getId()),
+                authentication
+        );
+    }
+
+    @Transactional(readOnly = true)
     public Map<String, Object> buildTierListResponse(TierList tierList, Authentication authentication) {
         Object contentData = heroContentDataService.enrichForResponse(parseContentData(tierList.getContentData()));
         Double average = roundedAverage(tierList.getId());
@@ -74,6 +160,9 @@ public class TierListCommunityService {
         response.put("createdAt", tierList.getCreatedAt());
         response.put("updatedAt", tierList.getUpdatedAt());
         response.put("author", buildUserResponse(tierList.getAuthor()));
+        String creatorName = tierList.getAuthor() != null ? tierList.getAuthor().resolveDisplayName() : "ATG Academy";
+        response.put("creatorName", creatorName);
+        response.put("creator_name", creatorName);
         response.put("isOwner", isOwner(tierList, authentication));
         response.put("canEdit", canEdit(tierList, authentication));
         response.put("canDelete", canDelete(tierList, authentication));
@@ -84,6 +173,198 @@ public class TierListCommunityService {
         response.put("currentUserRating", currentUserRating(tierList.getId(), authentication));
         response.put("commentCount", commentRepository.countByTierListId(tierList.getId()));
         return response;
+    }
+
+    private List<Map<String, Object>> mapCommunityTierLists(List<TierList> tierLists, Authentication authentication) {
+        return Optional.ofNullable(tierLists).orElse(List.of())
+                .stream()
+                .filter(tierList -> tierList != null && !tierList.isOfficial())
+                .sorted(this::compareTierNewest)
+                .map(tierList -> buildTierListResponse(tierList, authentication))
+                .toList();
+    }
+
+    private void addRecentUserRatingHighlight(
+            List<TierListRatingRepository.RecentCommunityTierListRatingSummary> summaries,
+            Map<Long, TierList> tiersById,
+            Set<Long> selectedIds,
+            List<Map<String, Object>> highlights,
+            Authentication authentication,
+            String badgeLabel,
+            RecentUserRatingComparator comparator) {
+        if (highlights.size() >= COMMUNITY_HIGHLIGHT_LIMIT) {
+            return;
+        }
+
+        summaries.stream()
+                .sorted((left, right) -> comparator.compare(left, right, tiersById))
+                .map(summary -> tiersById.get(summary.getTierListId()))
+                .filter(Objects::nonNull)
+                .filter(tierList -> tryAddHighlightedTier(tierList, badgeLabel, selectedIds, highlights, authentication))
+                .findFirst();
+    }
+
+    private void addRecentAdminRatingHighlight(
+            List<TierListAdminRatingRepository.RecentCommunityTierListAdminRatingSummary> summaries,
+            Map<Long, TierList> tiersById,
+            Set<Long> selectedIds,
+            List<Map<String, Object>> highlights,
+            Authentication authentication) {
+        if (highlights.size() >= COMMUNITY_HIGHLIGHT_LIMIT) {
+            return;
+        }
+
+        summaries.stream()
+                .sorted((left, right) -> compareByRecentAdminRating(left, right, tiersById))
+                .map(summary -> tiersById.get(summary.getTierListId()))
+                .filter(Objects::nonNull)
+                .filter(tierList -> tryAddHighlightedTier(tierList, ADMIN_RATING_BADGE, selectedIds, highlights, authentication))
+                .findFirst();
+    }
+
+    private void addNewestCommunityHighlights(List<TierList> communityTiers,
+                                              Set<Long> selectedIds,
+                                              List<Map<String, Object>> highlights,
+                                              Authentication authentication) {
+        int added = 0;
+        for (TierList tierList : communityTiers) {
+            if (highlights.size() >= COMMUNITY_HIGHLIGHT_LIMIT || added >= COMMUNITY_NEWEST_SLOT_COUNT) {
+                return;
+            }
+            if (tryAddHighlightedTier(tierList, NEWEST_BADGE, selectedIds, highlights, authentication)) {
+                added++;
+            }
+        }
+    }
+
+    private boolean tryAddHighlightedTier(TierList tierList,
+                                          String badgeLabel,
+                                          Set<Long> selectedIds,
+                                          List<Map<String, Object>> highlights,
+                                          Authentication authentication) {
+        if (tierList == null || tierList.getId() == null || tierList.isOfficial()) {
+            return false;
+        }
+        if (selectedIds.contains(tierList.getId()) || highlights.size() >= COMMUNITY_HIGHLIGHT_LIMIT) {
+            return false;
+        }
+
+        selectedIds.add(tierList.getId());
+        Map<String, Object> response = new LinkedHashMap<>(buildTierListResponse(tierList, authentication));
+        response.put("highlightBadge", badgeLabel);
+        response.put("badgeLabel", badgeLabel);
+        highlights.add(response);
+        return true;
+    }
+
+    private int compareByRecentAverageRating(
+            TierListRatingRepository.RecentCommunityTierListRatingSummary left,
+            TierListRatingRepository.RecentCommunityTierListRatingSummary right,
+            Map<Long, TierList> tiersById) {
+        int averageCompare = Double.compare(safeDouble(right.getAverageRating()), safeDouble(left.getAverageRating()));
+        if (averageCompare != 0) {
+            return averageCompare;
+        }
+        int countCompare = Long.compare(safeLong(right.getRatingCount()), safeLong(left.getRatingCount()));
+        if (countCompare != 0) {
+            return countCompare;
+        }
+        return compareTierNewest(tiersById.get(left.getTierListId()), tiersById.get(right.getTierListId()));
+    }
+
+    private int compareByRecentRatingCount(
+            TierListRatingRepository.RecentCommunityTierListRatingSummary left,
+            TierListRatingRepository.RecentCommunityTierListRatingSummary right,
+            Map<Long, TierList> tiersById) {
+        int countCompare = Long.compare(safeLong(right.getRatingCount()), safeLong(left.getRatingCount()));
+        if (countCompare != 0) {
+            return countCompare;
+        }
+        int averageCompare = Double.compare(safeDouble(right.getAverageRating()), safeDouble(left.getAverageRating()));
+        if (averageCompare != 0) {
+            return averageCompare;
+        }
+        return compareTierNewest(tiersById.get(left.getTierListId()), tiersById.get(right.getTierListId()));
+    }
+
+    private int compareByRecentFiveStarCount(
+            TierListRatingRepository.RecentCommunityTierListRatingSummary left,
+            TierListRatingRepository.RecentCommunityTierListRatingSummary right,
+            Map<Long, TierList> tiersById) {
+        int fiveStarCompare = Long.compare(safeLong(right.getFiveStarCount()), safeLong(left.getFiveStarCount()));
+        if (fiveStarCompare != 0) {
+            return fiveStarCompare;
+        }
+        int averageCompare = Double.compare(safeDouble(right.getAverageRating()), safeDouble(left.getAverageRating()));
+        if (averageCompare != 0) {
+            return averageCompare;
+        }
+        int countCompare = Long.compare(safeLong(right.getRatingCount()), safeLong(left.getRatingCount()));
+        if (countCompare != 0) {
+            return countCompare;
+        }
+        return compareTierNewest(tiersById.get(left.getTierListId()), tiersById.get(right.getTierListId()));
+    }
+
+    private int compareByRecentAdminRating(
+            TierListAdminRatingRepository.RecentCommunityTierListAdminRatingSummary left,
+            TierListAdminRatingRepository.RecentCommunityTierListAdminRatingSummary right,
+            Map<Long, TierList> tiersById) {
+        int ratingCompare = Double.compare(safeDouble(right.getAdminRating()), safeDouble(left.getAdminRating()));
+        if (ratingCompare != 0) {
+            return ratingCompare;
+        }
+        return compareTierNewest(tiersById.get(left.getTierListId()), tiersById.get(right.getTierListId()));
+    }
+
+    private int compareTierNewest(TierList left, TierList right) {
+        if (left == right) {
+            return 0;
+        }
+        if (left == null) {
+            return 1;
+        }
+        if (right == null) {
+            return -1;
+        }
+
+        int createdAtCompare = compareDateDesc(left.getCreatedAt(), right.getCreatedAt());
+        if (createdAtCompare != 0) {
+            return createdAtCompare;
+        }
+        return Long.compare(safeId(right.getId()), safeId(left.getId()));
+    }
+
+    private int compareDateDesc(LocalDateTime left, LocalDateTime right) {
+        if (left == right) {
+            return 0;
+        }
+        if (left == null) {
+            return 1;
+        }
+        if (right == null) {
+            return -1;
+        }
+        return right.compareTo(left);
+    }
+
+    private double safeDouble(Double value) {
+        return value != null ? value : 0;
+    }
+
+    private long safeLong(Long value) {
+        return value != null ? value : 0;
+    }
+
+    private long safeId(Long value) {
+        return value != null ? value : 0;
+    }
+
+    @FunctionalInterface
+    private interface RecentUserRatingComparator {
+        int compare(TierListRatingRepository.RecentCommunityTierListRatingSummary left,
+                    TierListRatingRepository.RecentCommunityTierListRatingSummary right,
+                    Map<Long, TierList> tiersById);
     }
 
     @Transactional(readOnly = true)

@@ -40,8 +40,12 @@ function formatTierExportRating(value) {
     return Number.isInteger(number) ? String(number) : number.toFixed(1).replace(/\.0$/, '');
 }
 
+function normalizeTierExportText(value) {
+    return String(value ?? '').normalize('NFC');
+}
+
 function escapeTierExportHtml(value) {
-    return String(value ?? '')
+    return normalizeTierExportText(value)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -195,8 +199,8 @@ function ensureTierListExportArea() {
 }
 
 function buildTierExportPayload(payload) {
-    const title = payload?.title || 'Tier List';
-    const creatorName = payload?.author?.name || payload?.creatorName || 'ATG Academy';
+    const title = normalizeTierExportText(payload?.title || 'Tier List') || 'Tier List';
+    const creatorName = normalizeTierExportText(payload?.creatorName || payload?.creator_name || payload?.author?.name || 'ATG Academy') || 'ATG Academy';
     const createdAt = payload?.createdAt || payload?.updatedAt || new Date().toISOString();
     const averageRating = getTierExportAverageRating(payload);
     const ratingCount = getTierExportRatingCount(payload);
@@ -243,7 +247,17 @@ function renderTierListExportArea(payload) {
             <footer class="tier-export-footer">ATG Academy</footer>
         </div>
     `;
+    area.firstElementChild?.setAttribute('lang', 'vi');
     return area;
+}
+
+async function waitForTierExportFonts() {
+    if (!document.fonts?.ready) return;
+    try {
+        await document.fonts.ready;
+    } catch (error) {
+        console.warn('Tier export fonts were not fully ready:', error);
+    }
 }
 
 function waitForTierExportImages(root) {
@@ -331,6 +345,7 @@ async function exportTierListImage(payload, button) {
         }
         setTierExportButtonState(button, 'Đang tạo ảnh...', true);
         const area = renderTierListExportArea(payload);
+        await waitForTierExportFonts();
         await waitForTierExportImages(area);
         const canvas = await html2canvas(area.firstElementChild, {
             backgroundColor: '#ffffff',
