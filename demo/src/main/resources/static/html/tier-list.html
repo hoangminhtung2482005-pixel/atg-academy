@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tier List Meta - AoV Tactics & Guides</title>
-    <link rel="stylesheet" href="/css/style.css?v=20260507-community-pages">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/style.css?v=20260507-css-modules">
+    <link rel="stylesheet" href="/css/tier-list.css?v=20260507-css-modules">
+<script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -21,32 +22,15 @@
 
             <!-- Admin Controls (ẩn mặc định, hiện khi Admin đăng nhập) -->
             <div class="admin-controls-bar" id="admin-controls" style="display:none; margin-top:16px;" data-require-role="Admin">
-                <div style="display:flex;gap:8px;">
-                    <button class="add-grid-btn" onclick="addColumn()">+ Thêm Cột</button>
-                    <button class="add-grid-btn" onclick="addRow()">+ Thêm Hàng</button>
+                <div class="admin-controls-copy">
+                    <p class="admin-controls-kicker">Official Meta Sync</p>
+                    <p class="admin-controls-note">Meta chính được tạo tự động từ điểm Ban/Pick trong database. Sửa điểm ở Admin Hero rồi bấm lưu để cập nhật tier list chính thức.</p>
                 </div>
-                <button class="btn-save-official" onclick="saveOfficialTierList()">&#128190; Lưu Meta Chính</button>
-            </div>
-
-            <div class="tier-import-panel" id="tier-import-panel" style="display:none;" data-require-role="Admin">
-                <div class="tier-import-head">
-                    <div>
-                        <h2>Import từ bảng dữ liệu</h2>
-                        <p>Dán dữ liệu 2 cột: Tên tướng và Tier. Hệ thống tự xếp cột theo Primary Role trong database.</p>
-                    </div>
-                    <div class="tier-import-actions">
-                        <button type="button" class="add-grid-btn" id="tier-import-preview-btn" onclick="previewTierListImport()">Xem trước</button>
-                        <button type="button" class="btn-save-official" id="tier-import-apply-btn" onclick="applyTierListImport()" disabled>Áp dụng vào Tier List</button>
-                    </div>
-                </div>
-                <textarea id="tier-import-input" class="tier-import-input" rows="9" spellcheck="false" placeholder="Tên tướng	Tier&#10;Hayate	S&#10;Marja	S&#10;Sinestrea	S&#10;Toro	S"></textarea>
-                <div class="tier-import-feedback" id="tier-import-feedback"></div>
-                <div class="tier-import-summary" id="tier-import-summary"></div>
-                <div class="tier-import-preview" id="tier-import-preview"></div>
+                <button class="btn-save-official" id="save-official-btn" onclick="saveOfficialTierList()">&#128190; Lưu Meta Chính</button>
             </div>
 
             <div class="tier-grid-container">
-                <div class="tier-grid tier-board" id="tier-grid">
+                <div class="tier-grid tier-board tier-grid-readonly" id="tier-grid">
                     <div class="tier-cell header-cell empty"></div>
                     <div class="tier-cell header-cell"><img src="/images/ui/top.png" alt="DSL" class="role-icon-header" style="width:24px;height:24px;margin-right:8px;vertical-align:middle;"><span contenteditable="true" style="vertical-align:middle;">DSL</span><button class="delete-btn" onclick="deleteColumn(this)">&times;</button></div>
                     <div class="tier-cell header-cell"><img src="/images/ui/jungle.png" alt="JGL" class="role-icon-header" style="width:24px;height:24px;margin-right:8px;vertical-align:middle;"><span contenteditable="true" style="vertical-align:middle;">JGL</span><button class="delete-btn" onclick="deleteColumn(this)">&times;</button></div>
@@ -75,47 +59,6 @@
                 <button type="button" class="tier-export-btn" id="official-tier-export-btn" onclick="exportOfficialTierList(this)">Tải ảnh</button>
             </div>
 
-            <!-- Hero Pool (Admin only) -->
-            <div class="hero-pool-container tier-pool" id="hero-pool-official" style="margin-top:24px; display:none;" data-require-role="Admin">
-                <div class="hero-pool-header">
-                    <div>
-                        <h2>Danh sách tướng</h2>
-                        <p>Kéo tướng vào tier hoặc chuột phải để tạo bản tạm cho lane khác.</p>
-                    </div>
-                </div>
-                <div class="hero-pool-toolbar">
-                    <label class="hero-search-wrap" for="searchInput">
-                        <span aria-hidden="true">&#8981;</span>
-                        <input type="text" id="searchInput" placeholder="Tìm kiếm tướng..." title="Tìm kiếm tướng trong tier list" oninput="filterHeroes()">
-                    </label>
-                    <label class="hero-class-filter" for="classFilter">
-                        <span>Class</span>
-                        <select id="classFilter" title="Lọc theo class tướng" onchange="setClassFilter(this.value)">
-                            <option value="Tất cả">Tất cả class</option>
-                        </select>
-                    </label>
-                </div>
-                <div class="hero-filter-row">
-                    <div class="role-filters" id="role-filters">
-                        <button class="role-btn active" data-role-filter="Tất cả" onclick="setRoleFilter('Tất cả')"><div class="role-icon"></div><span>Tất cả</span></button>
-                        <button class="role-btn" data-role-filter="DSL" onclick="setRoleFilter('DSL')"><div class="role-icon"></div><span>DSL</span></button>
-                        <button class="role-btn" data-role-filter="JGL" onclick="setRoleFilter('JGL')"><div class="role-icon"></div><span>JGL</span></button>
-                        <button class="role-btn" data-role-filter="MID" onclick="setRoleFilter('MID')"><div class="role-icon"></div><span>MID</span></button>
-                        <button class="role-btn" data-role-filter="ADL" onclick="setRoleFilter('ADL')"><div class="role-icon"></div><span>ADL</span></button>
-                        <button class="role-btn" data-role-filter="SUP" onclick="setRoleFilter('SUP')"><div class="role-icon"></div><span>SUP</span></button>
-                    </div>
-                </div>
-                <div class="hero-temp-section" id="hero-temp-section" hidden>
-                    <div class="hero-temp-section__head">
-                        <span>Bản tạm</span>
-                        <small>Kéo vào tier list hoặc xóa nếu chưa dùng.</small>
-                    </div>
-                    <div class="hero-grid hero-temp-grid" id="hero-temp-grid"></div>
-                </div>
-                <div class="hero-grid" id="hero-grid"></div>
-                <div class="hero-pool-empty" id="hero-pool-empty" hidden>Không tìm thấy tướng phù hợp.</div>
-            </div>
-
             <!-- User Prompt (User only, ẩn mặc định) -->
             <div class="user-prompt-bar" id="user-prompt" style="display:none;">
                 <p class="user-prompt-text">&#128221; Bạn muốn tạo bảng xếp hạng riêng?</p>
@@ -127,24 +70,18 @@
         <div class="community-section community-section--navigator" id="community-section">
             <div class="community-header community-header--navigation">
                 <div class="community-heading">
+                    <p class="community-kicker">Community Tier List</p>
                     <h2 class="community-title">Tier List Cộng Đồng</h2>
-                    <p class="community-subtitle">Trang này giữ Meta chính thức. Dùng dropdown bên dưới để mở danh sách Community Tier List phù hợp với nhu cầu của bạn.</p>
                 </div>
                 <div class="community-actions">
-                    <label class="community-nav-control" for="community-nav-select">
-                        <span class="community-nav-label">Community Tier List</span>
-                        <span class="community-nav-shell">
-                            <select id="community-nav-select" class="community-nav-select" aria-label="Chọn trang Tier List cộng đồng">
-                                <option value="" selected>Chọn danh sách cộng đồng</option>
-                                <option value="all">Tất cả tier list</option>
-                                <option value="recommended">Tier list đề xuất</option>
-                                <option value="mine">Tier list bản thân</option>
-                            </select>
-                            <span class="community-nav-caret" aria-hidden="true">▾</span>
-                        </span>
-                    </label>
                     <button class="btn-create-tierlist" id="btn-create-community" style="display:none;" onclick="openCreateModal()">&#10024; Tạo Tier List</button>
                 </div>
+            </div>
+            <div class="community-status" id="community-status" hidden aria-live="polite"></div>
+            <div class="community-grid" id="community-grid"></div>
+            <div class="community-empty" id="community-empty" style="display:none;">
+                <div class="community-empty-icon">&#128203;</div>
+                <p class="community-empty-text">Chưa có tier list cộng đồng nào.</p>
             </div>
         </div>
 
@@ -250,8 +187,8 @@
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="/js/tier-list-data.js?v=20260504-temp-heroes"></script>
     <script src="/js/tier-list-export.js?v=20260506-tier-meta-export"></script>
-    <script src="/js/tier-list-app.js?v=20260507-community-pages"></script>
+    <script src="/js/tier-list-app.js?v=20260507-tierlist-auto-hero-score"></script>
     <script src="/js/auth.js?v=20260424-account-profile"></script>
-    <script src="/js/header-loader.js?v=20260507-tierlist-nav-active"></script>
+    <script src="/js/header-loader.js?v=20260507-tierlist-route-cleanup"></script>
 </body>
 </html>

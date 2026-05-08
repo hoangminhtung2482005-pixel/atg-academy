@@ -4,30 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ban/Pick Profile - ATG Academy</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/style.css?v=20260507-css-modules">
+    <link rel="stylesheet" href="/css/ban-pick.css?v=20260507-css-modules">
+<script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <style>
-        body { background: #f8fafc; }
-        .bp-profile { max-width: 1180px; margin: 0 auto; padding: 34px 18px 72px; }
-        .profile-hero { background: linear-gradient(135deg, #0f172a, #1d4ed8); border-radius: 26px; color: #fff; display: grid; gap: 12px; margin-bottom: 22px; padding: 30px; }
-        .profile-hero span { color: #facc15; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
-        .profile-hero h1 { font-size: clamp(2rem, 4vw, 3.6rem); font-weight: 950; line-height: 1; margin: 0; }
-        .profile-grid { display: grid; gap: 18px; grid-template-columns: 1fr 1.4fr; }
-        .profile-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; box-shadow: 0 18px 42px rgba(15,23,42,.08); padding: 22px; }
-        .stats-grid { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0,1fr)); }
-        .stat-box { background: #f8fafc; border-radius: 16px; padding: 16px; }
-        .stat-box span { color: #64748b; font-size: .78rem; font-weight: 900; text-transform: uppercase; }
-        .stat-box strong { color: #0f172a; display: block; font-size: 1.7rem; font-weight: 950; }
-        .hero-picks, .history-list { display: grid; gap: 10px; margin-top: 14px; }
-        .pill-row, .history-row { align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; display: flex; justify-content: space-between; gap: 12px; padding: 12px 14px; }
-        .pill-row strong, .history-row strong { color: #0f172a; }
-        .pill-row span, .history-row span { color: #64748b; font-weight: 800; }
-        .history-row a { color: #2563eb; font-weight: 900; text-decoration: none; }
-        @media (max-width: 880px) { .profile-grid { grid-template-columns: 1fr; } }
-    </style>
 </head>
-<body>
+<body data-ban-pick-view="profile">
 <div id="header-placeholder"></div>
 <main class="bp-profile">
     <section class="profile-hero">
@@ -39,7 +21,7 @@
 </main>
 
 <script src="/js/auth.js?v=30260429-banpick-product"></script>
-<script src="/js/header-loader.js?v=30260429-banpick-product"></script>
+<script src="/js/header-loader.js?v=20260507-tierlist-route-cleanup"></script>
 <script>
     function escapeHtml(value) {
         return String(value || '').replace(/[&<>"']/g, char => ({

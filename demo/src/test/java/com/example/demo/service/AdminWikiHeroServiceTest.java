@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -188,6 +189,7 @@ class AdminWikiHeroServiceTest {
                 null,
                 null,
                 null,
+                null,
                 null
         );
 
@@ -217,6 +219,7 @@ class AdminWikiHeroServiceTest {
                 null,
                 null,
                 null,
+                null,
                 null
         ));
 
@@ -224,6 +227,60 @@ class AdminWikiHeroServiceTest {
         assertThat(hero.getClasses())
                 .extracting(HeroClass::resolveDisplayName)
                 .containsExactlyInAnyOrder("Pháp sư", "Đấu sĩ");
+    }
+
+    @Test
+    void updateHeroBasicInfoStoresBanPickScoreWhenValid() {
+        Hero hero = hero(10L, "Hayate", "hayate");
+        hero.setHeroClass("Xạ thủ");
+        HeroClass marksman = heroClass(1L, "Xạ thủ");
+
+        when(heroRepository.findByIdWithRolesAndAttributes(10L)).thenReturn(Optional.of(hero));
+        when(heroClassRepository.findByNameIn(Set.of("Xạ thủ"))).thenReturn(List.of(marksman));
+        when(heroRoleRepository.findAllByOrderByCodeAsc()).thenReturn(List.of());
+        when(heroAttributeRepository.findAll()).thenReturn(List.of());
+
+        service.updateHeroBasicInfo(10L, new AdminHeroBasicUpdateRequest(
+                null,
+                null,
+                null,
+                List.of("Xạ thủ"),
+                new BigDecimal("9.84"),
+                null,
+                null,
+                null,
+                null,
+                null
+        ));
+
+        assertThat(hero.getBanPickScore()).isEqualByComparingTo("9.84");
+    }
+
+    @Test
+    void updateHeroBasicInfoRejectsBanPickScoreWithMoreThanTwoDecimals() {
+        Hero hero = hero(10L, "Hayate", "hayate");
+        hero.setHeroClass("Xạ thủ");
+        HeroClass marksman = heroClass(1L, "Xạ thủ");
+
+        when(heroRepository.findByIdWithRolesAndAttributes(10L)).thenReturn(Optional.of(hero));
+        when(heroClassRepository.findByNameIn(Set.of("Xạ thủ"))).thenReturn(List.of(marksman));
+
+        assertThatThrownBy(() -> service.updateHeroBasicInfo(10L, new AdminHeroBasicUpdateRequest(
+                null,
+                null,
+                null,
+                List.of("Xạ thủ"),
+                new BigDecimal("9.841"),
+                null,
+                null,
+                null,
+                null,
+                null
+        )))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
+                    assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(exception.getReason()).contains("2 chữ số thập phân");
+                });
     }
 
     @Test

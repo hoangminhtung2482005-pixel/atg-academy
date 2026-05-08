@@ -25,6 +25,7 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 
 import java.util.ArrayList;
+import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -72,6 +73,9 @@ public class Hero {
 
     @Column(length = 30)
     private String difficulty;
+
+    @Column(name = "ban_pick_score", precision = 5, scale = 2)
+    private BigDecimal banPickScore;
 
     @Column(columnDefinition = "TEXT")
     private String description;

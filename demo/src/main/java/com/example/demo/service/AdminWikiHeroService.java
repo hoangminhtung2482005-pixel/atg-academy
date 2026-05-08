@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -127,6 +128,9 @@ public class AdminWikiHeroService {
 
         if (request.classes() != null || request.heroClass() != null) {
             updateHeroClasses(hero, request);
+        }
+        if (request.banPickScore() != null) {
+            hero.setBanPickScore(normalizeBanPickScore(request.banPickScore()));
         }
         if (request.description() != null) {
             hero.setDescription(blankToNull(request.description()));
@@ -442,6 +446,22 @@ public class AdminWikiHeroService {
 
     private String blankToNull(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private BigDecimal normalizeBanPickScore(BigDecimal score) {
+        if (score == null) {
+            return null;
+        }
+        if (score.compareTo(BigDecimal.ZERO) < 0) {
+            throw badRequest("Điểm Ban/Pick phải lớn hơn hoặc bằng 0.");
+        }
+        if (score.compareTo(BigDecimal.TEN) > 0) {
+            throw badRequest("Điểm Ban/Pick không được lớn hơn 10.");
+        }
+        if (score.scale() > 2) {
+            throw badRequest("Điểm Ban/Pick chỉ được có tối đa 2 chữ số thập phân.");
+        }
+        return score.stripTrailingZeros().scale() < 0 ? score.setScale(0) : score.stripTrailingZeros();
     }
 
     private ResponseStatusException badRequest(String message) {

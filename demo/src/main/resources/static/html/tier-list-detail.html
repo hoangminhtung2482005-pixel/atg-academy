@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chi tiết Tier List - AoV Tactics & Guides</title>
-    <link rel="stylesheet" href="/css/style.css?v=20260507-community-pages">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/style.css?v=20260507-css-modules">
+    <link rel="stylesheet" href="/css/tier-list.css?v=20260507-css-modules">
+<script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -47,6 +48,7 @@
                     <div class="tier-detail-board tier-board" id="tier-detail-board"></div>
                 </div>
                 <div class="tier-detail-actions">
+                    <button type="button" class="tier-export-btn tier-secondary-btn" id="tier-detail-save-btn" hidden>Lưu</button>
                     <button type="button" class="tier-export-btn" id="tier-detail-export-btn" onclick="exportCurrentTierDetail(this)">Tải ảnh</button>
                     <button type="button" class="tier-export-btn tier-danger-btn" id="tier-detail-delete-btn" hidden>Xóa Tier List</button>
                 </div>
@@ -71,7 +73,7 @@
     <script src="/js/tier-list-data.js?v=20260504-role-order"></script>
     <script src="/js/tier-list-export.js?v=20260506-tier-meta-export"></script>
     <script src="/js/auth.js?v=20260424-account-profile"></script>
-    <script src="/js/header-loader.js?v=20260507-tierlist-nav-active"></script>
-    <script src="/js/tier-list-detail.js?v=20260507-admin-rating-panel"></script>
+    <script src="/js/header-loader.js?v=20260507-tierlist-route-cleanup"></script>
+    <script src="/js/tier-list-detail.js?v=20260507-tierlist-saved-state"></script>
 </body>
 </html>

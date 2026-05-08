@@ -103,6 +103,57 @@ function getHeroAttributes(hero) {
     return Array.isArray(hero && hero.attributes) ? hero.attributes.filter(Boolean) : [];
 }
 
+function getHeroBanPickScoreValue(hero) {
+    const score = Number(hero && hero.banPickScore);
+    return Number.isFinite(score) && score >= 0 ? score : 0;
+}
+
+function formatBanPickScoreDisplay(value) {
+    const score = Number(value);
+    const safeScore = Number.isFinite(score) && score >= 0 ? score : 0;
+    return safeScore.toLocaleString('vi-VN', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+    });
+}
+
+function formatBanPickScoreInputValue(value) {
+    const safeScore = getHeroBanPickScoreValue({ banPickScore: value });
+    if (Number.isInteger(safeScore)) return String(safeScore);
+    return safeScore.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function validateBanPickScoreInput() {
+    const input = byId('hf-ban-pick-score');
+    if (!input) return { valid: true, value: 0 };
+
+    const rawValue = String(input.value == null ? '' : input.value).trim();
+    if (!rawValue) {
+        updateError('hf-ban-pick-score-error', 'Điểm Ban/Pick là bắt buộc.');
+        return { valid: false, value: 0 };
+    }
+
+    const normalizedValue = rawValue.replace(',', '.');
+    if (!/^\d+(?:\.\d{1,2})?$/.test(normalizedValue)) {
+        updateError('hf-ban-pick-score-error', 'Điểm Ban/Pick phải là số và chỉ có tối đa 2 chữ số thập phân.');
+        return { valid: false, value: 0 };
+    }
+
+    const score = Number(normalizedValue);
+    if (!Number.isFinite(score)) {
+        updateError('hf-ban-pick-score-error', 'Điểm Ban/Pick không hợp lệ.');
+        return { valid: false, value: 0 };
+    }
+    if (score < 0 || score > 10) {
+        updateError('hf-ban-pick-score-error', 'Điểm Ban/Pick phải nằm trong khoảng từ 0 đến 10.');
+        return { valid: false, value: 0 };
+    }
+
+    updateError('hf-ban-pick-score-error', '');
+    input.value = normalizedValue;
+    return { valid: true, value: score };
+}
+
 function updateClock() {
     const clock = byId('header-clock');
     if (clock) clock.textContent = new Date().toLocaleString('vi-VN');
@@ -276,7 +327,7 @@ function updateHeroHeader(visibleCount) {
     const pill = byId('hero-count-pill');
     if (subtitle) {
         subtitle.textContent = visibleCount === total
-            ? `Chỉnh sửa tướng, class, primary role, sub roles, đặc điểm và mô tả wiki. ${total} tướng.`
+            ? `Chỉnh sửa tướng, class, primary role, sub roles, điểm Ban/Pick, đặc điểm và mô tả wiki. ${total} tướng.`
             : `Đang hiển thị ${visibleCount} / ${total} tướng.`;
     }
     if (pill) pill.textContent = `${visibleCount} / ${total} tướng`;
@@ -290,12 +341,12 @@ function renderHeroesTable() {
     updateHeroHeader(heroes.length);
 
     if (!state.heroes.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="table-state">Chưa có dữ liệu tướng.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="table-state">Chưa có dữ liệu tướng.</td></tr>';
         return;
     }
 
     if (!heroes.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="table-state">Không tìm thấy tướng phù hợp.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="table-state">Không tìm thấy tướng phù hợp.</td></tr>';
         return;
     }
 
@@ -314,6 +365,7 @@ function renderHeroesTable() {
                 <td>${roleChip(primaryRole, 'primary-role-chip')}</td>
                 <td>${chipList(subRoles.map(roleLabel), 'sub-role-chip')}</td>
                 <td>${chipList(getHeroAttributes(hero))}</td>
+                <td><span class="score-chip">${escapeHtml(formatBanPickScoreDisplay(hero.banPickScore))}</span></td>
                 <td>
                     <div class="row-actions">
                         <button type="button" class="btn btn-light btn-small" data-action="edit-hero" data-hero-id="${Number(hero.id)}">Sửa</button>
@@ -329,7 +381,7 @@ function showLoadingRows(tbodyId, colspan, message) {
 }
 
 async function loadHeroes() {
-    showLoadingRows('heroes-tbody', 8, 'Đang tải danh sách tướng...');
+    showLoadingRows('heroes-tbody', 9, 'Đang tải danh sách tướng...');
     updateError('heroes-error', '');
     try {
         const heroes = await apiFetch('/api/admin/wiki/heroes', { headers: { Accept: 'application/json' }, cache: 'no-store' });
@@ -339,7 +391,7 @@ async function loadHeroes() {
         renderHeroesTable();
     } catch (error) {
         updateError('heroes-error', `Không tải được danh sách tướng.\n${error.message}`);
-        showLoadingRows('heroes-tbody', 8, 'Không tải được danh sách tướng. Xem chi tiết lỗi phía trên và console.');
+        showLoadingRows('heroes-tbody', 9, 'Không tải được danh sách tướng. Xem chi tiết lỗi phía trên và console.');
         updateHeroHeader(0);
     }
 }
@@ -484,6 +536,8 @@ function fillHeroForm(detail) {
     byId('hf-portrait').value = hero.portraitUrl || '';
     byId('hf-banner').value = hero.bannerUrl || '';
     byId('hf-description').value = hero.description || '';
+    byId('hf-ban-pick-score').value = formatBanPickScoreInputValue(hero.banPickScore);
+    updateError('hf-ban-pick-score-error', '');
     byId('hero-modal-subtitle').textContent = hero.name ? `${hero.name} #${hero.id}` : '';
 
     renderDifficultySelect(detail, hero);
@@ -520,9 +574,14 @@ async function saveHero(event) {
     event.preventDefault();
     const heroId = byId('hf-id').value;
     const primaryRoleId = byId('hero-primary-role').value;
+    const scoreValidation = validateBanPickScoreInput();
     if (!heroId) return;
     if (!primaryRoleId) {
         showToast('Primary role is required', 'err');
+        return;
+    }
+    if (!scoreValidation.valid) {
+        showToast('Điểm Ban/Pick chưa hợp lệ.', 'err');
         return;
     }
 
@@ -530,6 +589,7 @@ async function saveHero(event) {
         name: byId('hf-name').value.trim(),
         slug: byId('hf-slug').value.trim(),
         classes: checkedValues('hero-class'),
+        banPickScore: scoreValidation.value,
         description: byId('hf-description').value.trim(),
         avatarUrl: byId('hf-avatar').value.trim(),
         portraitUrl: byId('hf-portrait').value.trim(),
@@ -595,6 +655,11 @@ function bindEvents() {
     byId('btn-cancel-hero')?.addEventListener('click', closeHeroModal);
     byId('hero-form')?.addEventListener('submit', saveHero);
     byId('hero-primary-role')?.addEventListener('change', syncPrimaryAndSubRoles);
+    byId('hf-ban-pick-score')?.addEventListener('input', () => {
+        if (byId('hf-ban-pick-score-error')?.textContent) {
+            validateBanPickScoreInput();
+        }
+    });
 
     document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
         backdrop.addEventListener('click', event => {

@@ -25,6 +25,7 @@ public class StaticPageRedirectController {
             "/content.html",
             "/create-guide.html",
             "/esports.html",
+            "/esports-data.html",
             "/giao-an.html",
             "/guide-detail.html",
             "/header.html",
@@ -32,7 +33,6 @@ public class StaticPageRedirectController {
             "/tier-list-all.html",
             "/tier-list-detail.html",
             "/tier-list-mine.html",
-            "/tier-list-recommended.html",
             "/tier-list.html",
             "/wiki.html"
     })
@@ -52,7 +52,12 @@ public class StaticPageRedirectController {
 
     @GetMapping("/tier-list/recommended")
     public String redirectTierListRecommendedPage() {
-        return "redirect:/html/tier-list-recommended.html";
+        return "redirect:/html/tier-list.html";
+    }
+
+    @GetMapping({"/tier-list-recommended.html", "/html/tier-list-recommended.html"})
+    public String redirectDeprecatedTierListRecommendedHtml() {
+        return "redirect:/html/tier-list.html";
     }
 
     @GetMapping("/tier-list/all")
@@ -63,6 +68,11 @@ public class StaticPageRedirectController {
     @GetMapping("/tier-list/mine")
     public String redirectTierListMinePage() {
         return "redirect:/html/tier-list-mine.html";
+    }
+
+    @GetMapping("/esports/data")
+    public String redirectEsportsDataPage() {
+        return "redirect:/html/esports-data.html";
     }
 
     @GetMapping("/guides")

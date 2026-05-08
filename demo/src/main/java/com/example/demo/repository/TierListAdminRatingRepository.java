@@ -21,6 +21,11 @@ public interface TierListAdminRatingRepository extends JpaRepository<TierListAdm
 
     Optional<TierListAdminRating> findByTierListId(Long tierListId);
 
+    @Query("SELECT AVG(r.ratingValue) FROM TierListAdminRating r WHERE r.tierList.id = :tierListId")
+    Double getAverageRating(@Param("tierListId") Long tierListId);
+
+    long countByTierListId(Long tierListId);
+
     @Query("""
             SELECT r.tierList.id AS tierListId,
                    r.ratingValue AS adminRating

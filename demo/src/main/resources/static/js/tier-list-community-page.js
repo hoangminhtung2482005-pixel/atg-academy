@@ -1,12 +1,10 @@
 (function () {
-    const SHELL_URL = '/html/tier-list-community-shell.html?v=20260507-community-pages';
-    const APP_SCRIPT_URL = '/js/tier-list-app.js?v=20260507-community-pages';
+    const SHELL_URLS = Object.freeze({
+        all: '/html/tier-list-community-shell.html?v=20260507-tierlist-saved-state',
+        mine: '/html/tier-list-mine-shell.html?v=20260507-tierlist-saved-state'
+    });
+    const APP_SCRIPT_URL = '/js/tier-list-app.js?v=20260507-tierlist-auto-hero-score';
     const PAGE_META = Object.freeze({
-        recommended: {
-            documentTitle: 'Tier list đề xuất - AoV Tactics & Guides',
-            title: 'Tier list đề xuất',
-            subtitle: 'Hiển thị các tier list cộng đồng nổi bật theo logic đề xuất hiện tại.'
-        },
         all: {
             documentTitle: 'Tất cả tier list - AoV Tactics & Guides',
             title: 'Tất cả tier list',
@@ -15,18 +13,17 @@
         mine: {
             documentTitle: 'Tier list bản thân - AoV Tactics & Guides',
             title: 'Tier list bản thân',
-            subtitle: 'Danh sách Tier List cộng đồng do chính bạn tạo.'
+            subtitle: 'Theo dõi Community Tier List do bạn tạo và các tier list bạn đã lưu dưới dạng bookmark/reference.'
         }
     });
 
     function normalizeCommunityView(value) {
         const normalized = String(value || '').trim().toLowerCase();
-        if (normalized === 'featured') return 'recommended';
-        return PAGE_META[normalized] ? normalized : 'recommended';
+        return PAGE_META[normalized] ? normalized : 'all';
     }
 
     function applyCommunityPageMeta(root, view) {
-        const meta = PAGE_META[view] || PAGE_META.recommended;
+        const meta = PAGE_META[view] || PAGE_META.all;
         document.title = meta.documentTitle;
 
         const title = root.querySelector('[data-community-page-title]');
@@ -34,9 +31,6 @@
 
         const subtitle = root.querySelector('[data-community-page-subtitle]');
         if (subtitle) subtitle.textContent = meta.subtitle;
-
-        const select = root.querySelector('#community-nav-select');
-        if (select) select.value = view;
     }
 
     async function loadCommunityShell() {
@@ -44,9 +38,10 @@
         if (!root) return;
 
         const view = normalizeCommunityView(document.body?.dataset?.communityView);
+        const shellUrl = SHELL_URLS[view] || SHELL_URLS.all;
 
         try {
-            const response = await fetch(SHELL_URL, { cache: 'no-store' });
+            const response = await fetch(shellUrl, { cache: 'no-store' });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
             root.innerHTML = await response.text();

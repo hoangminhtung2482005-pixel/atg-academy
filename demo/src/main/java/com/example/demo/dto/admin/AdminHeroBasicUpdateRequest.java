@@ -5,6 +5,7 @@ public record AdminHeroBasicUpdateRequest(
         String slug,
         String heroClass,
         java.util.List<String> classes,
+        java.math.BigDecimal banPickScore,
         String description,
         String avatarUrl,
         String portraitUrl,

@@ -3,10 +3,12 @@ package com.example.demo.service;
 import com.example.demo.entity.TierList;
 import com.example.demo.entity.TierListAdminRating;
 import com.example.demo.entity.User;
+import com.example.demo.entity.UserSavedTierList;
 import com.example.demo.repository.TierListAdminRatingRepository;
 import com.example.demo.repository.TierListCommentRepository;
 import com.example.demo.repository.TierListRatingRepository;
 import com.example.demo.repository.TierListRepository;
+import com.example.demo.repository.UserSavedTierListRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.security.GoogleUserPrincipal;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,7 +29,10 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -50,6 +55,9 @@ class TierListCommunityServiceTest {
     private UserRepository userRepository;
 
     @Mock
+    private UserSavedTierListRepository userSavedTierListRepository;
+
+    @Mock
     private ObjectMapper objectMapper;
 
     @Mock
@@ -65,9 +73,64 @@ class TierListCommunityServiceTest {
                 commentRepository,
                 adminRatingRepository,
                 userRepository,
+                userSavedTierListRepository,
                 objectMapper,
                 heroContentDataService
         );
+        lenient().when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    @Test
+    void buildGeneratedOfficialTierListPreviewReturnsGeneratedBoardWithoutPersisting() {
+        Map<String, Object> generatedContent = Map.of("rows", List.of(), "columns", List.of());
+        when(heroContentDataService.generateOfficialTierListFromHeroScores()).thenReturn(generatedContent);
+        when(heroContentDataService.enrichForResponse(generatedContent)).thenReturn(generatedContent);
+
+        Map<String, Object> response = service.buildGeneratedOfficialTierListPreview(null);
+
+        assertThat(response.get("exists")).isEqualTo(false);
+        assertThat(response.get("isOfficial")).isEqualTo(true);
+        assertThat(response.get("title")).isEqualTo("Tier List Meta");
+        assertThat(response.get("creatorName")).isEqualTo("ATG Academy");
+        assertThat(response.get("contentData")).isEqualTo(generatedContent);
+        verify(heroContentDataService).generateOfficialTierListFromHeroScores();
+        verify(tierListRepository, never()).save(any(TierList.class));
+    }
+
+    @Test
+    void regenerateOfficialTierListFromHeroScoresPersistsOfficialContentData() throws Exception {
+        GoogleUserPrincipal principal = new GoogleUserPrincipal("admin@atg.test", "Admin", "", "ADMIN");
+        User admin = user(1L, principal.email(), "ATG Admin");
+        admin.setRole("Admin");
+        Map<String, Object> generatedContent = Map.of("rows", List.of(), "columns", List.of());
+        String serializedContent = "{\"rows\":[],\"columns\":[]}";
+
+        when(userRepository.findByEmail(principal.email())).thenReturn(Optional.of(admin));
+        when(tierListRepository.findFirstByIsOfficialTrueOrderByUpdatedAtDesc()).thenReturn(Optional.empty());
+        when(heroContentDataService.generateOfficialTierListFromHeroScores()).thenReturn(generatedContent);
+        when(objectMapper.writeValueAsString(generatedContent)).thenReturn(serializedContent);
+        when(objectMapper.readValue(serializedContent, Object.class)).thenReturn(generatedContent);
+        when(tierListRepository.save(any(TierList.class))).thenAnswer(invocation -> {
+            TierList tierList = invocation.getArgument(0);
+            if (tierList.getId() == null) {
+                tierList.setId(99L);
+            }
+            return tierList;
+        });
+        stubCardDependencies();
+
+        Map<String, Object> response = service.regenerateOfficialTierListFromHeroScores(principal, null);
+
+        ArgumentCaptor<TierList> tierListCaptor = ArgumentCaptor.forClass(TierList.class);
+        verify(tierListRepository).save(tierListCaptor.capture());
+
+        TierList savedTierList = tierListCaptor.getValue();
+        assertThat(savedTierList.isOfficial()).isTrue();
+        assertThat(savedTierList.getTitle()).isEqualTo("Tier List Meta");
+        assertThat(savedTierList.getAuthor()).isSameAs(admin);
+        assertThat(savedTierList.getContentData()).isEqualTo(serializedContent);
+        assertThat(response.get("isOfficial")).isEqualTo(true);
+        assertThat(response.get("contentData")).isEqualTo(generatedContent);
     }
 
     @Test
@@ -99,6 +162,10 @@ class TierListCommunityServiceTest {
         when(adminRatingRepository.findByTierListId(7L)).thenReturn(Optional.empty());
         when(tierListRepository.save(tierList)).thenReturn(tierList);
         when(adminRatingRepository.save(any(TierListAdminRating.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(ratingRepository.getAverageRating(7L)).thenReturn(4.0);
+        when(ratingRepository.countByTierListId(7L)).thenReturn(1L);
+        when(adminRatingRepository.getAverageRating(7L)).thenReturn(4.0);
+        when(adminRatingRepository.countByTierListId(7L)).thenReturn(1L);
 
         Map<String, Object> response = service.setAdminRating(7L, principal, 4.0, "");
 
@@ -113,6 +180,89 @@ class TierListCommunityServiceTest {
         assertThat(tierList.getAdminRating()).isEqualTo(4);
         assertThat(response.get("adminRating")).isEqualTo(4.0);
         assertThat(response.get("adminRatingDetail")).isInstanceOf(Map.class);
+        assertThat(response.get("average")).isEqualTo(4.0);
+        assertThat(response.get("count")).isEqualTo(2L);
+        assertThat(response.get("averageUserRating")).isEqualTo(4.0);
+        assertThat(response.get("userRatingCount")).isEqualTo(2L);
+    }
+
+    @Test
+    void buildTierListResponseIncludesAdminRatingInCombinedAverageAndCount() {
+        TierList tierList = tierList(7L, "Community Tier", false, LocalDateTime.of(2026, 5, 7, 9, 0));
+        TierListAdminRating adminRating = new TierListAdminRating();
+        adminRating.setId(77L);
+        adminRating.setTierList(tierList);
+        adminRating.setRatingValue(3.0);
+
+        when(heroContentDataService.enrichForResponse(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(ratingRepository.getAverageRating(7L)).thenReturn(4.0);
+        when(ratingRepository.countByTierListId(7L)).thenReturn(1L);
+        when(commentRepository.countByTierListId(7L)).thenReturn(0L);
+        when(adminRatingRepository.getAverageRating(7L)).thenReturn(3.0);
+        when(adminRatingRepository.countByTierListId(7L)).thenReturn(1L);
+        when(adminRatingRepository.findByTierListId(7L)).thenReturn(Optional.of(adminRating));
+
+        Map<String, Object> response = service.buildTierListResponse(tierList, null);
+
+        assertThat(response.get("communityRating")).isEqualTo(3.5);
+        assertThat(response.get("totalRatings")).isEqualTo(2L);
+        assertThat(response.get("averageUserRating")).isEqualTo(3.5);
+        assertThat(response.get("userRatingCount")).isEqualTo(2L);
+        assertThat(response.get("userOnlyAverageRating")).isEqualTo(4.0);
+        assertThat(response.get("userOnlyRatingCount")).isEqualTo(1L);
+        assertThat(response.get("adminRatingCount")).isEqualTo(1L);
+        assertThat(response.get("adminRating")).isEqualTo(3.0);
+    }
+
+    @Test
+    void getRatingSummaryUsesLegacyAdminRatingWhenAdminTableIsEmpty() {
+        TierList tierList = tierList(8L, "Legacy Admin Rating", false, LocalDateTime.of(2026, 5, 7, 9, 0));
+        tierList.setAdminRating(5);
+
+        when(tierListRepository.findById(8L)).thenReturn(Optional.of(tierList));
+        when(ratingRepository.getAverageRating(8L)).thenReturn(null);
+        when(ratingRepository.countByTierListId(8L)).thenReturn(0L);
+        when(adminRatingRepository.getAverageRating(8L)).thenReturn(null);
+        when(adminRatingRepository.countByTierListId(8L)).thenReturn(0L);
+        when(adminRatingRepository.findByTierListId(8L)).thenReturn(Optional.empty());
+
+        Map<String, Object> summary = service.getRatingSummary(8L, null);
+
+        assertThat(summary.get("average")).isEqualTo(5.0);
+        assertThat(summary.get("count")).isEqualTo(1L);
+        assertThat(summary.get("averageUserRating")).isEqualTo(5.0);
+        assertThat(summary.get("userRatingCount")).isEqualTo(1L);
+        assertThat(summary.get("adminRating")).isEqualTo(5.0);
+        assertThat(summary.get("userOnlyAverageRating")).isEqualTo(0.0);
+        assertThat(summary.get("userOnlyRatingCount")).isEqualTo(0L);
+        assertThat(summary.get("adminRatingCount")).isEqualTo(1L);
+    }
+
+    @Test
+    void getRatingSummaryDoesNotDoubleCountLegacyAdminRatingWhenAdminRecordExists() {
+        TierList tierList = tierList(9L, "No Double Count", false, LocalDateTime.of(2026, 5, 7, 9, 0));
+        tierList.setAdminRating(5);
+
+        TierListAdminRating adminRating = new TierListAdminRating();
+        adminRating.setId(91L);
+        adminRating.setTierList(tierList);
+        adminRating.setRatingValue(3.0);
+
+        when(tierListRepository.findById(9L)).thenReturn(Optional.of(tierList));
+        when(ratingRepository.getAverageRating(9L)).thenReturn(4.0);
+        when(ratingRepository.countByTierListId(9L)).thenReturn(1L);
+        when(adminRatingRepository.getAverageRating(9L)).thenReturn(3.0);
+        when(adminRatingRepository.countByTierListId(9L)).thenReturn(1L);
+        when(adminRatingRepository.findByTierListId(9L)).thenReturn(Optional.of(adminRating));
+
+        Map<String, Object> summary = service.getRatingSummary(9L, null);
+
+        assertThat(summary.get("average")).isEqualTo(3.5);
+        assertThat(summary.get("count")).isEqualTo(2L);
+        assertThat(summary.get("averageUserRating")).isEqualTo(3.5);
+        assertThat(summary.get("userRatingCount")).isEqualTo(2L);
+        assertThat(summary.get("adminRating")).isEqualTo(3.0);
+        assertThat(summary.get("adminRatingCount")).isEqualTo(1L);
     }
 
     @Test
@@ -227,12 +377,148 @@ class TierListCommunityServiceTest {
         verifyNoInteractions(tierListRepository);
     }
 
+    @Test
+    void saveTierListCreatesReferenceWithoutCloningTierList() {
+        GoogleUserPrincipal principal = new GoogleUserPrincipal("xibi@atg.test", "Xibi", "https://avatar/xibi", "USER");
+        User currentUser = user(42L, principal.email(), "Xibi");
+        TierList tierList = tierListWithAuthor(7L, "ADL Meta tier 1H2026", false,
+                LocalDateTime.of(2026, 5, 1, 8, 30), user(9L, "phuc@atg.test", "Phuc Pham"));
+        UserSavedTierList savedRelation = new UserSavedTierList();
+        savedRelation.setId(100L);
+        savedRelation.setUser(currentUser);
+        savedRelation.setTierList(tierList);
+        savedRelation.setSavedAt(LocalDateTime.of(2026, 5, 7, 9, 15));
+
+        when(tierListRepository.findById(7L)).thenReturn(Optional.of(tierList));
+        when(userRepository.findByEmail(principal.email())).thenReturn(Optional.of(currentUser));
+        when(userSavedTierListRepository.findByUserIdAndTierListId(42L, 7L)).thenReturn(Optional.empty());
+        when(userSavedTierListRepository.save(any(UserSavedTierList.class))).thenReturn(savedRelation);
+        stubCardDependencies();
+
+        Map<String, Object> response = service.saveTierList(7L, principal, null);
+
+        assertThat(response.get("saved")).isEqualTo(true);
+        assertThat(response.get("savedAt")).isEqualTo(savedRelation.getSavedAt());
+        assertThat(response.get("tierListId")).isEqualTo(7L);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> item = (Map<String, Object>) response.get("item");
+        assertThat(item.get("id")).isEqualTo(7L);
+        assertThat(item.get("title")).isEqualTo("ADL Meta tier 1H2026");
+        assertThat(item.get("createdAt")).isEqualTo(tierList.getCreatedAt());
+        assertThat(item.get("savedAt")).isEqualTo(savedRelation.getSavedAt());
+        assertThat(item.get("isSavedByCurrentUser")).isEqualTo(true);
+        assertThat(item.get("creatorName")).isEqualTo("Phuc Pham");
+
+        verify(userSavedTierListRepository).save(any(UserSavedTierList.class));
+        verify(tierListRepository, never()).save(any(TierList.class));
+    }
+
+    @Test
+    void saveTierListDoesNotCreateDuplicateWhenAlreadySaved() {
+        GoogleUserPrincipal principal = new GoogleUserPrincipal("xibi@atg.test", "Xibi", "", "USER");
+        User currentUser = user(42L, principal.email(), "Xibi");
+        TierList tierList = tierListWithAuthor(7L, "Saved Tier", false,
+                LocalDateTime.of(2026, 5, 1, 8, 30), user(9L, "phuc@atg.test", "Phuc Pham"));
+        UserSavedTierList savedRelation = new UserSavedTierList();
+        savedRelation.setId(100L);
+        savedRelation.setUser(currentUser);
+        savedRelation.setTierList(tierList);
+        savedRelation.setSavedAt(LocalDateTime.of(2026, 5, 7, 9, 15));
+
+        when(tierListRepository.findById(7L)).thenReturn(Optional.of(tierList));
+        when(userRepository.findByEmail(principal.email())).thenReturn(Optional.of(currentUser));
+        when(userSavedTierListRepository.findByUserIdAndTierListId(42L, 7L)).thenReturn(Optional.of(savedRelation));
+        stubCardDependencies();
+
+        Map<String, Object> response = service.saveTierList(7L, principal, null);
+
+        assertThat(response.get("saved")).isEqualTo(true);
+        assertThat(response.get("savedAt")).isEqualTo(savedRelation.getSavedAt());
+        verify(userSavedTierListRepository, never()).save(any(UserSavedTierList.class));
+        verify(tierListRepository, never()).save(any(TierList.class));
+    }
+
+    @Test
+    void saveTierListRejectsOfficialTierList() {
+        GoogleUserPrincipal principal = new GoogleUserPrincipal("xibi@atg.test", "Xibi", "", "USER");
+        TierList official = tierList(99L, "Tier List Meta", true, LocalDateTime.of(2026, 5, 1, 8, 30));
+
+        when(tierListRepository.findById(99L)).thenReturn(Optional.of(official));
+
+        assertThatThrownBy(() -> service.saveTierList(99L, principal, null))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(userSavedTierListRepository, never()).save(any(UserSavedTierList.class));
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void unsaveTierListDeletesOnlyCurrentUsersSavedRelation() {
+        GoogleUserPrincipal principal = new GoogleUserPrincipal("xibi@atg.test", "Xibi", "", "USER");
+        User currentUser = user(42L, principal.email(), "Xibi");
+        TierList tierList = tierListWithAuthor(7L, "Saved Tier", false,
+                LocalDateTime.of(2026, 5, 1, 8, 30), user(9L, "phuc@atg.test", "Phuc Pham"));
+
+        when(tierListRepository.findById(7L)).thenReturn(Optional.of(tierList));
+        when(userRepository.findByEmail(principal.email())).thenReturn(Optional.of(currentUser));
+
+        Map<String, Object> response = service.unsaveTierList(7L, principal);
+
+        assertThat(response.get("saved")).isEqualTo(false);
+        assertThat(response.get("tierListId")).isEqualTo(7L);
+        verify(userSavedTierListRepository).deleteByUserIdAndTierListId(42L, 7L);
+        verify(tierListRepository, never()).save(any(TierList.class));
+    }
+
+    @Test
+    void getCurrentUserSavedTierListsReturnsLiveOriginalTierMetadata() {
+        GoogleUserPrincipal principal = new GoogleUserPrincipal("xibi@atg.test", "Xibi", "", "USER");
+        User currentUser = user(42L, principal.email(), "Xibi");
+        User owner = user(9L, "phuc@atg.test", "Phuc Pham");
+        TierList tierList = tierListWithAuthor(7L, "ADL Meta tier 1H2026", false,
+                LocalDateTime.of(2026, 5, 1, 8, 30), owner);
+        tierList.setAdminRating(5);
+
+        UserSavedTierList savedRelation = new UserSavedTierList();
+        savedRelation.setId(100L);
+        savedRelation.setUser(currentUser);
+        savedRelation.setTierList(tierList);
+        savedRelation.setSavedAt(LocalDateTime.of(2026, 5, 7, 9, 15));
+
+        when(userRepository.findByEmail(principal.email())).thenReturn(Optional.of(currentUser));
+        when(userSavedTierListRepository.findByUserIdOrderBySavedAtDesc(42L)).thenReturn(List.of(savedRelation));
+        stubCardDependencies();
+        when(ratingRepository.getAverageRating(7L)).thenReturn(4.6);
+        when(ratingRepository.countByTierListId(7L)).thenReturn(23L);
+        when(commentRepository.countByTierListId(7L)).thenReturn(4L);
+
+        List<Map<String, Object>> results = service.getCurrentUserSavedTierLists(principal, null);
+
+        assertThat(results).hasSize(1);
+        Map<String, Object> item = results.get(0);
+        assertThat(item.get("id")).isEqualTo(7L);
+        assertThat(item.get("title")).isEqualTo("ADL Meta tier 1H2026");
+        assertThat(item.get("creatorName")).isEqualTo("Phuc Pham");
+        assertThat(item.get("createdAt")).isEqualTo(tierList.getCreatedAt());
+        assertThat(item.get("averageUserRating")).isEqualTo(4.6);
+        assertThat(item.get("userRatingCount")).isEqualTo(24L);
+        assertThat(item.get("adminRating")).isEqualTo(5.0);
+        assertThat(item.get("savedAt")).isEqualTo(savedRelation.getSavedAt());
+        assertThat(item.get("isSavedByCurrentUser")).isEqualTo(true);
+        verify(userSavedTierListRepository).findByUserIdOrderBySavedAtDesc(42L);
+    }
+
     private void stubCardDependencies() {
         when(heroContentDataService.enrichForResponse(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(ratingRepository.getAverageRating(any())).thenReturn(0.0);
-        when(ratingRepository.countByTierListId(any())).thenReturn(0L);
-        when(commentRepository.countByTierListId(any())).thenReturn(0L);
-        when(adminRatingRepository.findByTierListId(any())).thenReturn(Optional.empty());
+        when(ratingRepository.getAverageRating(anyLong())).thenReturn(0.0);
+        when(ratingRepository.countByTierListId(anyLong())).thenReturn(0L);
+        when(commentRepository.countByTierListId(anyLong())).thenReturn(0L);
+        when(adminRatingRepository.getAverageRating(anyLong())).thenReturn(null);
+        when(adminRatingRepository.countByTierListId(anyLong())).thenReturn(0L);
+        when(adminRatingRepository.findByTierListId(anyLong())).thenReturn(Optional.empty());
+        lenient().when(userSavedTierListRepository.findByUserIdAndTierListIdIn(anyLong(), any())).thenReturn(List.of());
     }
 
     private TierList tierList(Long id, String title, boolean official, LocalDateTime createdAt) {
@@ -242,6 +528,23 @@ class TierListCommunityServiceTest {
         tierList.setOfficial(official);
         tierList.setCreatedAt(createdAt);
         return tierList;
+    }
+
+    private TierList tierListWithAuthor(Long id, String title, boolean official, LocalDateTime createdAt, User author) {
+        TierList tierList = tierList(id, title, official, createdAt);
+        tierList.setAuthor(author);
+        return tierList;
+    }
+
+    private User user(Long id, String email, String name) {
+        User user = new User();
+        user.setId(id);
+        user.setEmail(email);
+        user.setName(name);
+        user.setDisplayName(name);
+        user.setRole("User");
+        user.setAvatarUrl("");
+        return user;
     }
 
     private static final class UserRatingSummary implements TierListRatingRepository.RecentCommunityTierListRatingSummary {

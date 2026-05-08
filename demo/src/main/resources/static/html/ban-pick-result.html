@@ -4,39 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kết quả Ban/Pick - ATG Academy</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/style.css?v=20260507-css-modules">
+    <link rel="stylesheet" href="/css/ban-pick.css?v=20260507-css-modules">
+<script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <style>
-        body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 45%, #f8fafc 45%, #eef2ff 100%); min-height: 100vh; }
-        .result-shell { max-width: 1120px; margin: 0 auto; padding: 42px 18px 80px; }
-        .result-hero { color: #fff; margin-bottom: 24px; }
-        .result-hero span { color: #facc15; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
-        .result-hero h1 { font-size: clamp(2rem, 5vw, 4.2rem); font-weight: 950; line-height: .95; margin: 8px 0; }
-        .result-card { background: rgba(255,255,255,.96); border: 1px solid rgba(148,163,184,.35); border-radius: 24px; box-shadow: 0 24px 70px rgba(15,23,42,.28); overflow: hidden; }
-        .result-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); }
-        .team-result { padding: 26px; }
-        .team-result.blue { border-right: 1px solid #e2e8f0; }
-        .team-title { align-items: center; display: flex; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-        .team-title h2 { color: #0f172a; font-size: 1.35rem; font-weight: 950; margin: 0; }
-        .team-title span { border-radius: 999px; color: #fff; font-size: .76rem; font-weight: 900; padding: 6px 10px; }
-        .blue .team-title span { background: #2563eb; }
-        .red .team-title span { background: #dc2626; }
-        .result-section { margin-top: 18px; }
-        .result-section strong { color: #475569; display: block; font-size: .78rem; letter-spacing: .08em; margin-bottom: 8px; text-transform: uppercase; }
-        .hero-list { display: flex; flex-wrap: wrap; gap: 8px; }
-        .hero-pill { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 999px; color: #0f172a; font-weight: 850; padding: 8px 11px; }
-        .ban-pill { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
-        .result-meta { align-items: center; background: #0f172a; color: #e2e8f0; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; padding: 18px 26px; }
-        .result-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-        .result-btn { background: #fff; border: 0; border-radius: 999px; color: #0f172a; cursor: pointer; font-weight: 900; padding: 10px 14px; }
-        .result-btn.primary { background: #facc15; }
-        .result-btn:disabled { cursor: not-allowed; opacity: .55; }
-        .result-message { color: #fde68a; font-weight: 800; margin-left: auto; }
-        @media (max-width: 760px) { .result-grid { grid-template-columns: 1fr; } .team-result.blue { border-right: 0; border-bottom: 1px solid #e2e8f0; } }
-    </style>
 </head>
-<body>
+<body data-ban-pick-view="result">
 <div id="header-placeholder"></div>
 <main class="result-shell">
     <section class="result-hero">
@@ -50,7 +23,7 @@
 </main>
 
 <script src="/js/auth.js?v=30260429-banpick-product"></script>
-<script src="/js/header-loader.js?v=30260429-banpick-product"></script>
+<script src="/js/header-loader.js?v=20260507-tierlist-route-cleanup"></script>
 <script>
     function escapeHtml(value) {
         return String(value || '').replace(/[&<>"']/g, char => ({

@@ -1,20 +1,31 @@
 package com.example.demo.controller;
 
-import com.example.demo.entity.EsportsTeam;
+import com.example.demo.dto.esports.EsportsHeroBanStatResponse;
+import com.example.demo.dto.esports.EsportsHeroStatResponse;
+import com.example.demo.dto.esports.EsportsTournamentOptionResponse;
 import com.example.demo.entity.EsportsMatch;
+import com.example.demo.entity.EsportsTeam;
 import com.example.demo.repository.EsportsMatchRepository;
 import com.example.demo.repository.EsportsTeamRepository;
+import com.example.demo.service.EsportsDataService;
+import com.example.demo.service.EsportsDraftService;
+import com.example.demo.util.EsportsTournamentCatalog;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 /**
- * Public REST Controller cho dữ liệu Esports — không yêu cầu đăng nhập.
+ * Public REST Controller cho du lieu Esports.
  * Endpoint: /api/esports
  */
 @RestController
@@ -23,27 +34,25 @@ public class EsportsController {
 
     private final EsportsTeamRepository esportsTeamRepository;
     private final EsportsMatchRepository esportsMatchRepository;
+    private final EsportsDraftService esportsDraftService;
+    private final EsportsDataService esportsDataService;
 
     public EsportsController(EsportsTeamRepository esportsTeamRepository,
-                             EsportsMatchRepository esportsMatchRepository) {
+                             EsportsMatchRepository esportsMatchRepository,
+                             EsportsDraftService esportsDraftService,
+                             EsportsDataService esportsDataService) {
         this.esportsTeamRepository = esportsTeamRepository;
         this.esportsMatchRepository = esportsMatchRepository;
+        this.esportsDraftService = esportsDraftService;
+        this.esportsDataService = esportsDataService;
     }
 
-    /**
-     * GET /api/esports/teams
-     * Trả về danh sách các đội tuyển, sắp xếp theo điểm Elo giảm dần.
-     */
     @GetMapping("/teams")
     public ResponseEntity<List<EsportsTeam>> getAllTeamsRanked() {
         List<EsportsTeam> teams = esportsTeamRepository.findAllByOrderByScoreDesc();
         return ResponseEntity.ok(teams);
     }
 
-    /**
-     * GET /api/esports/matches/recent?limit=10
-     * Public recent match feed for the full leaderboard page.
-     */
     @GetMapping("/matches/recent")
     public ResponseEntity<List<RecentMatchDto>> getRecentMatches(
             @RequestParam(defaultValue = "10") int limit) {
@@ -64,6 +73,63 @@ public class EsportsController {
         return ResponseEntity.ok(matches);
     }
 
+    @GetMapping("/matches/{matchId}/games")
+    public ResponseEntity<?> getMatchGames(@PathVariable Long matchId) {
+        try {
+            return ResponseEntity.ok(esportsDraftService.getGamesByMatchId(matchId));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/games/{gameId}/draft-actions")
+    public ResponseEntity<?> getGameDraftActions(@PathVariable Long gameId) {
+        try {
+            return ResponseEntity.ok(esportsDraftService.getDraftActionsByGameId(gameId));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/data/tournaments")
+    public ResponseEntity<List<EsportsTournamentOptionResponse>> getDraftTournaments() {
+        return ResponseEntity.ok(esportsDataService.getAvailableTournaments());
+    }
+
+    @GetMapping("/data/top-banned-heroes")
+    public ResponseEntity<?> getTopBannedHeroes(
+            @RequestParam(required = false) String tournamentName,
+            @RequestParam(defaultValue = "5") Integer limit) {
+        try {
+            List<EsportsHeroBanStatResponse> payload = esportsDataService.getTopBannedHeroes(tournamentName, limit);
+            return ResponseEntity.ok(payload);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/data/top-blue-banned-heroes")
+    public ResponseEntity<?> getTopBlueBannedHeroes(
+            @RequestParam(required = false) String tournamentName,
+            @RequestParam(defaultValue = "5") Integer limit) {
+        try {
+            List<EsportsHeroBanStatResponse> payload = esportsDataService.getTopBlueBannedHeroes(tournamentName, limit);
+            return ResponseEntity.ok(payload);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/data/hero-stats")
+    public ResponseEntity<?> getHeroStats(@RequestParam(required = false) String tournamentName) {
+        try {
+            List<EsportsHeroStatResponse> payload = esportsDataService.getHeroStats(tournamentName);
+            return ResponseEntity.ok(payload);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     private RecentMatchDto toRecentMatchDto(EsportsMatch match, Map<String, EsportsTeam> teamsByCode) {
         EsportsTeam team1 = teamsByCode.get(normalizeCode(match.getTeam1Code()));
         EsportsTeam team2 = teamsByCode.get(normalizeCode(match.getTeam2Code()));
@@ -76,7 +142,7 @@ public class EsportsController {
                 displayTeamName(match.getTeam2Code(), team2),
                 teamLogo(match.getTeam2Code(), team2),
                 match.getScore2(),
-                tournamentName(match.getTier()),
+                EsportsTournamentCatalog.resolveTournamentName(match.getTier()),
                 match.getTier(),
                 match.getStage()
         );
@@ -99,14 +165,6 @@ public class EsportsController {
             return team.getLogoUrl();
         }
         return "/images/teams/" + fallbackCode + ".png";
-    }
-
-    private static String tournamentName(String tournamentTier) {
-        return switch (String.valueOf(tournamentTier)) {
-            case "0" -> "AER International";
-            case "2" -> "AER Challenger";
-            default -> "AER Pro League";
-        };
     }
 
     public record RecentMatchDto(

@@ -9,6 +9,7 @@ import com.example.demo.entity.HeroRole;
 import com.example.demo.util.HeroClassCatalog;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public record AdminHeroResponse(
@@ -20,6 +21,7 @@ public record AdminHeroResponse(
         String bannerUrl,
         String heroClass,
         List<String> classes,
+        BigDecimal banPickScore,
         String difficulty,
         String description,
         HeroRoleDto primaryRole,
@@ -84,6 +86,7 @@ public record AdminHeroResponse(
                 hero.getBannerUrl(),
                 primaryClass,
                 classes,
+                hero.getBanPickScore(),
                 hero.getDifficulty(),
                 hero.getDescription(),
                 HeroSummaryDto.primaryRole(hero),

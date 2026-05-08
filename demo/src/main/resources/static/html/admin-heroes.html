@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý Tướng - AoV Tactics & Guides</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/admin-heroes.css">
+    <link rel="stylesheet" href="/css/style.css?v=20260507-css-modules">
+    <link rel="stylesheet" href="/css/admin.css?v=20260507-css-modules">
 </head>
 <body data-page="admin-heroes">
 <div id="toast" class="toast-box"></div>
@@ -44,7 +45,7 @@
             <div>
                 <p class="eyebrow">Wiki Hero Admin</p>
                 <h2>Quản lý Tướng</h2>
-                <p id="hero-subtitle">Chỉnh sửa tướng, class, primary role, sub roles, đặc điểm và mô tả wiki.</p>
+                <p id="hero-subtitle">Chỉnh sửa tướng, class, primary role, sub roles, điểm Ban/Pick, đặc điểm và mô tả wiki.</p>
             </div>
             <button id="btn-refresh-heroes" type="button" class="btn btn-dark">Làm mới</button>
         </div>
@@ -87,11 +88,12 @@
                         <th>Primary Role</th>
                         <th>Sub Roles</th>
                         <th>Đặc điểm</th>
+                        <th>Ban/Pick</th>
                         <th>Thao tác</th>
                     </tr>
                     </thead>
                     <tbody id="heroes-tbody">
-                    <tr><td colspan="8" class="table-state">Đang tải danh sách tướng...</td></tr>
+                    <tr><td colspan="9" class="table-state">Đang tải danh sách tướng...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -142,6 +144,13 @@
                 <textarea id="hf-description" rows="4" placeholder="Mô tả ngắn dùng cho Wiki"></textarea>
             </label>
 
+            <label class="field">
+                <span>Điểm Ban/Pick *</span>
+                <input type="number" id="hf-ban-pick-score" min="0" max="10" step="0.01" inputmode="decimal" required>
+                <small class="field-help">Thang điểm từ 0 đến 10, tối đa 2 chữ số thập phân.</small>
+                <span id="hf-ban-pick-score-error" class="field-error hidden"></span>
+            </label>
+
             <div class="form-grid two align-start">
                 <section class="form-card">
                     <h4>Class</h4>
@@ -180,6 +189,6 @@
 </div>
 
 <script src="/js/auth.js?v=20260424-account-profile"></script>
-<script src="/js/admin-heroes.js"></script>
+<script src="/js/admin-heroes.js?v=20260507-banpick-score-admin"></script>
 </body>
 </html>

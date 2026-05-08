@@ -23,6 +23,12 @@
             return labels.filter(Boolean);
         }
 
+        function sanitizeBanPickScore(value) {
+            const score = Number(value);
+            if (!Number.isFinite(score) || score < 0) return 0;
+            return Math.round((score + Number.EPSILON) * 100) / 100;
+        }
+
         async function loadHeroesFromApi() {
             try {
                 const response = await fetch('/api/wiki/heroes', { headers: { 'Accept': 'application/json' } });
@@ -35,6 +41,7 @@
                     role: getApiHeroPrimaryRoleCode(h),
                     laneRoles: getApiHeroLaneRoleLabels(h),
                     attributes: Array.isArray(h.attributes) ? h.attributes : [],
+                    banPickScore: sanitizeBanPickScore(h.banPickScore),
                     avatarUrl: h.avatarUrl || ''
                 }));
                 heroIdMap = {};
@@ -55,7 +62,7 @@
         }
 
         function getHeroIdByName(heroName) {
-            return heroIdMap[heroName] || null;
+            return heroIdMap[heroName] || getHeroByName(heroName)?.id || null;
         }
 
         let currentRoleFilter = 'Tất cả';
@@ -1048,7 +1055,10 @@
         }
 
         function getHeroByName(heroName) {
-            return heroes.find(hero => hero.name === heroName) || null;
+            const exactMatch = heroes.find(hero => hero.name === heroName);
+            if (exactMatch) return exactMatch;
+            const normalizedName = normalizeHeroName(String(heroName || '').trim());
+            return heroes.find(hero => normalizeHeroName(hero.name) === normalizedName) || null;
         }
 
         function getHeroFromValue(value) {
@@ -1085,6 +1095,77 @@
             if (directId) return directId;
             const fallbackMatch = String(heroName || "").match(/^Hero #(\d+)$/);
             return fallbackMatch ? Number(fallbackMatch[1]) : null;
+        }
+
+        function getHeroBanPickScore(hero) {
+            if (hero == null) return 0;
+            if (typeof hero === 'number' || /^\d+$/.test(String(hero || ''))) {
+                return sanitizeBanPickScore(getHeroById(hero)?.banPickScore);
+            }
+            if (typeof hero === 'string') {
+                return sanitizeBanPickScore(getHeroByName(hero)?.banPickScore);
+            }
+            if (hero.banPickScore != null) {
+                return sanitizeBanPickScore(hero.banPickScore);
+            }
+            const resolvedHero = getHeroFromValue(hero);
+            if (resolvedHero && resolvedHero !== hero) {
+                return sanitizeBanPickScore(resolvedHero.banPickScore);
+            }
+            return 0;
+        }
+
+        function calculateTeamBanPickScore(picks) {
+            const heroesToScore = Array.isArray(picks) ? picks : [];
+            const totalScore = heroesToScore.reduce((total, hero) => {
+                if (!hero) return total;
+                if (hero && typeof hero === 'object' && String(hero.actionType || '').toUpperCase() === 'BAN') {
+                    return total;
+                }
+                return total + getHeroBanPickScore(hero);
+            }, 0);
+            return sanitizeBanPickScore(totalScore);
+        }
+
+        function calculateBanPickWinRate(bluePicks, redPicks) {
+            const blueScore = calculateTeamBanPickScore(bluePicks);
+            const redScore = calculateTeamBanPickScore(redPicks);
+            const totalScore = sanitizeBanPickScore(blueScore + redScore);
+            if (totalScore <= 0) {
+                return {
+                    blueScore,
+                    redScore,
+                    blueWinRate: 50,
+                    redWinRate: 50,
+                    totalScore,
+                    hasData: false
+                };
+            }
+            const blueWinRate = Math.round((((blueScore / totalScore) * 100) + Number.EPSILON) * 10) / 10;
+            const redWinRate = Math.round((100 - blueWinRate + Number.EPSILON) * 10) / 10;
+            return {
+                blueScore,
+                redScore,
+                blueWinRate,
+                redWinRate,
+                totalScore,
+                hasData: true
+            };
+        }
+
+        function formatBanPickScore(score) {
+            return sanitizeBanPickScore(score).toLocaleString('vi-VN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function formatBanPickWinRate(rate) {
+            const safeRate = Number.isFinite(Number(rate)) ? Number(rate) : 50;
+            return `${safeRate.toLocaleString('vi-VN', {
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1
+            })}%`;
         }
 
         function getHeroIdSet(heroIds) {
@@ -1854,11 +1935,24 @@
             document.getElementById('pvp-turn-owner').textContent = `Lượt của ${getActivePlayerName()} - ${getActiveSideLabel()}`;
         }
 
+        function renderBanPickEvaluation() {
+            const blueSummary = document.getElementById('draft-balance-blue');
+            const redSummary = document.getElementById('draft-balance-red');
+            const panel = document.getElementById('draft-balance-panel');
+            if (!blueSummary || !redSummary || !panel) return;
+
+            const evaluation = calculateBanPickWinRate(bluePicks, redPicks);
+            blueSummary.textContent = `Xanh: ${formatBanPickScore(evaluation.blueScore)} điểm · ${formatBanPickWinRate(evaluation.blueWinRate)}`;
+            redSummary.textContent = `Đỏ: ${formatBanPickScore(evaluation.redScore)} điểm · ${formatBanPickWinRate(evaluation.redWinRate)}`;
+            panel.classList.toggle('is-empty', !evaluation.hasData);
+        }
+
         function renderDraft() {
             renderOnlineSeriesPanel();
             renderSlots();
             renderLineupPanel();
             renderPhaseStatus();
+            renderBanPickEvaluation();
             renderTimer();
             renderPvpHeader();
             renderPreview();

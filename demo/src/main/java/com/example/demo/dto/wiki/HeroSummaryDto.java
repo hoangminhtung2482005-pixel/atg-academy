@@ -8,6 +8,7 @@ import com.example.demo.util.HeroClassCatalog;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -17,6 +18,7 @@ public record HeroSummaryDto(
         String slug,
         String name,
         String avatarUrl,
+        BigDecimal banPickScore,
         HeroRoleDto primaryRole,
         List<HeroRoleDto> subRoles,
         String heroClass,
@@ -35,6 +37,7 @@ public record HeroSummaryDto(
                 hero.getSlug(),
                 hero.getName(),
                 hero.getAvatarUrl(),
+                hero.getBanPickScore(),
                 primaryRole(hero),
                 subRoles(hero),
                 primaryClass(hero),

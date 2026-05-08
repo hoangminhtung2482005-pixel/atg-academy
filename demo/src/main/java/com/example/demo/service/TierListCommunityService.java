@@ -5,10 +5,12 @@ import com.example.demo.entity.TierListAdminRating;
 import com.example.demo.entity.TierListComment;
 import com.example.demo.entity.TierListRating;
 import com.example.demo.entity.User;
+import com.example.demo.entity.UserSavedTierList;
 import com.example.demo.repository.TierListAdminRatingRepository;
 import com.example.demo.repository.TierListCommentRepository;
 import com.example.demo.repository.TierListRatingRepository;
 import com.example.demo.repository.TierListRepository;
+import com.example.demo.repository.UserSavedTierListRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.security.GoogleUserPrincipal;
 import org.springframework.http.HttpStatus;
@@ -38,6 +40,8 @@ public class TierListCommunityService {
     private static final int COMMUNITY_HIGHLIGHT_LIMIT = 6;
     private static final int COMMUNITY_NEWEST_SLOT_COUNT = 2;
     private static final int RECENT_RATING_WINDOW_DAYS = 30;
+    private static final String OFFICIAL_TIER_LIST_TITLE = "Tier List Meta";
+    private static final String OFFICIAL_TIER_LIST_CREATOR = "ATG Academy";
     private static final String TOP_AVERAGE_BADGE = "Top \u0111i\u1ec3m TB 30 ng\u00e0y";
     private static final String MOST_RATINGS_BADGE = "Nhi\u1ec1u \u0111\u00e1nh gi\u00e1 30 ng\u00e0y";
     private static final String MOST_FIVE_STAR_BADGE = "Nhi\u1ec1u 5 sao 30 ng\u00e0y";
@@ -49,6 +53,7 @@ public class TierListCommunityService {
     private final TierListCommentRepository commentRepository;
     private final TierListAdminRatingRepository adminRatingRepository;
     private final UserRepository userRepository;
+    private final UserSavedTierListRepository userSavedTierListRepository;
     private final ObjectMapper objectMapper;
     private final HeroContentDataService heroContentDataService;
 
@@ -57,6 +62,7 @@ public class TierListCommunityService {
                                     TierListCommentRepository commentRepository,
                                     TierListAdminRatingRepository adminRatingRepository,
                                     UserRepository userRepository,
+                                    UserSavedTierListRepository userSavedTierListRepository,
                                     ObjectMapper objectMapper,
                                     HeroContentDataService heroContentDataService) {
         this.tierListRepository = tierListRepository;
@@ -64,6 +70,7 @@ public class TierListCommunityService {
         this.commentRepository = commentRepository;
         this.adminRatingRepository = adminRatingRepository;
         this.userRepository = userRepository;
+        this.userSavedTierListRepository = userSavedTierListRepository;
         this.objectMapper = objectMapper;
         this.heroContentDataService = heroContentDataService;
     }
@@ -79,6 +86,8 @@ public class TierListCommunityService {
         if (communityTiers.isEmpty()) {
             return List.of();
         }
+
+        Map<Long, UserSavedTierList> savedTierListsById = resolveSavedTierListMap(authentication, communityTiers);
 
         Map<Long, TierList> tiersById = communityTiers.stream()
                 .filter(tierList -> tierList.getId() != null)
@@ -99,20 +108,21 @@ public class TierListCommunityService {
         List<Map<String, Object>> highlights = new ArrayList<>(COMMUNITY_HIGHLIGHT_LIMIT);
 
         addRecentUserRatingHighlight(ratingSummaries, tiersById, selectedIds, highlights, authentication,
-                TOP_AVERAGE_BADGE, this::compareByRecentAverageRating);
+                savedTierListsById, TOP_AVERAGE_BADGE, this::compareByRecentAverageRating);
         addRecentUserRatingHighlight(ratingSummaries, tiersById, selectedIds, highlights, authentication,
-                MOST_RATINGS_BADGE, this::compareByRecentRatingCount);
+                savedTierListsById, MOST_RATINGS_BADGE, this::compareByRecentRatingCount);
         addRecentUserRatingHighlight(
                 ratingSummaries.stream().filter(summary -> safeLong(summary.getFiveStarCount()) > 0).toList(),
                 tiersById,
                 selectedIds,
                 highlights,
                 authentication,
+                savedTierListsById,
                 MOST_FIVE_STAR_BADGE,
                 this::compareByRecentFiveStarCount
         );
-        addRecentAdminRatingHighlight(adminRatingSummaries, tiersById, selectedIds, highlights, authentication);
-        addNewestCommunityHighlights(communityTiers, selectedIds, highlights, authentication);
+        addRecentAdminRatingHighlight(adminRatingSummaries, tiersById, selectedIds, highlights, authentication, savedTierListsById);
+        addNewestCommunityHighlights(communityTiers, selectedIds, highlights, authentication, savedTierListsById);
 
         return highlights;
     }
@@ -141,11 +151,62 @@ public class TierListCommunityService {
     }
 
     @Transactional(readOnly = true)
+    public List<Map<String, Object>> getCurrentUserSavedTierLists(GoogleUserPrincipal principal,
+                                                                  Authentication authentication) {
+        if (principal == null) {
+            return List.of();
+        }
+
+        Optional<User> currentUser = userRepository.findByEmail(principal.email());
+        if (currentUser.isEmpty() || currentUser.get().getId() == null) {
+            return List.of();
+        }
+
+        return userSavedTierListRepository.findByUserIdOrderBySavedAtDesc(currentUser.get().getId())
+                .stream()
+                .filter(savedTierList -> savedTierList.getTierList() != null && !savedTierList.getTierList().isOfficial())
+                .map(savedTierList -> buildTierListResponse(savedTierList.getTierList(), authentication, savedTierList))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> buildGeneratedOfficialTierListPreview(Authentication authentication) {
+        return buildOfficialTierListPreviewResponse(
+                heroContentDataService.generateOfficialTierListFromHeroScores(),
+                authentication
+        );
+    }
+
+    @Transactional
+    public Map<String, Object> regenerateOfficialTierListFromHeroScores(GoogleUserPrincipal principal,
+                                                                        Authentication authentication) {
+        if (principal == null || !principal.isAdmin()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chi Admin");
+        }
+
+        User author = findOrCreateUser(principal);
+        TierList tierList = tierListRepository.findFirstByIsOfficialTrueOrderByUpdatedAtDesc().orElseGet(TierList::new);
+        tierList.setTitle(OFFICIAL_TIER_LIST_TITLE);
+        tierList.setAuthor(author);
+        tierList.setOfficial(true);
+        tierList.setContentData(serializeContentData(heroContentDataService.generateOfficialTierListFromHeroScores()));
+        tierListRepository.save(tierList);
+        return buildTierListResponse(tierList, authentication);
+    }
+
+    @Transactional(readOnly = true)
     public Map<String, Object> buildTierListResponse(TierList tierList, Authentication authentication) {
+        UserSavedTierList savedTierList = resolveSavedTierList(authentication, tierList);
+        return buildTierListResponse(tierList, authentication, savedTierList);
+    }
+
+    private Map<String, Object> buildTierListResponse(TierList tierList,
+                                                      Authentication authentication,
+                                                      UserSavedTierList savedTierList) {
         Object contentData = heroContentDataService.enrichForResponse(parseContentData(tierList.getContentData()));
-        Double average = roundedAverage(tierList.getId());
-        long ratingCount = ratingRepository.countByTierListId(tierList.getId());
+        RatingAggregateSummary ratingSummary = buildCombinedRatingSummary(tierList);
         Map<String, Object> adminRating = buildAdminRatingDetail(tierList);
+        boolean isSavedByCurrentUser = savedTierList != null;
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("id", tierList.getId());
@@ -166,21 +227,30 @@ public class TierListCommunityService {
         response.put("isOwner", isOwner(tierList, authentication));
         response.put("canEdit", canEdit(tierList, authentication));
         response.put("canDelete", canDelete(tierList, authentication));
-        response.put("communityRating", average);
-        response.put("totalRatings", ratingCount);
-        response.put("averageUserRating", average);
-        response.put("userRatingCount", ratingCount);
+        response.put("communityRating", ratingSummary.combinedAverage());
+        response.put("totalRatings", ratingSummary.totalRatingCount());
+        response.put("averageUserRating", ratingSummary.combinedAverage());
+        response.put("userRatingCount", ratingSummary.totalRatingCount());
+        response.put("userOnlyAverageRating", ratingSummary.userAverage());
+        response.put("userOnlyRatingCount", ratingSummary.userRatingCount());
+        response.put("adminRatingCount", ratingSummary.adminRatingCount());
         response.put("currentUserRating", currentUserRating(tierList.getId(), authentication));
         response.put("commentCount", commentRepository.countByTierListId(tierList.getId()));
+        response.put("saved", isSavedByCurrentUser);
+        response.put("isSavedByCurrentUser", isSavedByCurrentUser);
+        response.put("savedAt", savedTierList != null ? savedTierList.getSavedAt() : null);
         return response;
     }
 
     private List<Map<String, Object>> mapCommunityTierLists(List<TierList> tierLists, Authentication authentication) {
-        return Optional.ofNullable(tierLists).orElse(List.of())
+        List<TierList> communityTierLists = Optional.ofNullable(tierLists).orElse(List.of())
                 .stream()
                 .filter(tierList -> tierList != null && !tierList.isOfficial())
                 .sorted(this::compareTierNewest)
-                .map(tierList -> buildTierListResponse(tierList, authentication))
+                .toList();
+        Map<Long, UserSavedTierList> savedTierListsById = resolveSavedTierListMap(authentication, communityTierLists);
+        return communityTierLists.stream()
+                .map(tierList -> buildTierListResponse(tierList, authentication, savedTierListsById.get(tierList.getId())))
                 .toList();
     }
 
@@ -190,6 +260,7 @@ public class TierListCommunityService {
             Set<Long> selectedIds,
             List<Map<String, Object>> highlights,
             Authentication authentication,
+            Map<Long, UserSavedTierList> savedTierListsById,
             String badgeLabel,
             RecentUserRatingComparator comparator) {
         if (highlights.size() >= COMMUNITY_HIGHLIGHT_LIMIT) {
@@ -200,7 +271,14 @@ public class TierListCommunityService {
                 .sorted((left, right) -> comparator.compare(left, right, tiersById))
                 .map(summary -> tiersById.get(summary.getTierListId()))
                 .filter(Objects::nonNull)
-                .filter(tierList -> tryAddHighlightedTier(tierList, badgeLabel, selectedIds, highlights, authentication))
+                .filter(tierList -> tryAddHighlightedTier(
+                        tierList,
+                        badgeLabel,
+                        selectedIds,
+                        highlights,
+                        authentication,
+                        savedTierListsById
+                ))
                 .findFirst();
     }
 
@@ -209,7 +287,8 @@ public class TierListCommunityService {
             Map<Long, TierList> tiersById,
             Set<Long> selectedIds,
             List<Map<String, Object>> highlights,
-            Authentication authentication) {
+            Authentication authentication,
+            Map<Long, UserSavedTierList> savedTierListsById) {
         if (highlights.size() >= COMMUNITY_HIGHLIGHT_LIMIT) {
             return;
         }
@@ -218,20 +297,28 @@ public class TierListCommunityService {
                 .sorted((left, right) -> compareByRecentAdminRating(left, right, tiersById))
                 .map(summary -> tiersById.get(summary.getTierListId()))
                 .filter(Objects::nonNull)
-                .filter(tierList -> tryAddHighlightedTier(tierList, ADMIN_RATING_BADGE, selectedIds, highlights, authentication))
+                .filter(tierList -> tryAddHighlightedTier(
+                        tierList,
+                        ADMIN_RATING_BADGE,
+                        selectedIds,
+                        highlights,
+                        authentication,
+                        savedTierListsById
+                ))
                 .findFirst();
     }
 
     private void addNewestCommunityHighlights(List<TierList> communityTiers,
                                               Set<Long> selectedIds,
                                               List<Map<String, Object>> highlights,
-                                              Authentication authentication) {
+                                              Authentication authentication,
+                                              Map<Long, UserSavedTierList> savedTierListsById) {
         int added = 0;
         for (TierList tierList : communityTiers) {
             if (highlights.size() >= COMMUNITY_HIGHLIGHT_LIMIT || added >= COMMUNITY_NEWEST_SLOT_COUNT) {
                 return;
             }
-            if (tryAddHighlightedTier(tierList, NEWEST_BADGE, selectedIds, highlights, authentication)) {
+            if (tryAddHighlightedTier(tierList, NEWEST_BADGE, selectedIds, highlights, authentication, savedTierListsById)) {
                 added++;
             }
         }
@@ -241,7 +328,8 @@ public class TierListCommunityService {
                                           String badgeLabel,
                                           Set<Long> selectedIds,
                                           List<Map<String, Object>> highlights,
-                                          Authentication authentication) {
+                                          Authentication authentication,
+                                          Map<Long, UserSavedTierList> savedTierListsById) {
         if (tierList == null || tierList.getId() == null || tierList.isOfficial()) {
             return false;
         }
@@ -250,7 +338,11 @@ public class TierListCommunityService {
         }
 
         selectedIds.add(tierList.getId());
-        Map<String, Object> response = new LinkedHashMap<>(buildTierListResponse(tierList, authentication));
+        Map<String, Object> response = new LinkedHashMap<>(buildTierListResponse(
+                tierList,
+                authentication,
+                savedTierListsById.get(tierList.getId())
+        ));
         response.put("highlightBadge", badgeLabel);
         response.put("badgeLabel", badgeLabel);
         highlights.add(response);
@@ -360,6 +452,52 @@ public class TierListCommunityService {
         return value != null ? value : 0;
     }
 
+    private Map<String, Object> buildOfficialTierListPreviewResponse(Object contentData, Authentication authentication) {
+        Object enrichedContentData = heroContentDataService.enrichForResponse(contentData);
+        boolean canEdit = currentPrincipal(authentication).map(GoogleUserPrincipal::isAdmin).orElse(false);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("exists", false);
+        response.put("id", null);
+        response.put("title", OFFICIAL_TIER_LIST_TITLE);
+        response.put("description", "");
+        response.put("note", "");
+        response.put("isOfficial", true);
+        response.put("adminRating", null);
+        response.put("adminRatingDetail", null);
+        response.put("contentData", enrichedContentData);
+        response.put("previewTiers", buildPreviewTiers(enrichedContentData));
+        response.put("createdAt", null);
+        response.put("updatedAt", null);
+        response.put("author", null);
+        response.put("creatorName", OFFICIAL_TIER_LIST_CREATOR);
+        response.put("creator_name", OFFICIAL_TIER_LIST_CREATOR);
+        response.put("isOwner", false);
+        response.put("canEdit", canEdit);
+        response.put("canDelete", false);
+        response.put("communityRating", 0.0);
+        response.put("totalRatings", 0L);
+        response.put("averageUserRating", 0.0);
+        response.put("userRatingCount", 0L);
+        response.put("userOnlyAverageRating", 0.0);
+        response.put("userOnlyRatingCount", 0L);
+        response.put("adminRatingCount", 0L);
+        response.put("currentUserRating", null);
+        response.put("commentCount", 0L);
+        response.put("saved", false);
+        response.put("isSavedByCurrentUser", false);
+        response.put("savedAt", null);
+        return response;
+    }
+
+    private String serializeContentData(Object contentData) {
+        try {
+            return objectMapper.writeValueAsString(contentData);
+        } catch (JacksonException exception) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Khong the luu du lieu Tier List chinh");
+        }
+    }
+
     @FunctionalInterface
     private interface RecentUserRatingComparator {
         int compare(TierListRatingRepository.RecentCommunityTierListRatingSummary left,
@@ -374,16 +512,66 @@ public class TierListCommunityService {
     }
 
     private Map<String, Object> buildRatingSummary(TierList tierList, GoogleUserPrincipal principal) {
+        RatingAggregateSummary ratingSummary = buildCombinedRatingSummary(tierList);
         Map<String, Object> adminRating = buildAdminRatingDetail(tierList);
         Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("average", roundedAverage(tierList.getId()));
-        summary.put("count", ratingRepository.countByTierListId(tierList.getId()));
-        summary.put("averageUserRating", roundedAverage(tierList.getId()));
-        summary.put("userRatingCount", ratingRepository.countByTierListId(tierList.getId()));
+        summary.put("average", ratingSummary.combinedAverage());
+        summary.put("count", ratingSummary.totalRatingCount());
+        summary.put("totalRatings", ratingSummary.totalRatingCount());
+        summary.put("averageUserRating", ratingSummary.combinedAverage());
+        summary.put("userRatingCount", ratingSummary.totalRatingCount());
+        summary.put("userOnlyAverageRating", ratingSummary.userAverage());
+        summary.put("userOnlyRatingCount", ratingSummary.userRatingCount());
+        summary.put("adminRatingCount", ratingSummary.adminRatingCount());
         summary.put("userRating", currentUserRating(tierList.getId(), principal));
         summary.put("adminRating", adminRating != null ? adminRating.get("ratingValue") : null);
         summary.put("adminRatingDetail", adminRating);
         return summary;
+    }
+
+    @Transactional
+    public Map<String, Object> saveTierList(Long tierListId,
+                                            GoogleUserPrincipal principal,
+                                            Authentication authentication) {
+        TierList tierList = findTierList(tierListId);
+        if (tierList.isOfficial()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chi luu Community Tier List");
+        }
+
+        User user = findOrCreateUser(principal);
+        UserSavedTierList savedTierList = userSavedTierListRepository.findByUserIdAndTierListId(user.getId(), tierListId)
+                .orElseGet(() -> {
+                    UserSavedTierList relation = new UserSavedTierList();
+                    relation.setUser(user);
+                    relation.setTierList(tierList);
+                    return userSavedTierListRepository.save(relation);
+                });
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("saved", true);
+        response.put("isSavedByCurrentUser", true);
+        response.put("savedAt", savedTierList.getSavedAt());
+        response.put("tierListId", tierList.getId());
+        response.put("item", buildTierListResponse(tierList, authentication, savedTierList));
+        return response;
+    }
+
+    @Transactional
+    public Map<String, Object> unsaveTierList(Long tierListId, GoogleUserPrincipal principal) {
+        TierList tierList = findTierList(tierListId);
+        if (tierList.isOfficial()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chi bo luu Community Tier List");
+        }
+
+        User user = findOrCreateUser(principal);
+        userSavedTierListRepository.deleteByUserIdAndTierListId(user.getId(), tierListId);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("saved", false);
+        response.put("isSavedByCurrentUser", false);
+        response.put("savedAt", null);
+        response.put("tierListId", tierList.getId());
+        return response;
     }
 
     @Transactional
@@ -463,7 +651,7 @@ public class TierListCommunityService {
         tierListRepository.save(tierList);
         TierListAdminRating saved = adminRatingRepository.save(adminRating);
 
-        Map<String, Object> response = new LinkedHashMap<>();
+        Map<String, Object> response = new LinkedHashMap<>(buildRatingSummary(tierList, principal));
         response.put("adminRating", rounded(saved.getRatingValue()));
         response.put("adminRatingDetail", buildAdminRatingDetail(saved));
         return response;
@@ -483,6 +671,7 @@ public class TierListCommunityService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Khong co quyen xoa Tier List nay");
         }
 
+        userSavedTierListRepository.deleteByTierListId(tierListId);
         adminRatingRepository.deleteByTierListId(tierListId);
         commentRepository.deleteByTierListId(tierListId);
         ratingRepository.deleteByTierListId(tierListId);
@@ -547,6 +736,52 @@ public class TierListCommunityService {
         return response;
     }
 
+    private UserSavedTierList resolveSavedTierList(Authentication authentication, TierList tierList) {
+        if (tierList == null || tierList.getId() == null) {
+            return null;
+        }
+        return currentPrincipal(authentication)
+                .flatMap(this::findExistingUser)
+                .flatMap(user -> userSavedTierListRepository.findByUserIdAndTierListId(user.getId(), tierList.getId()))
+                .orElse(null);
+    }
+
+    private Map<Long, UserSavedTierList> resolveSavedTierListMap(Authentication authentication, List<TierList> tierLists) {
+        if (tierLists == null || tierLists.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Long> tierListIds = tierLists.stream()
+                .map(TierList::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (tierListIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Optional<User> currentUser = currentPrincipal(authentication).flatMap(this::findExistingUser);
+        if (currentUser.isEmpty() || currentUser.get().getId() == null) {
+            return Map.of();
+        }
+
+        return userSavedTierListRepository.findByUserIdAndTierListIdIn(currentUser.get().getId(), tierListIds)
+                .stream()
+                .filter(savedTierList -> savedTierList.getTierList() != null && savedTierList.getTierList().getId() != null)
+                .collect(Collectors.toMap(
+                        savedTierList -> savedTierList.getTierList().getId(),
+                        Function.identity(),
+                        (first, ignored) -> first,
+                        LinkedHashMap::new
+                ));
+    }
+
+    private Optional<User> findExistingUser(GoogleUserPrincipal principal) {
+        if (principal == null) {
+            return Optional.empty();
+        }
+        return userRepository.findByEmail(principal.email());
+    }
+
     private boolean canEdit(TierList tierList, Authentication authentication) {
         return currentPrincipal(authentication)
                 .map(principal -> isOwner(tierList, principal) || principal.isAdmin())
@@ -598,9 +833,33 @@ public class TierListCommunityService {
         return response;
     }
 
-    private Double roundedAverage(Long tierListId) {
-        Double avg = ratingRepository.getAverageRating(tierListId);
-        return avg != null ? rounded(avg) : 0;
+    private RatingAggregateSummary buildCombinedRatingSummary(TierList tierList) {
+        Long tierListId = tierList.getId();
+        long userRatingCount = ratingRepository.countByTierListId(tierListId);
+        Double rawUserAverage = ratingRepository.getAverageRating(tierListId);
+
+        long adminRatingCount = adminRatingRepository.countByTierListId(tierListId);
+        Double rawAdminAverage = adminRatingRepository.getAverageRating(tierListId);
+
+        if (adminRatingCount == 0 && tierList.getAdminRating() != null) {
+            adminRatingCount = 1;
+            rawAdminAverage = tierList.getAdminRating().doubleValue();
+        }
+
+        double userAverage = rawUserAverage != null ? rawUserAverage : 0;
+        double adminAverage = rawAdminAverage != null ? rawAdminAverage : 0;
+        long totalRatingCount = userRatingCount + adminRatingCount;
+        double combinedAverage = totalRatingCount > 0
+                ? ((userAverage * userRatingCount) + (adminAverage * adminRatingCount)) / totalRatingCount
+                : 0;
+
+        return new RatingAggregateSummary(
+                rounded(combinedAverage),
+                totalRatingCount,
+                rawUserAverage != null ? rounded(rawUserAverage) : 0,
+                userRatingCount,
+                adminRatingCount
+        );
     }
 
     private double rounded(Double value) {
@@ -706,5 +965,12 @@ public class TierListCommunityService {
             }
         }
         return "";
+    }
+
+    private record RatingAggregateSummary(double combinedAverage,
+                                          long totalRatingCount,
+                                          double userAverage,
+                                          long userRatingCount,
+                                          long adminRatingCount) {
     }
 }

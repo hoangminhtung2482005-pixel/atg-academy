@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,6 +24,12 @@ public class AdminTierListController {
 
     public AdminTierListController(TierListCommunityService communityService) {
         this.communityService = communityService;
+    }
+
+    @PostMapping("/official/regenerate-from-hero-scores")
+    public ResponseEntity<?> regenerateOfficialTierListFromHeroScores(Authentication authentication) {
+        GoogleUserPrincipal currentUser = getCurrentUser(authentication);
+        return ResponseEntity.ok(communityService.regenerateOfficialTierListFromHeroScores(currentUser, authentication));
     }
 
     @PutMapping("/{id}/admin-rating")

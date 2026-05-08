@@ -101,6 +101,23 @@ function renderDeleteControls(){
     button.hidden=!canCurrentUserDeleteTierList();
 }
 
+function isDetailTierListSaved(){
+    return tierDetailData?.isSavedByCurrentUser===true||tierDetailData?.saved===true;
+}
+
+function renderDetailSaveButton(){
+    const button=document.getElementById('tier-detail-save-btn');
+    if(!button) return;
+    if(!tierDetailData||tierDetailData.isOfficial){
+        button.hidden=true;
+        return;
+    }
+    const isSaved=isDetailTierListSaved();
+    button.hidden=false;
+    button.textContent=isSaved?'Bo luu':'Luu';
+    button.classList.toggle('tier-saved-btn',isSaved);
+}
+
 function tierDeleteErrorMessage(status, fallback){
     if(status===401) return 'Vui lòng đăng nhập để xóa Tier List.';
     if(status===403) return 'Bạn không có quyền xóa Tier List này.';
@@ -360,6 +377,7 @@ function renderTierDetail(){
     renderTierHeader();
     renderRatingSummary();
     renderTierBoard();
+    renderDetailSaveButton();
     renderDeleteControls();
     renderCommentComposer();
     renderComments();
@@ -424,11 +442,26 @@ async function saveTierAdminRating(ratingValue){
         const payload=await response.json();
         tierDetailSummary={
             ...(tierDetailSummary||{}),
+            average:payload.average,
+            count:payload.count,
+            totalRatings:payload.totalRatings,
+            averageUserRating:payload.averageUserRating,
+            userRatingCount:payload.userRatingCount,
+            userOnlyAverageRating:payload.userOnlyAverageRating,
+            userOnlyRatingCount:payload.userOnlyRatingCount,
+            adminRatingCount:payload.adminRatingCount,
             adminRating:payload.adminRating,
             adminRatingDetail:payload.adminRatingDetail
         };
         tierDetailData={
             ...(tierDetailData||{}),
+            communityRating:payload.averageUserRating??payload.average??tierDetailData?.communityRating,
+            totalRatings:payload.totalRatings??payload.count??tierDetailData?.totalRatings,
+            averageUserRating:payload.averageUserRating??payload.average??tierDetailData?.averageUserRating,
+            userRatingCount:payload.userRatingCount??payload.count??tierDetailData?.userRatingCount,
+            userOnlyAverageRating:payload.userOnlyAverageRating??tierDetailData?.userOnlyAverageRating,
+            userOnlyRatingCount:payload.userOnlyRatingCount??tierDetailData?.userOnlyRatingCount,
+            adminRatingCount:payload.adminRatingCount??tierDetailData?.adminRatingCount,
             adminRating:payload.adminRating,
             adminRatingDetail:payload.adminRatingDetail
         };
@@ -438,6 +471,55 @@ async function saveTierAdminRating(ratingValue){
         showDetailToast(`Không lưu được điểm Admin: ${error.message}`,'error');
     }finally{
         stars.classList.remove('is-saving');
+    }
+}
+
+async function toggleDetailSavedState(){
+    if(!tierDetailData||!tierDetailId||tierDetailData.isOfficial) return;
+    if(!getDetailUser()){
+        showDetailToast('Vui long dang nhap de luu Tier List.','error');
+        return;
+    }
+
+    const button=document.getElementById('tier-detail-save-btn');
+    const isSaved=isDetailTierListSaved();
+    const originalText=button?.textContent;
+    if(button){
+        button.disabled=true;
+        button.textContent=isSaved?'Dang bo luu...':'Dang luu...';
+    }
+
+    try{
+        const response=await fetch(`${TIER_DETAIL_API}/${tierDetailId}/save`,{
+            method:isSaved?'DELETE':'POST',
+            headers:{Accept:'application/json'}
+        });
+        if(!response.ok) throw new Error(await readDetailApiError(response));
+        const payload=await response.json();
+        if(payload?.item&&typeof payload.item==='object'){
+            tierDetailData={...tierDetailData,...payload.item};
+        }else{
+            tierDetailData={
+                ...tierDetailData,
+                saved:payload?.saved===true,
+                isSavedByCurrentUser:payload?.saved===true,
+                savedAt:payload?.savedAt??null
+            };
+        }
+        renderDetailSaveButton();
+        showDetailToast(isSaved?'Da bo luu Tier List.':'Da luu Tier List.');
+    }catch(error){
+        console.error('Cannot toggle saved detail tier list:',error);
+        showDetailToast(error.message||'Khong cap nhat duoc trang thai luu Tier List.','error');
+    }finally{
+        if(button){
+            button.disabled=false;
+            if(button.isConnected){
+                renderDetailSaveButton();
+            }else{
+                button.textContent=originalText;
+            }
+        }
     }
 }
 
@@ -509,8 +591,9 @@ async function submitTierComment(){
 async function refreshAuthSensitiveBlocks(){
     if(!tierDetailId) return;
     try{
-        await loadTierSummary();
+        await Promise.all([loadTierDetail(),loadTierSummary()]);
         renderRatingSummary();
+        renderDetailSaveButton();
         renderDeleteControls();
         renderCommentComposer();
     }catch(error){
@@ -530,6 +613,7 @@ async function initTierDetail(){
         await Promise.all([loadTierDetail(),loadTierSummary(),loadTierComments()]);
         setDetailState('');
         renderTierDetail();
+        document.getElementById('tier-detail-save-btn').onclick=toggleDetailSavedState;
         document.getElementById('tier-detail-delete-btn').onclick=deleteCurrentTierList;
     }catch(error){
         console.error('Cannot load tier detail:',error);

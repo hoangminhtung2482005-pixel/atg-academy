@@ -6,10 +6,15 @@
  */
 (function () {
     function getCurrentPage() {
-        const path = window.location.pathname;
+        const path = window.location.pathname.toLowerCase();
         const filename = path.substring(path.lastIndexOf('/') + 1).replace('.html', '');
         if (filename === 'tactics-guides') return 'giao-an';
         if (filename === 'esports-leaderboard') return 'esports';
+        if (path === '/esports/data' || path === '/esports/data/' || filename === 'esports-data') return 'esports-data';
+        if (path === '/tier-list' || path === '/tier-list/' || filename === 'tier-list') return 'tier-list-meta';
+        if (path.endsWith('/tier-list/all') || filename === 'tier-list-all') return 'tier-list-all';
+        if (path.endsWith('/tier-list/mine') || filename === 'tier-list-mine') return 'tier-list-mine';
+        if (/\/tier-list\/\d+$/.test(path) || filename === 'tier-list-detail') return 'tier-list-detail';
         if (filename.startsWith('tier-list')) return 'tier-list';
         return filename || 'index';
     }
@@ -17,11 +22,14 @@
     function setActiveLink() {
         const currentPage = getCurrentPage();
         const isBanPickPage = currentPage.startsWith('ban-pick');
+        const isTierListPage = currentPage.startsWith('tier-list');
         const navLinks = document.querySelectorAll('nav [data-page]');
 
         navLinks.forEach(link => {
             const page = link.getAttribute('data-page');
-            const isActive = page === currentPage || (page === 'ban-pick' && isBanPickPage);
+            const isActive = page === currentPage
+                || (page === 'ban-pick' && isBanPickPage)
+                || (page === 'tier-list' && isTierListPage);
             link.classList.toggle('active', isActive);
         });
     }
@@ -80,7 +88,7 @@
         const placeholder = document.getElementById('header-placeholder');
         if (!placeholder) return;
 
-        fetch('/html/header.html?v=20260505-banpick-dropdown', { cache: 'no-store' })
+        fetch('/html/header.html?v=20260508-esports-data', { cache: 'no-store' })
             .then(response => {
                 if (!response.ok) throw new Error('Không thể tải header.html');
                 return response.text();

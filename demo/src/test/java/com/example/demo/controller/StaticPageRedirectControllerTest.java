@@ -29,12 +29,20 @@ class StaticPageRedirectControllerTest {
     }
 
     @Test
-    void redirectTierListCommunityPagesUseDedicatedHtmlFiles() {
+    void redirectTierListCommunityPagesUseSupportedTargets() {
         assertThat(controller.redirectTierListRecommendedPage())
-                .isEqualTo("redirect:/html/tier-list-recommended.html");
+                .isEqualTo("redirect:/html/tier-list.html");
+        assertThat(controller.redirectDeprecatedTierListRecommendedHtml())
+                .isEqualTo("redirect:/html/tier-list.html");
         assertThat(controller.redirectTierListAllPage())
                 .isEqualTo("redirect:/html/tier-list-all.html");
         assertThat(controller.redirectTierListMinePage())
                 .isEqualTo("redirect:/html/tier-list-mine.html");
+    }
+
+    @Test
+    void redirectEsportsDataPageUsesSupportedTarget() {
+        assertThat(controller.redirectEsportsDataPage())
+                .isEqualTo("redirect:/html/esports-data.html");
     }
 }

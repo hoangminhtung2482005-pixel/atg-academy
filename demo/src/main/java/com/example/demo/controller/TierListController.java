@@ -48,7 +48,7 @@ public class TierListController {
     public ResponseEntity<?> getOfficialTierList(Authentication authentication) {
         Optional<TierList> official = tierListRepository.findFirstByIsOfficialTrueOrderByUpdatedAtDesc();
         if (official.isEmpty()) {
-            return ResponseEntity.ok(Map.of("exists", false));
+            return ResponseEntity.ok(communityService.buildGeneratedOfficialTierListPreview(authentication));
         }
         return ResponseEntity.ok(communityService.buildTierListResponse(official.get(), authentication));
     }
@@ -69,19 +69,37 @@ public class TierListController {
         return ResponseEntity.ok(communityService.getCurrentUserCommunityTierLists(currentUser, authentication));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/saved")
+    public ResponseEntity<?> getSavedTierLists(Authentication authentication) {
+        GoogleUserPrincipal currentUser = getCurrentUser(authentication);
+        return ResponseEntity.ok(communityService.getCurrentUserSavedTierLists(currentUser, authentication));
+    }
+
+    @PostMapping("/{id:\\d+}/save")
+    public ResponseEntity<?> saveTierList(@PathVariable Long id, Authentication authentication) {
+        GoogleUserPrincipal currentUser = getCurrentUser(authentication);
+        return ResponseEntity.ok(communityService.saveTierList(id, currentUser, authentication));
+    }
+
+    @DeleteMapping("/{id:\\d+}/save")
+    public ResponseEntity<?> unsaveTierList(@PathVariable Long id, Authentication authentication) {
+        GoogleUserPrincipal currentUser = getCurrentUser(authentication);
+        return ResponseEntity.ok(communityService.unsaveTierList(id, currentUser));
+    }
+
+    @GetMapping("/{id:\\d+}")
     public ResponseEntity<?> getTierListDetail(@PathVariable Long id, Authentication authentication) {
         return tierListRepository.findById(id)
                 .map(tierList -> ResponseEntity.ok(communityService.buildTierListResponse(tierList, authentication)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/{id}/comments")
+    @GetMapping("/{id:\\d+}/comments")
     public ResponseEntity<?> getComments(@PathVariable Long id) {
         return ResponseEntity.ok(communityService.getComments(id));
     }
 
-    @PostMapping("/{id}/comments")
+    @PostMapping("/{id:\\d+}/comments")
     public ResponseEntity<?> addComment(@PathVariable Long id,
                                         Authentication authentication,
                                         @RequestBody Map<String, Object> body) {
@@ -89,17 +107,17 @@ public class TierListController {
         return ResponseEntity.ok(communityService.addComment(id, currentUser, readText(body, "content", "comment")));
     }
 
-    @GetMapping("/{id}/ratings")
+    @GetMapping("/{id:\\d+}/ratings")
     public ResponseEntity<?> getRatings(@PathVariable Long id, Authentication authentication) {
         return ResponseEntity.ok(communityService.getRatingSummary(id, authentication));
     }
 
-    @GetMapping("/{id}/ratings/summary")
+    @GetMapping("/{id:\\d+}/ratings/summary")
     public ResponseEntity<?> getRatingSummary(@PathVariable Long id, Authentication authentication) {
         return ResponseEntity.ok(communityService.getRatingSummary(id, authentication));
     }
 
-    @PostMapping("/{id}/ratings")
+    @PostMapping("/{id:\\d+}/ratings")
     public ResponseEntity<?> rateTierList(@PathVariable Long id,
                                           Authentication authentication,
                                           @RequestBody Map<String, Object> body) {
@@ -107,7 +125,7 @@ public class TierListController {
         return ResponseEntity.ok(communityService.rateTierList(id, currentUser, readInt(body, "ratingValue", "stars")));
     }
 
-    @PostMapping("/{id}/rate")
+    @PostMapping("/{id:\\d+}/rate")
     public ResponseEntity<?> rateTierListLegacy(@PathVariable Long id,
                                                 Authentication authentication,
                                                 @RequestBody Map<String, Object> body) {
@@ -138,7 +156,7 @@ public class TierListController {
         return ResponseEntity.ok(communityService.buildTierListResponse(tierList, authentication));
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:\\d+}")
     public ResponseEntity<?> updateTierList(@PathVariable Long id,
                                             Authentication authentication,
                                             @RequestBody Map<String, Object> body) throws JacksonException {
@@ -168,14 +186,14 @@ public class TierListController {
         return ResponseEntity.ok(communityService.buildTierListResponse(tierList, authentication));
     }
 
-    @DeleteMapping({"/{id}", "/community/{id}"})
+    @DeleteMapping({"/{id:\\d+}", "/community/{id:\\d+}"})
     public ResponseEntity<?> deleteTierList(@PathVariable Long id, Authentication authentication) {
         GoogleUserPrincipal currentUser = getCurrentUser(authentication);
         communityService.deleteTierList(id, currentUser);
         return ResponseEntity.noContent().build();
     }
 
-    @PutMapping("/{id}/admin-rate")
+    @PutMapping("/{id:\\d+}/admin-rate")
     public ResponseEntity<?> adminRateLegacy(@PathVariable Long id,
                                              Authentication authentication,
                                              @RequestBody Map<String, Object> body) {

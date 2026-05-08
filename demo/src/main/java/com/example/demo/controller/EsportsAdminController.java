@@ -1,8 +1,11 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.esports.EsportsDraftActionRequest;
+import com.example.demo.dto.esports.EsportsMatchGameRequest;
 import com.example.demo.entity.EsportsMatch;
 import com.example.demo.entity.EsportsTeam;
 import com.example.demo.service.EsportsAdminService;
+import com.example.demo.service.EsportsDraftService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -16,15 +19,19 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/api/admin/esports")
 public class EsportsAdminController {
 
     private final EsportsAdminService esportsAdminService;
+    private final EsportsDraftService esportsDraftService;
 
-    public EsportsAdminController(EsportsAdminService esportsAdminService) {
+    public EsportsAdminController(EsportsAdminService esportsAdminService,
+                                  EsportsDraftService esportsDraftService) {
         this.esportsAdminService = esportsAdminService;
+        this.esportsDraftService = esportsDraftService;
     }
 
     @GetMapping("/teams")
@@ -67,7 +74,7 @@ public class EsportsAdminController {
     public ResponseEntity<?> deleteTeam(@PathVariable Long id) {
         try {
             esportsAdminService.deleteTeam(id);
-            return ResponseEntity.ok(Map.of("message", "Đã xóa đội tuyển với ID: " + id));
+            return ResponseEntity.ok(Map.of("message", "Da xoa doi tuyen voi ID: " + id));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", e.getMessage()));
@@ -79,12 +86,12 @@ public class EsportsAdminController {
         try {
             int importedCount = esportsAdminService.importMatchesFromText(rawData);
             return ResponseEntity.ok(Map.of(
-                    "message", "Đã reset dữ liệu cũ và import " + importedCount + " trận mới.",
+                    "message", "Da reset du lieu cu va import " + importedCount + " tran moi.",
                     "importedCount", importedCount
             ));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "Import thất bại: " + e.getMessage()));
+                    .body(Map.of("error", "Import that bai: " + e.getMessage()));
         }
     }
 
@@ -97,7 +104,7 @@ public class EsportsAdminController {
     public ResponseEntity<?> resetMatchHistory() {
         long deletedCount = esportsAdminService.resetMatchHistory();
         return ResponseEntity.ok(Map.of(
-                "message", "Đã xóa toàn bộ Match History và reset Elo.",
+                "message", "Da xoa toan bo Match History va reset Elo.",
                 "deletedCount", deletedCount
         ));
     }
@@ -137,10 +144,111 @@ public class EsportsAdminController {
     public ResponseEntity<?> deleteMatch(@PathVariable Long id) {
         try {
             esportsAdminService.deleteMatch(id);
-            return ResponseEntity.ok(Map.of("message", "Đã xóa trận đấu với ID: " + id));
+            return ResponseEntity.ok(Map.of("message", "Da xoa tran dau voi ID: " + id));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", e.getMessage()));
         }
+    }
+
+    @GetMapping("/matches/{matchId}/games")
+    public ResponseEntity<?> getGamesByMatchId(@PathVariable Long matchId) {
+        try {
+            return ResponseEntity.ok(esportsDraftService.getGamesByMatchId(matchId));
+        } catch (NoSuchElementException e) {
+            return error(HttpStatus.NOT_FOUND, e);
+        }
+    }
+
+    @PostMapping("/matches/{matchId}/games")
+    public ResponseEntity<?> createGame(@PathVariable Long matchId,
+                                        @RequestBody EsportsMatchGameRequest request) {
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(esportsDraftService.createGame(matchId, request));
+        } catch (NoSuchElementException e) {
+            return error(HttpStatus.NOT_FOUND, e);
+        } catch (IllegalArgumentException e) {
+            return error(HttpStatus.BAD_REQUEST, e);
+        }
+    }
+
+    @GetMapping("/games/{gameId}")
+    public ResponseEntity<?> getGame(@PathVariable Long gameId) {
+        try {
+            return ResponseEntity.ok(esportsDraftService.getGame(gameId));
+        } catch (NoSuchElementException e) {
+            return error(HttpStatus.NOT_FOUND, e);
+        }
+    }
+
+    @PutMapping("/games/{gameId}")
+    public ResponseEntity<?> updateGame(@PathVariable Long gameId,
+                                        @RequestBody EsportsMatchGameRequest request) {
+        try {
+            return ResponseEntity.ok(esportsDraftService.updateGame(gameId, request));
+        } catch (NoSuchElementException e) {
+            return error(HttpStatus.NOT_FOUND, e);
+        } catch (IllegalArgumentException e) {
+            return error(HttpStatus.BAD_REQUEST, e);
+        }
+    }
+
+    @DeleteMapping("/games/{gameId}")
+    public ResponseEntity<?> deleteGame(@PathVariable Long gameId) {
+        try {
+            esportsDraftService.deleteGame(gameId);
+            return ResponseEntity.ok(Map.of("message", "Da xoa van dau voi ID: " + gameId));
+        } catch (NoSuchElementException e) {
+            return error(HttpStatus.NOT_FOUND, e);
+        }
+    }
+
+    @GetMapping("/games/{gameId}/draft-actions")
+    public ResponseEntity<?> getDraftActionsByGameId(@PathVariable Long gameId) {
+        try {
+            return ResponseEntity.ok(esportsDraftService.getDraftActionsByGameId(gameId));
+        } catch (NoSuchElementException e) {
+            return error(HttpStatus.NOT_FOUND, e);
+        }
+    }
+
+    @PostMapping("/games/{gameId}/draft-actions")
+    public ResponseEntity<?> createDraftAction(@PathVariable Long gameId,
+                                               @RequestBody EsportsDraftActionRequest request) {
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(esportsDraftService.createDraftAction(gameId, request));
+        } catch (NoSuchElementException e) {
+            return error(HttpStatus.NOT_FOUND, e);
+        } catch (IllegalArgumentException e) {
+            return error(HttpStatus.BAD_REQUEST, e);
+        }
+    }
+
+    @PutMapping("/draft-actions/{actionId}")
+    public ResponseEntity<?> updateDraftAction(@PathVariable Long actionId,
+                                               @RequestBody EsportsDraftActionRequest request) {
+        try {
+            return ResponseEntity.ok(esportsDraftService.updateDraftAction(actionId, request));
+        } catch (NoSuchElementException e) {
+            return error(HttpStatus.NOT_FOUND, e);
+        } catch (IllegalArgumentException e) {
+            return error(HttpStatus.BAD_REQUEST, e);
+        }
+    }
+
+    @DeleteMapping("/draft-actions/{actionId}")
+    public ResponseEntity<?> deleteDraftAction(@PathVariable Long actionId) {
+        try {
+            esportsDraftService.deleteDraftAction(actionId);
+            return ResponseEntity.ok(Map.of("message", "Da xoa draft action voi ID: " + actionId));
+        } catch (NoSuchElementException e) {
+            return error(HttpStatus.NOT_FOUND, e);
+        }
+    }
+
+    private ResponseEntity<Map<String, String>> error(HttpStatus status, RuntimeException exception) {
+        return ResponseEntity.status(status).body(Map.of("error", exception.getMessage()));
     }
 }

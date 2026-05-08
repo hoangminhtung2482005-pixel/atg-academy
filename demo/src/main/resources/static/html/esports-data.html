@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Esports Data - ATG Academy</title>
+    <meta name="description" content="Thong ke pick/ban draft esports theo giai dau tren ATG Academy. Theo doi Hero Statistics, top hero bi cam nhieu nhat va ap luc ban ben xanh tu du lieu draft da luu.">
+    <link rel="stylesheet" href="/css/style.css?v=20260507-css-modules">
+    <link rel="stylesheet" href="/css/esports.css?v=20260508-esports-data">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+    <div id="header-placeholder"></div>
+
+    <main class="esports-page esports-data-page">
+        <section class="esports-hero section-shell" aria-labelledby="esports-data-hero-title">
+            <div class="esports-hero-card">
+                <div class="hero-copy">
+                    <span class="eyebrow">ESPORTS DATA</span>
+                    <h1 id="esports-data-hero-title">Draft Hero Analytics</h1>
+                    <p>
+                        Tong hop du lieu draft esports da luu trong database de theo doi hero duoc PICK, BAN
+                        va hien dien nhieu nhat theo tung giai dau. Khi chua chon giai dau, trang nay dung
+                        toan bo du lieu draft hien co.
+                    </p>
+                    <div class="hero-tags" aria-label="Chi so thong ke">
+                        <span>Hero Statistics</span>
+                        <span>Top BAN</span>
+                        <span>Draft Only</span>
+                    </div>
+                    <div class="hero-actions">
+                        <a class="primary-action" href="#esports-data-dashboard">Xem thong ke</a>
+                        <a class="back-pill" href="/html/esports.html">Quay lai Esports</a>
+                    </div>
+                </div>
+
+                <div class="hero-visual-card esports-data-visual" aria-label="Esports Data visual">
+                    <img src="/images/backgrounds/aer-bg-3.png" alt="Esports Data overview" onerror="this.onerror=null;this.src='/images/backgrounds/aer-bg.png';">
+                </div>
+            </div>
+        </section>
+
+        <section class="esports-data-section section-shell" id="esports-data-dashboard" aria-labelledby="esports-data-title">
+            <div class="data-toolbar">
+                <div class="section-heading data-heading">
+                    <div>
+                        <h2 id="esports-data-title">Esports Data</h2>
+                        <p id="esports-data-note">Dang tai du lieu draft esports...</p>
+                    </div>
+                    <span class="data-scope-pill" id="data-scope-pill">Tat ca du lieu draft</span>
+                </div>
+
+                <label class="data-filter" for="tournament-filter">
+                    <span>Giai dau</span>
+                    <select id="tournament-filter" aria-label="Loc theo giai dau">
+                        <option value="">Tat ca du lieu draft</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="data-state" id="data-state" hidden></div>
+
+            <article class="stats-panel hero-stats-panel" aria-labelledby="hero-stats-title">
+                <div class="stats-panel-header hero-stats-header">
+                    <div>
+                        <h3 id="hero-stats-title">Hero Statistics</h3>
+                        <p id="hero-stats-summary">Dang tong hop du lieu PICK/BAN theo hero...</p>
+                    </div>
+
+                    <div class="hero-stats-toolbar">
+                        <span class="hero-stats-toolbar-label">Sap xep bang</span>
+                        <div class="hero-stats-toolbar-controls">
+                            <div class="hero-stats-sort-pills" id="hero-stats-sort-pills" aria-label="Tuy chon sap xep Hero Statistics">
+                                <button type="button" class="hero-sort-pill is-active" data-sort-key="presenceCount">Picks &amp; Bans Σ</button>
+                                <button type="button" class="hero-sort-pill" data-sort-key="pickCount">Picks Σ</button>
+                                <button type="button" class="hero-sort-pill" data-sort-key="pickWinRate">Picks WR</button>
+                                <button type="button" class="hero-sort-pill" data-sort-key="banCount">Bans Σ</button>
+                            </div>
+                            <button type="button" class="hero-sort-direction" id="hero-sort-direction" aria-label="Doi chieu sap xep">Giam dan</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-table-scroll hero-stats-scroll">
+                    <table class="stats-table hero-stats-table">
+                        <thead>
+                        <tr class="hero-stats-group-row">
+                            <th rowspan="2">Hero</th>
+                            <th colspan="4">Picks</th>
+                            <th colspan="4">Blue side</th>
+                            <th colspan="4">Red side</th>
+                            <th>Bans</th>
+                            <th>Picks &amp; Bans</th>
+                        </tr>
+                        <tr class="hero-stats-subhead-row">
+                            <th>Σ</th>
+                            <th>W</th>
+                            <th>L</th>
+                            <th>WR</th>
+                            <th>Σ</th>
+                            <th>W</th>
+                            <th>L</th>
+                            <th>WR</th>
+                            <th>Σ</th>
+                            <th>W</th>
+                            <th>L</th>
+                            <th>WR</th>
+                            <th>Σ</th>
+                            <th>Σ</th>
+                        </tr>
+                        </thead>
+                        <tbody id="hero-stats-body">
+                        <tr class="stats-empty-row">
+                            <td colspan="15">Dang tai du lieu...</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+
+            <div class="esports-data-grid">
+                <article class="stats-panel" aria-labelledby="top-banned-title">
+                    <div class="stats-panel-header">
+                        <div>
+                            <h3 id="top-banned-title">Top 5 tuong bi BAN nhieu nhat</h3>
+                            <p id="top-banned-summary">Chi tinh cac draft action co actionType = BAN.</p>
+                        </div>
+                    </div>
+
+                    <div class="stats-table-scroll">
+                        <table class="stats-table">
+                            <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Tuong</th>
+                                <th>Luot cam</th>
+                                <th>Giai dau</th>
+                            </tr>
+                            </thead>
+                            <tbody id="top-banned-body">
+                            <tr class="stats-empty-row">
+                                <td colspan="4">Dang tai du lieu...</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+
+                <article class="stats-panel stats-panel-feature" aria-labelledby="top-blue-title">
+                    <div class="stats-panel-header">
+                        <div>
+                            <h3 id="top-blue-title">Tuong bi BAN nhieu nhat ben Xanh</h3>
+                            <p id="top-blue-summary">Chi tinh actionType = BAN va teamSide = BLUE.</p>
+                        </div>
+                    </div>
+
+                    <div class="top-blue-hero" id="top-blue-hero">
+                        <div class="stats-empty-card">
+                            <strong>Dang tai du lieu...</strong>
+                            <p>He thong dang lay thong ke draft ben xanh.</p>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </section>
+    </main>
+
+    <footer class="esports-footer">
+        <span>&copy; 2026 ATG Academy. Nen tang esports chuyen sau.</span>
+        <span id="data-last-updated">Dang tai du lieu...</span>
+    </footer>
+
+    <script>
+        const DATA_API = {
+            tournaments: '/api/esports/data/tournaments',
+            topBanned: '/api/esports/data/top-banned-heroes',
+            topBlueBanned: '/api/esports/data/top-blue-banned-heroes',
+            heroStats: '/api/esports/data/hero-stats'
+        };
+
+        const DEFAULT_SCOPE_LABEL = 'Tat ca du lieu draft';
+        const HERO_AVATAR_FALLBACK = '/images/ui/default.png';
+        const HERO_STATS_SORT_OPTIONS = {
+            presenceCount: 'Picks & Bans Σ',
+            pickCount: 'Picks Σ',
+            pickWinRate: 'Picks WR',
+            banCount: 'Bans Σ'
+        };
+
+        const heroStatsState = {
+            items: [],
+            sortKey: 'presenceCount',
+            sortDirection: 'desc'
+        };
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>\"']/g, function(char) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[char];
+            });
+        }
+
+        function buildApiUrl(baseUrl, params) {
+            const url = new URL(baseUrl, window.location.origin);
+            Object.entries(params || {}).forEach(function(entry) {
+                const key = entry[0];
+                const value = entry[1];
+                if (value === undefined || value === null || value === '') return;
+                url.searchParams.set(key, value);
+            });
+            return url.toString();
+        }
+
+        async function fetchJson(url) {
+            const response = await fetch(url, { headers: { Accept: 'application/json' } });
+            const text = await response.text();
+            const payload = text ? JSON.parse(text) : null;
+
+            if (!response.ok) {
+                const message = payload && payload.error ? payload.error : ('HTTP ' + response.status);
+                throw new Error(message);
+            }
+            return payload;
+        }
+
+        function getTournamentFilter() {
+            return document.getElementById('tournament-filter');
+        }
+
+        function getSelectedTournamentName() {
+            const filter = getTournamentFilter();
+            return filter ? String(filter.value || '').trim() : '';
+        }
+
+        function getSelectedScopeLabel() {
+            const filter = getTournamentFilter();
+            if (!filter) return DEFAULT_SCOPE_LABEL;
+            const option = filter.options[filter.selectedIndex];
+            return option ? option.textContent.trim() : DEFAULT_SCOPE_LABEL;
+        }
+
+        function safeNumber(value) {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+
+        function formatCount(value) {
+            return Math.round(safeNumber(value)).toLocaleString('vi-VN');
+        }
+
+        function formatRate(value) {
+            const safeValue = safeNumber(value);
+            return safeValue.toLocaleString('vi-VN', {
+                minimumFractionDigits: safeValue % 1 === 0 ? 0 : 1,
+                maximumFractionDigits: 1
+            }) + '%';
+        }
+
+        function updateScopeCopy() {
+            const scopeLabel = getSelectedScopeLabel();
+            const hasTournamentFilter = getSelectedTournamentName() !== '';
+            const scopePill = document.getElementById('data-scope-pill');
+            const note = document.getElementById('esports-data-note');
+
+            if (scopePill) {
+                scopePill.textContent = scopeLabel;
+            }
+
+            if (note) {
+                note.textContent = hasTournamentFilter
+                    ? 'Dang loc du lieu draft theo ' + scopeLabel + '.'
+                    : 'Dang tong hop toan bo du lieu draft esports hien co trong database.';
+            }
+        }
+
+        function setPageState(type, message) {
+            const state = document.getElementById('data-state');
+            if (!state) return;
+
+            if (!message) {
+                state.hidden = true;
+                state.textContent = '';
+                state.className = 'data-state';
+                return;
+            }
+
+            state.hidden = false;
+            state.className = 'data-state ' + type;
+            state.textContent = message;
+        }
+
+        function renderTournamentFilter(tournaments) {
+            const filter = getTournamentFilter();
+            if (!filter) return;
+
+            const previousValue = filter.value;
+            const options = ['<option value=\"\">' + DEFAULT_SCOPE_LABEL + '</option>']
+                .concat((Array.isArray(tournaments) ? tournaments : []).map(function(item) {
+                    const tournamentName = item && item.tournamentName ? item.tournamentName : '';
+                    if (!tournamentName) return '';
+                    return '<option value=\"' + escapeHtml(tournamentName) + '\">' + escapeHtml(tournamentName) + '</option>';
+                }))
+                .filter(Boolean)
+                .join('');
+
+            filter.innerHTML = options;
+            filter.value = Array.from(filter.options).some(function(option) {
+                return option.value === previousValue;
+            }) ? previousValue : '';
+            filter.disabled = filter.options.length <= 1;
+            updateScopeCopy();
+        }
+
+        function renderTopBannedLoading() {
+            const tbody = document.getElementById('top-banned-body');
+            const summary = document.getElementById('top-banned-summary');
+            if (summary) {
+                summary.textContent = 'Dang tai thong ke BAN...';
+            }
+            if (tbody) {
+                tbody.innerHTML = '<tr class=\"stats-empty-row\"><td colspan=\"4\">Dang tai du lieu...</td></tr>';
+            }
+        }
+
+        function renderTopBanned(items) {
+            const tbody = document.getElementById('top-banned-body');
+            const summary = document.getElementById('top-banned-summary');
+            if (!tbody) return;
+
+            const scopeLabel = getSelectedScopeLabel();
+            const rows = Array.isArray(items) ? items : [];
+
+            if (summary) {
+                summary.textContent = rows.length
+                    ? 'Top ' + rows.length + ' hero bi cam nhieu nhat trong ' + scopeLabel + '.'
+                    : 'Chua co draft BAN phu hop trong ' + scopeLabel + '.';
+            }
+
+            if (!rows.length) {
+                tbody.innerHTML = '<tr class=\"stats-empty-row\"><td colspan=\"4\">Chua co du lieu draft BAN de thong ke.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = rows.map(function(item, index) {
+                const heroName = item.heroName || ('Hero #' + item.heroId);
+                const heroAvatarUrl = item.heroAvatarUrl || HERO_AVATAR_FALLBACK;
+                const tournamentName = item.tournamentName || scopeLabel;
+
+                return '' +
+                    '<tr>' +
+                        '<td><span class=\"table-rank-pill\">' + (index + 1) + '</span></td>' +
+                        '<td>' +
+                            '<div class=\"hero-stat-cell\">' +
+                                '<img src=\"' + escapeHtml(heroAvatarUrl) + '\" alt=\"' + escapeHtml(heroName) + '\">' +
+                                '<div class=\"hero-stat-copy\">' +
+                                    '<strong>' + escapeHtml(heroName) + '</strong>' +
+                                    '<span>Hero ID: ' + escapeHtml(item.heroId) + '</span>' +
+                                '</div>' +
+                            '</div>' +
+                        '</td>' +
+                        '<td><span class=\"count-pill\">' + formatCount(item.banCount) + '</span></td>' +
+                        '<td><span class=\"table-scope-pill\">' + escapeHtml(tournamentName) + '</span></td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        function renderTopBlueHeroLoading() {
+            const host = document.getElementById('top-blue-hero');
+            const summary = document.getElementById('top-blue-summary');
+            if (summary) {
+                summary.textContent = 'Dang tai thong ke BLUE side BAN...';
+            }
+            if (host) {
+                host.innerHTML = '' +
+                    '<div class=\"stats-empty-card\">' +
+                        '<strong>Dang tai du lieu...</strong>' +
+                        '<p>He thong dang lay thong ke draft ben xanh.</p>' +
+                    '</div>';
+            }
+        }
+
+        function renderTopBlueHero(items) {
+            const host = document.getElementById('top-blue-hero');
+            const summary = document.getElementById('top-blue-summary');
+            if (!host) return;
+
+            const scopeLabel = getSelectedScopeLabel();
+            const topHero = Array.isArray(items) && items.length ? items[0] : null;
+
+            if (summary) {
+                summary.textContent = topHero
+                    ? 'Hero bi BLUE side cam nhieu nhat trong ' + scopeLabel + '.'
+                    : 'Chua co du lieu BLUE side BAN trong ' + scopeLabel + '.';
+            }
+
+            if (!topHero) {
+                host.innerHTML = '' +
+                    '<div class=\"stats-empty-card\">' +
+                        '<strong>Chua co du lieu BLUE side</strong>' +
+                        '<p>Khong tim thay draft action BAN cua ben xanh trong pham vi hien tai.</p>' +
+                    '</div>';
+                return;
+            }
+
+            const heroName = topHero.heroName || ('Hero #' + topHero.heroId);
+            const heroAvatarUrl = topHero.heroAvatarUrl || HERO_AVATAR_FALLBACK;
+            const tournamentName = topHero.tournamentName || scopeLabel;
+
+            host.innerHTML = '' +
+                '<div class=\"top-blue-hero-head\">' +
+                    '<img class=\"top-blue-hero-avatar\" src=\"' + escapeHtml(heroAvatarUrl) + '\" alt=\"' + escapeHtml(heroName) + '\">' +
+                    '<div class=\"top-blue-hero-copy\">' +
+                        '<span class=\"feature-kicker\">Top BLUE BAN</span>' +
+                        '<h4>' + escapeHtml(heroName) + '</h4>' +
+                        '<p>Hero ID: ' + escapeHtml(topHero.heroId) + '</p>' +
+                    '</div>' +
+                '</div>' +
+                '<div class=\"top-blue-hero-metrics\">' +
+                    '<div class=\"metric-tile\">' +
+                        '<strong>' + formatCount(topHero.banCount) + '</strong>' +
+                        '<span>Luot cam</span>' +
+                    '</div>' +
+                    '<div class=\"metric-tile\">' +
+                        '<strong>BLUE</strong>' +
+                        '<span>Chi tinh team_side</span>' +
+                    '</div>' +
+                '</div>' +
+                '<div class=\"top-blue-hero-footer\">' +
+                    '<span class=\"table-scope-pill\">' + escapeHtml(tournamentName) + '</span>' +
+                    '<small>Chi tinh action_type = BAN.</small>' +
+                '</div>';
+        }
+
+        function compareHeroStats(a, b, sortKey, sortDirection) {
+            const aValue = safeNumber(a && a[sortKey]);
+            const bValue = safeNumber(b && b[sortKey]);
+
+            if (aValue !== bValue) {
+                return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+            }
+
+            const presenceDelta = safeNumber(b && b.presenceCount) - safeNumber(a && a.presenceCount);
+            if (presenceDelta !== 0) {
+                return presenceDelta;
+            }
+
+            const pickDelta = safeNumber(b && b.pickCount) - safeNumber(a && a.pickCount);
+            if (pickDelta !== 0) {
+                return pickDelta;
+            }
+
+            return String((a && a.heroName) || '').localeCompare(String((b && b.heroName) || ''), 'vi');
+        }
+
+        function getSortedHeroStatsItems() {
+            return (heroStatsState.items || []).slice().sort(function(a, b) {
+                return compareHeroStats(a, b, heroStatsState.sortKey, heroStatsState.sortDirection);
+            });
+        }
+
+        function updateHeroStatsSortUi() {
+            const sortPills = document.querySelectorAll('.hero-sort-pill');
+            sortPills.forEach(function(button) {
+                button.classList.toggle('is-active', button.dataset.sortKey === heroStatsState.sortKey);
+            });
+
+            const directionButton = document.getElementById('hero-sort-direction');
+            if (directionButton) {
+                const isDescending = heroStatsState.sortDirection === 'desc';
+                directionButton.textContent = isDescending ? 'Giam dan' : 'Tang dan';
+                directionButton.setAttribute('aria-label', isDescending ? 'Doi sang tang dan' : 'Doi sang giam dan');
+            }
+        }
+
+        function renderHeroStatsLoading() {
+            const tbody = document.getElementById('hero-stats-body');
+            const summary = document.getElementById('hero-stats-summary');
+            if (summary) {
+                summary.textContent = 'Dang tong hop du lieu PICK/BAN theo hero...';
+            }
+            if (tbody) {
+                tbody.innerHTML = '<tr class=\"stats-empty-row\"><td colspan=\"15\">Dang tai du lieu...</td></tr>';
+            }
+        }
+
+        function renderHeroStats(items) {
+            heroStatsState.items = Array.isArray(items) ? items : [];
+
+            const tbody = document.getElementById('hero-stats-body');
+            const summary = document.getElementById('hero-stats-summary');
+            if (!tbody) return;
+
+            const rows = getSortedHeroStatsItems();
+            const scopeLabel = getSelectedScopeLabel();
+            const activeSortLabel = HERO_STATS_SORT_OPTIONS[heroStatsState.sortKey] || 'Picks & Bans Σ';
+
+            updateHeroStatsSortUi();
+
+            if (summary) {
+                summary.textContent = rows.length
+                    ? 'Tong hop ' + rows.length + ' hero co PICK hoac BAN trong ' + scopeLabel + '. Sap xep theo ' + activeSortLabel + '.'
+                    : 'Chua co du lieu draft PICK/BAN phu hop trong ' + scopeLabel + '.';
+            }
+
+            if (!rows.length) {
+                tbody.innerHTML = '<tr class=\"stats-empty-row\"><td colspan=\"15\">Chua co du lieu draft de tong hop Hero Statistics.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = rows.map(function(item) {
+                const heroName = item.heroName || ('Hero #' + item.heroId);
+                const heroAvatarUrl = item.heroAvatarUrl || HERO_AVATAR_FALLBACK;
+
+                return '' +
+                    '<tr>' +
+                        '<td>' +
+                            '<div class=\"hero-stat-cell hero-stats-hero-cell\">' +
+                                '<img src=\"' + escapeHtml(heroAvatarUrl) + '\" alt=\"' + escapeHtml(heroName) + '\">' +
+                                '<div class=\"hero-stat-copy\">' +
+                                    '<strong>' + escapeHtml(heroName) + '</strong>' +
+                                    '<span>Hero ID: ' + escapeHtml(item.heroId) + '</span>' +
+                                '</div>' +
+                            '</div>' +
+                        '</td>' +
+                        '<td class=\"hero-stats-number hero-stats-number-strong\">' + formatCount(item.pickCount) + '</td>' +
+                        '<td class=\"hero-stats-number hero-stats-number-win\">' + formatCount(item.pickWins) + '</td>' +
+                        '<td class=\"hero-stats-number hero-stats-number-loss\">' + formatCount(item.pickLosses) + '</td>' +
+                        '<td class=\"hero-stats-number hero-stats-number-rate\">' + formatRate(item.pickWinRate) + '</td>' +
+                        '<td class=\"hero-stats-number\">' + formatCount(item.bluePickCount) + '</td>' +
+                        '<td class=\"hero-stats-number hero-stats-number-win\">' + formatCount(item.blueWins) + '</td>' +
+                        '<td class=\"hero-stats-number hero-stats-number-loss\">' + formatCount(item.blueLosses) + '</td>' +
+                        '<td class=\"hero-stats-number hero-stats-number-rate\">' + formatRate(item.blueWinRate) + '</td>' +
+                        '<td class=\"hero-stats-number\">' + formatCount(item.redPickCount) + '</td>' +
+                        '<td class=\"hero-stats-number hero-stats-number-win\">' + formatCount(item.redWins) + '</td>' +
+                        '<td class=\"hero-stats-number hero-stats-number-loss\">' + formatCount(item.redLosses) + '</td>' +
+                        '<td class=\"hero-stats-number hero-stats-number-rate\">' + formatRate(item.redWinRate) + '</td>' +
+                        '<td class=\"hero-stats-number\">' + formatCount(item.banCount) + '</td>' +
+                        '<td class=\"hero-stats-number hero-stats-number-strong\">' + formatCount(item.presenceCount) + '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        function bindHeroStatsSortControls() {
+            const sortPills = document.querySelectorAll('.hero-sort-pill');
+            sortPills.forEach(function(button) {
+                button.addEventListener('click', function() {
+                    const nextKey = button.dataset.sortKey || 'presenceCount';
+                    if (heroStatsState.sortKey === nextKey) {
+                        heroStatsState.sortDirection = heroStatsState.sortDirection === 'desc' ? 'asc' : 'desc';
+                    } else {
+                        heroStatsState.sortKey = nextKey;
+                        heroStatsState.sortDirection = 'desc';
+                    }
+                    renderHeroStats(heroStatsState.items);
+                });
+            });
+
+            const directionButton = document.getElementById('hero-sort-direction');
+            if (directionButton) {
+                directionButton.addEventListener('click', function() {
+                    heroStatsState.sortDirection = heroStatsState.sortDirection === 'desc' ? 'asc' : 'desc';
+                    renderHeroStats(heroStatsState.items);
+                });
+            }
+
+            updateHeroStatsSortUi();
+        }
+
+        function updateLastUpdated() {
+            const lastUpdated = document.getElementById('data-last-updated');
+            if (!lastUpdated) return;
+            lastUpdated.textContent = 'Cap nhat lan cuoi: ' + new Date().toLocaleString('vi-VN');
+        }
+
+        async function loadEsportsDataStats() {
+            const tournamentName = getSelectedTournamentName();
+            const params = { limit: 5 };
+            if (tournamentName) {
+                params.tournamentName = tournamentName;
+            }
+
+            setPageState('', '');
+            updateScopeCopy();
+            renderHeroStatsLoading();
+            renderTopBannedLoading();
+            renderTopBlueHeroLoading();
+
+            try {
+                const [topBanned, topBlue, heroStats] = await Promise.all([
+                    fetchJson(buildApiUrl(DATA_API.topBanned, params)),
+                    fetchJson(buildApiUrl(DATA_API.topBlueBanned, { tournamentName: params.tournamentName, limit: 1 })),
+                    fetchJson(buildApiUrl(DATA_API.heroStats, { tournamentName: params.tournamentName }))
+                ]);
+
+                renderHeroStats(Array.isArray(heroStats) ? heroStats : []);
+                renderTopBanned(Array.isArray(topBanned) ? topBanned : []);
+                renderTopBlueHero(Array.isArray(topBlue) ? topBlue : []);
+                updateLastUpdated();
+            } catch (error) {
+                console.error('Esports data load error:', error);
+                renderHeroStats([]);
+                renderTopBanned([]);
+                renderTopBlueHero([]);
+                setPageState('error', 'Khong the tai thong ke Esports Data. Vui long kiem tra server hoac thu lai sau.');
+                const lastUpdated = document.getElementById('data-last-updated');
+                if (lastUpdated) {
+                    lastUpdated.textContent = 'Khong the tai du lieu';
+                }
+            }
+        }
+
+        async function loadEsportsDataPage() {
+            const filter = getTournamentFilter();
+            if (filter) {
+                filter.addEventListener('change', loadEsportsDataStats);
+            }
+
+            bindHeroStatsSortControls();
+
+            try {
+                const tournaments = await fetchJson(DATA_API.tournaments);
+                renderTournamentFilter(Array.isArray(tournaments) ? tournaments : []);
+            } catch (error) {
+                console.error('Esports tournaments load error:', error);
+                renderTournamentFilter([]);
+            }
+
+            await loadEsportsDataStats();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadEsportsDataPage);
+        } else {
+            loadEsportsDataPage();
+        }
+    </script>
+    <script src="/js/auth.js?v=20260424-account-profile"></script>
+    <script src="/js/header-loader.js?v=20260508-esports-data"></script>
+</body>
+</html>

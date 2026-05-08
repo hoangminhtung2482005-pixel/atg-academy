@@ -5,33 +5,34 @@ const modalTempHeroInstances=[];
 let heroCatalogLoadPromise=null;
 
 const OFFICIAL_TIER_LIST_API='/api/tier-lists';
+const ADMIN_OFFICIAL_TIER_LIST_API='/api/admin/tier-lists/official/regenerate-from-hero-scores';
 const OFFICIAL_TIER_LIST_TITLE='Tier List Meta';
 const OFFICIAL_TIER_LIST_SUBTITLE_PREFIX='Cập nhật bởi Admin';
-const OFFICIAL_TIER_LIST_IMPORT_MODE='PRIMARY_ROLE';
 let officialTierListPayload=null;
 const communityTierListCache=new Map();
+const COMMUNITY_SAVED_API=`${OFFICIAL_TIER_LIST_API}/saved`;
 const COMMUNITY_VIEW=Object.freeze({
-    RECOMMENDED:'recommended',
+    HIGHLIGHT:'highlight',
     ALL:'all',
     MINE:'mine'
 });
 const COMMUNITY_PAGE_ROUTES=Object.freeze({
-    [COMMUNITY_VIEW.RECOMMENDED]:'/tier-list/recommended',
+    [COMMUNITY_VIEW.HIGHLIGHT]:'/tier-list',
     [COMMUNITY_VIEW.ALL]:'/tier-list/all',
     [COMMUNITY_VIEW.MINE]:'/tier-list/mine'
 });
 function normalizeCommunityViewValue(value){
     const normalized=String(value||'').trim().toLowerCase();
-    if(normalized==='featured') return COMMUNITY_VIEW.RECOMMENDED;
+    if(normalized==='featured'||normalized==='recommended') return COMMUNITY_VIEW.HIGHLIGHT;
     if(Object.values(COMMUNITY_VIEW).includes(normalized)) return normalized;
-    return COMMUNITY_VIEW.RECOMMENDED;
+    return COMMUNITY_VIEW.HIGHLIGHT;
 }
 const COMMUNITY_VIEW_CONFIG=Object.freeze({
-    [COMMUNITY_VIEW.RECOMMENDED]:{
+    [COMMUNITY_VIEW.HIGHLIGHT]:{
         endpoint:`${OFFICIAL_TIER_LIST_API}/community`,
-        emptyText:'Chưa có tier list đề xuất nào.',
+        emptyText:'Chưa có tier list cộng đồng nổi bật nào.',
         guestMessage:'',
-        errorText:'Không tải được danh sách tier list đề xuất.'
+        errorText:'Không tải được danh sách tier list cộng đồng nổi bật.'
     },
     [COMMUNITY_VIEW.ALL]:{
         endpoint:`${OFFICIAL_TIER_LIST_API}/community/all`,
@@ -46,22 +47,34 @@ const COMMUNITY_VIEW_CONFIG=Object.freeze({
         errorText:'Không tải được tier list của bạn.'
     }
 });
+const COMMUNITY_SECTION=Object.freeze({
+    DEFAULT:{
+        key:'default',
+        countId:'community-count',
+        gridId:'community-grid',
+        statusId:'community-status',
+        emptyId:'community-empty'
+    },
+    MINE_CREATED:{
+        key:'mine-created',
+        countId:'community-created-count',
+        gridId:'community-created-grid',
+        statusId:'community-created-status',
+        emptyId:'community-created-empty'
+    },
+    MINE_SAVED:{
+        key:'mine-saved',
+        countId:'community-saved-count',
+        gridId:'community-saved-grid',
+        statusId:'community-saved-status',
+        emptyId:'community-saved-empty'
+    }
+});
 let currentCommunityView=typeof document!=='undefined'
-    ? normalizeCommunityViewValue(document.body?.dataset?.communityView||COMMUNITY_VIEW.RECOMMENDED)
-    : COMMUNITY_VIEW.RECOMMENDED;
+    ? normalizeCommunityViewValue(document.body?.dataset?.communityView||COMMUNITY_VIEW.HIGHLIGHT)
+    : COMMUNITY_VIEW.HIGHLIGHT;
 let communityRenderRequestId=0;
-const IMPORT_TIER_ROWS=['S','A','B','C','D'];
-const IMPORT_ROLE_COLUMNS=typeof TIER_ROLE_ORDER!=='undefined'?TIER_ROLE_ORDER:['DSL','JGL','MID','ADL','SUP'];
-const IMPORT_TIER_COLORS={S:'#e74c3c',A:'#9b59b6',B:'#3498db',C:'#2ecc71',D:'#95a5a6'};
 const OFFICIAL_TIER_LIST_LEGACY_TITLES=['Tier List Meta Hien Tai','Tier List Meta Hiện Tại'];
-const IMPORT_COLUMN_META={
-    DSL:{label:'DSL',icon:'/images/ui/top.png',alt:'DSL'},
-    JGL:{label:'JGL',icon:'/images/ui/jungle.png',alt:'JGL'},
-    MID:{label:'MID',icon:'/images/ui/mid.png',alt:'MID'},
-    SUP:{label:'SUP',icon:'/images/ui/support.png',alt:'SUP'},
-    ADL:{label:'ADL',icon:'/images/ui/adc.png',alt:'ADL'}
-};
-let lastTierImportPreview=null;
 let modalTierDragActive=false;
 
 function normalizeTierListText(value){
@@ -154,6 +167,14 @@ function setOfficialGridEditable(isEditable){
     document.querySelectorAll('#tier-grid [contenteditable]').forEach(e=>{
         e.contentEditable=String(isEditable);
     });
+    document.querySelectorAll('#tier-grid .delete-btn').forEach(button=>{
+        button.disabled=!isEditable;
+        button.style.display=isEditable?'inline-flex':'none';
+    });
+    document.querySelectorAll('#tier-grid .tier-color-picker').forEach(input=>{
+        input.disabled=!isEditable;
+        input.style.display=isEditable?'block':'none';
+    });
 }
 
 function applyTierListRoleUI(){
@@ -164,23 +185,17 @@ function applyTierListRoleUI(){
     // Admin controls
     const ac=document.getElementById('admin-controls');
     const hp=document.getElementById('hero-pool-official');
-    const importPanel=document.getElementById('tier-import-panel');
     const up=document.getElementById('user-prompt');
     const bc=document.getElementById('btn-create-community');
     if(ac) ac.style.display=isAdmin?'flex':'none';
-    if(hp) hp.style.display=isAdmin?'block':'none';
-    if(importPanel) importPanel.style.display=isAdmin?'block':'none';
+    if(hp) hp.style.display='none';
     if(up) up.style.display=(!isAdmin&&isLoggedIn)?'flex':'none';
     if(bc) bc.style.display=isLoggedIn?'inline-flex':'none';
-    // Read-only for non-admin
+    // Official meta board is now backend-generated from hero scores for every role,
+    // so the official grid stays read-only even for admins.
     if(grid){
-        if(isAdmin){
-            grid.classList.remove('tier-grid-readonly');
-            setOfficialGridEditable(true);
-        }else{
-            grid.classList.add('tier-grid-readonly');
-            setOfficialGridEditable(false);
-        }
+        grid.classList.add('tier-grid-readonly');
+        setOfficialGridEditable(false);
     }
 }
 
@@ -522,8 +537,10 @@ async function initApp(){
     const grid=document.getElementById('hero-grid');
     const officialGrid=document.getElementById('tier-grid');
     const communityGrid=document.getElementById('community-grid');
+    const mineCreatedGrid=document.getElementById('community-created-grid');
 
     currentCommunityView=normalizeCommunityViewValue(document.body?.dataset?.communityView||currentCommunityView);
+    syncOfficialCommunitySectionCopy();
     initCommunityNavigation();
 
     if(grid){
@@ -566,14 +583,11 @@ async function initApp(){
     };
     }
 
-    if(communityGrid){
+    if(communityGrid||mineCreatedGrid){
         await renderCommunityCards();
     }
     if(officialGrid){
         loadOfficialTierList();
-    }
-    if(document.getElementById('tier-import-panel')){
-        initTierListImportUi();
     }
     setTimeout(applyTierListRoleUI,200);
 }
@@ -846,11 +860,11 @@ function openCommunityTierListDetail(id){
 }
 
 function getCommunityViewConfig(view=currentCommunityView){
-    return COMMUNITY_VIEW_CONFIG[normalizeCommunityViewValue(view)]||COMMUNITY_VIEW_CONFIG[COMMUNITY_VIEW.RECOMMENDED];
+    return COMMUNITY_VIEW_CONFIG[normalizeCommunityViewValue(view)]||COMMUNITY_VIEW_CONFIG[COMMUNITY_VIEW.HIGHLIGHT];
 }
 
 function getCommunityPageRoute(view){
-    return COMMUNITY_PAGE_ROUTES[normalizeCommunityViewValue(view)]||COMMUNITY_PAGE_ROUTES[COMMUNITY_VIEW.RECOMMENDED];
+    return COMMUNITY_PAGE_ROUTES[normalizeCommunityViewValue(view)]||COMMUNITY_PAGE_ROUTES[COMMUNITY_VIEW.HIGHLIGHT];
 }
 
 function syncCommunityNavigation(){
@@ -875,8 +889,28 @@ function initCommunityNavigation(){
     });
 }
 
-function setCommunityStatus(message,type='info'){
-    const status=document.getElementById('community-status');
+function getCommunitySectionElements(section=COMMUNITY_SECTION.DEFAULT){
+    const config=section||COMMUNITY_SECTION.DEFAULT;
+    return {
+        config,
+        count:document.getElementById(config.countId),
+        grid:document.getElementById(config.gridId),
+        status:document.getElementById(config.statusId),
+        empty:document.getElementById(config.emptyId)
+    };
+}
+
+function resetCommunitySection(section){
+    const elements=getCommunitySectionElements(section);
+    if(elements.grid) elements.grid.innerHTML='';
+    if(elements.count) elements.count.textContent='0';
+    if(elements.empty) elements.empty.style.display='none';
+    setCommunitySectionStatus(section,'');
+    return elements;
+}
+
+function setCommunitySectionStatus(section,message,type='info'){
+    const status=getCommunitySectionElements(section).status;
     if(!status) return;
     status.hidden=!message;
     status.textContent=message||'';
@@ -884,11 +918,27 @@ function setCommunityStatus(message,type='info'){
     status.classList.toggle('is-error',type==='error');
 }
 
-function setCommunityEmptyState(message){
-    const empty=document.getElementById('community-empty');
+function setCommunitySectionEmptyState(section,message){
+    const empty=getCommunitySectionElements(section).empty;
     if(!empty) return;
     const text=empty.querySelector('.community-empty-text');
-    if(text) text.textContent=message||'Chưa có tier list cộng đồng nào.';
+    if(text) text.textContent=message||'Chua co tier list cong dong nao.';
+}
+
+function setCommunityStatus(message,type='info'){
+    setCommunitySectionStatus(COMMUNITY_SECTION.DEFAULT,message,type);
+}
+
+function setCommunityEmptyState(message){
+    setCommunitySectionEmptyState(COMMUNITY_SECTION.DEFAULT,message);
+}
+
+function syncOfficialCommunitySectionCopy(){
+    if(!document.getElementById('tier-grid')) return;
+    const subtitle=document.querySelector('#community-section .community-subtitle');
+    if(subtitle){
+        subtitle.textContent='Hi\u1ec3n th\u1ecb t\u1ed1i \u0111a 6 community tier list n\u1ed5i b\u1eadt hi\u1ec7n t\u1ea1i. M\u1ed7i card m\u1edf th\u00e0nh trang chi ti\u1ebft \u0111\u1ec3 xem rating, b\u00ecnh lu\u1eadn v\u00e0 t\u1ea3i \u1ea3nh.';
+    }
 }
 
 async function setCommunityView(view){
@@ -915,6 +965,184 @@ async function loadCommunityTierLists(view=currentCommunityView){
     }catch(error){
         console.error(`Cannot load community tier lists for view "${view}":`,error);
         return {items:[],error:config.errorText};
+    }
+}
+
+async function loadSavedCommunityTierLists(){
+    if(!getTierListCurrentUser()){
+        return {items:[],requiresAuth:true};
+    }
+    try{
+        const response=await fetch(COMMUNITY_SAVED_API,{headers:{Accept:'application/json'},cache:'no-store'});
+        if(!response.ok){
+            if(response.status===401){
+                return {items:[],requiresAuth:true};
+            }
+            throw new Error(await readApiError(response));
+        }
+        const payload=await response.json();
+        const items=Array.isArray(payload)?payload.filter(tl=>tl&&!tl.isOfficial):[];
+        return {items};
+    }catch(error){
+        console.error('Cannot load saved tier lists:',error);
+        return {items:[],error:'Khong tai duoc tier list da luu.'};
+    }
+}
+
+function isMineCommunityPage(){
+    return currentCommunityView===COMMUNITY_VIEW.MINE
+        && !!document.getElementById(COMMUNITY_SECTION.MINE_CREATED.gridId)
+        && !!document.getElementById(COMMUNITY_SECTION.MINE_SAVED.gridId);
+}
+
+function isTierListSavedByCurrentUser(tierList){
+    return tierList?.isSavedByCurrentUser===true||tierList?.saved===true;
+}
+
+function buildCommunityTierSaveButtonHtml(tierList){
+    if(!tierList||tierList.isOfficial) return '';
+    const isSaved=isTierListSavedByCurrentUser(tierList);
+    const label=isSaved?'Bo luu':'Luu';
+    const extraClass=isSaved?' tier-saved-btn':'';
+    return `<button type="button" class="tier-export-btn tier-secondary-btn tier-card-save-btn${extraClass}" onclick="toggleTierListSavedState(event,${tierList.id},this)">${label}</button>`;
+}
+
+function createCommunityTierCard(tl){
+    communityTierListCache.set(String(tl.id),tl);
+    const card=document.createElement('div');
+    card.className='tier-card';
+    card.tabIndex=0;
+    card.setAttribute('role','link');
+    card.setAttribute('aria-label',`Mo tier list ${tl.title||''}`);
+    card.onclick=()=>openCommunityTierListDetail(tl.id);
+    card.onkeydown=(event)=>{
+        if(event.key==='Enter'||event.key===' '){
+            event.preventDefault();
+            openCommunityTierListDetail(tl.id);
+        }
+    };
+
+    let thumbHtml='';
+    const rows=tl.previewTiers||tl.contentData?.rows||tl.tiers||[];
+    rows.forEach(tier=>{
+        const tierKey=typeof getTierVisualKey==='function'?getTierVisualKey(tier.label):'';
+        const tierClass=tierKey?` tier-${tierKey}`:'';
+        const rowClass=tierKey?` tier-row-${tierKey}${tierClass}`:'';
+        const labelClass=tierKey?` tier-label-${tierKey}${tierClass}`:'';
+        const previewTierClass=tierKey?` tier-preview-${tierKey}`:'';
+        const labelStyle=tierKey?'':` style="background:${tier.color||'#95a5a6'}"`;
+        let heroMinis='';
+        const heroesInRow=tier.heroes||((tier.cells||[]).flat());
+        heroesInRow.slice(0,8).forEach(hero=>{
+            const heroName=getHeroNameFromValue(hero);
+            heroMinis+=`<img class="hero-avatar-chip tier-hero-mini" src="${escapeTierHtml(getHeroImgUrl(hero))}" alt="${escapeTierHtml(heroName)}" title="${escapeTierHtml(heroName)}" data-hero-name="${escapeTierHtml(heroName)}" loading="lazy" onerror="handleTierHeroImageError(this, this.dataset.heroName, '${TIER_HERO_FALLBACK_IMAGE}')">`;
+        });
+        thumbHtml+=`<div class="tier-row-preview tier-preview-row${rowClass}${previewTierClass}"><div class="tier-label-mini${labelClass}"${labelStyle}>${escapeTierHtml(tier.label)}</div><div class="tier-heroes-mini tier-preview-heroes${previewTierClass}">${heroMinis}</div></div>`;
+    });
+
+    let starsHtml=`<div class="star-rating-stars" data-id="${tl.id}">`;
+    const averageRating=tl.averageUserRating??tl.communityRating??0;
+    for(let i=1;i<=5;i++){
+        const filled=i<=Math.round(averageRating)?'filled':'';
+        starsHtml+=`<span class="star ${filled}" data-star="${i}" onclick="rateStar(event,${tl.id},${i})" onmouseenter="previewStars(this)" onmouseleave="clearPreview(this)">★</span>`;
+    }
+    starsHtml+='</div>';
+
+    const adminRating=getAdminRatingValue(tl);
+    const badgeHtml=adminRating
+        ? `<div class="admin-endorsement"><span class="admin-badge-icon">AD</span> \u0110\u00e1nh gi\u00e1 c\u1ee7a Admin: ${formatRatingValue(adminRating)}/5</div>`
+        : `<div class="admin-endorsement is-empty"><span class="admin-badge-icon">AD</span> Ch\u01b0a c\u00f3 \u0111\u00e1nh gi\u00e1 t\u1eeb Admin</div>`;
+    const deleteHtml=canCurrentUserDeleteTierList(tl)
+        ? `<button type="button" class="tier-export-btn tier-danger-btn tier-card-delete-btn" onclick="deleteCommunityTierListFromCard(event,${tl.id},this)">Xoa</button>`
+        : '';
+    const saveHtml=buildCommunityTierSaveButtonHtml(tl);
+    const highlightBadge=tl.highlightBadge||tl.badgeLabel||'';
+    const highlightBadgeHtml=highlightBadge
+        ? `<div class="tier-card-highlight-badge">${escapeTierHtml(highlightBadge)}</div>`
+        : '';
+
+    card.innerHTML=`
+        <div class="tier-card-thumbnail">${thumbHtml}</div>
+        <div class="tier-card-body">
+            ${highlightBadgeHtml}
+            <div class="tier-card-title">${escapeTierHtml(tl.title)}</div>
+            <div class="tier-card-author">
+                <img src="${escapeTierHtml(tl.author?.avatar||'')}" alt="${escapeTierHtml(tl.author?.name||'ATG Member')}" referrerpolicy="no-referrer">
+                <span class="tier-card-author-name">${escapeTierHtml(tl.author?.name||'ATG Member')}</span>
+                <span class="tier-card-time">${escapeTierHtml(timeAgo(tl.createdAt))}</span>
+            </div>
+            <div class="star-rating">
+                ${starsHtml}
+                <span class="star-rating-avg">★ ${formatRatingValue(averageRating)||0}</span>
+                <span class="star-rating-count">(${tl.userRatingCount??tl.totalRatings??0} danh gia)</span>
+            </div>
+            ${badgeHtml}
+            <div class="tier-card-actions">
+                ${saveHtml}
+                <button type="button" class="tier-export-btn tier-card-export-btn" onclick="exportCommunityTierListFromCard(event,${tl.id},this)">Tai anh</button>
+                ${deleteHtml}
+            </div>
+        </div>`;
+    return card;
+}
+
+function renderCommunitySectionCards(section,items,emptyText){
+    const elements=resetCommunitySection(section);
+    if(!elements.grid) return;
+    if(!items.length){
+        setCommunitySectionEmptyState(section,emptyText);
+        if(elements.empty) elements.empty.style.display='block';
+        return;
+    }
+    if(elements.count) elements.count.textContent=String(items.length);
+    items.forEach(item=>elements.grid.appendChild(createCommunityTierCard(item)));
+}
+
+async function renderMineCommunityCards(requestId){
+    const pageStatus=document.getElementById('mine-page-status');
+    const createdConfig=getCommunityViewConfig(COMMUNITY_VIEW.MINE);
+    resetCommunitySection(COMMUNITY_SECTION.MINE_CREATED);
+    resetCommunitySection(COMMUNITY_SECTION.MINE_SAVED);
+    if(pageStatus){
+        pageStatus.hidden=true;
+        pageStatus.textContent='';
+        pageStatus.classList.remove('is-warning','is-error');
+    }
+
+    if(!getTierListCurrentUser()){
+        if(pageStatus){
+            pageStatus.hidden=false;
+            pageStatus.textContent='Vui long dang nhap de xem tier list cua ban va danh sach da luu.';
+            pageStatus.classList.add('is-warning');
+        }
+        return;
+    }
+
+    const [createdResult,savedResult]=await Promise.all([
+        loadCommunityTierLists(COMMUNITY_VIEW.MINE),
+        loadSavedCommunityTierLists()
+    ]);
+    if(requestId!==communityRenderRequestId) return;
+
+    if(createdResult.requiresAuth||savedResult.requiresAuth){
+        if(pageStatus){
+            pageStatus.hidden=false;
+            pageStatus.textContent='Vui long dang nhap de xem tier list cua ban va danh sach da luu.';
+            pageStatus.classList.add('is-warning');
+        }
+        return;
+    }
+
+    if(createdResult.error){
+        setCommunitySectionStatus(COMMUNITY_SECTION.MINE_CREATED,createdConfig.errorText,'error');
+    }else{
+        renderCommunitySectionCards(COMMUNITY_SECTION.MINE_CREATED,createdResult.items||[],'Ban chua tao tier list nao.');
+    }
+
+    if(savedResult.error){
+        setCommunitySectionStatus(COMMUNITY_SECTION.MINE_SAVED,savedResult.error,'error');
+    }else{
+        renderCommunitySectionCards(COMMUNITY_SECTION.MINE_SAVED,savedResult.items||[],'Ban chua luu tier list nao.');
     }
 }
 
@@ -1025,6 +1253,76 @@ async function renderCommunityCards(){
             </div>`;
         grid.appendChild(card);
     });
+}
+
+async function renderCommunityCards(){
+    const requestId=++communityRenderRequestId;
+    const defaultSection=getCommunitySectionElements(COMMUNITY_SECTION.DEFAULT);
+    currentCommunityView=normalizeCommunityViewValue(currentCommunityView);
+    syncCommunityNavigation();
+    communityTierListCache.clear();
+
+    if(isMineCommunityPage()){
+        await renderMineCommunityCards(requestId);
+        return;
+    }
+
+    if(!defaultSection.grid) return;
+    const config=getCommunityViewConfig();
+    resetCommunitySection(COMMUNITY_SECTION.DEFAULT);
+
+    const {items:communityLists,error,requiresAuth}=await loadCommunityTierLists(currentCommunityView);
+    if(requestId!==communityRenderRequestId) return;
+
+    if(requiresAuth){
+        setCommunityStatus(config.guestMessage,'warning');
+        return;
+    }
+    if(error){
+        setCommunityStatus(error,'error');
+        return;
+    }
+
+    renderCommunitySectionCards(COMMUNITY_SECTION.DEFAULT,communityLists,config.emptyText);
+}
+
+async function toggleTierListSavedState(event,id,button){
+    if(event){
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const tierList=communityTierListCache.get(String(id));
+    if(!tierList||tierList.isOfficial) return;
+    if(!getTierListCurrentUser()){
+        showTierToast('Vui long dang nhap de luu Tier List.','error');
+        return;
+    }
+
+    const isSaved=isTierListSavedByCurrentUser(tierList);
+    const originalText=button?.textContent;
+    if(button){
+        button.disabled=true;
+        button.textContent=isSaved?'Dang bo luu...':'Dang luu...';
+    }
+
+    try{
+        const response=await fetch(`${OFFICIAL_TIER_LIST_API}/${id}/save`,{
+            method:isSaved?'DELETE':'POST',
+            headers:{Accept:'application/json'}
+        });
+        if(!response.ok) throw new Error(await readApiError(response));
+        await response.json();
+        await renderCommunityCards();
+        showTierToast(isSaved?'Da bo luu Tier List.':'Da luu Tier List.');
+    }catch(error){
+        console.error('Cannot toggle saved tier list:',error);
+        showTierToast(error.message||'Khong cap nhat duoc trang thai luu Tier List.','error');
+    }finally{
+        if(button){
+            button.disabled=false;
+            button.textContent=originalText;
+        }
+    }
 }
 
 function exportCommunityTierListFromCard(event,id,button){
@@ -1468,406 +1766,6 @@ function renderOfficialTierList(contentData,payload=officialTierListPayload){
     applyTierListRoleUI();
 }
 
-function initTierListImportUi(){
-    const input=document.getElementById('tier-import-input');
-    if(!input||input.dataset.bound==='true') return;
-    input.dataset.bound='true';
-    input.addEventListener('input',()=>{
-        lastTierImportPreview=null;
-        setTierImportApplyEnabled(false);
-        const feedback=document.getElementById('tier-import-feedback');
-        const summary=document.getElementById('tier-import-summary');
-        const preview=document.getElementById('tier-import-preview');
-        if(feedback) feedback.innerHTML='<div class="tier-import-alert warning">Dữ liệu đã thay đổi. Bấm "Xem trước" để parse lại trước khi áp dụng.</div>';
-        if(summary) summary.innerHTML='';
-        if(preview) preview.innerHTML='';
-    });
-}
-
-function normalizeImportText(value){
-    return String(value||'')
-        .replace(/[’‘`´]/g,"'")
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g,'')
-        .replace(/[đĐ]/g,'d')
-        .toLowerCase()
-        .replace(/[^a-z0-9'()]+/g,' ')
-        .replace(/\s+/g,' ')
-        .trim();
-}
-
-function makeLooseImportKey(value){
-    return normalizeImportText(value).replace(/[^a-z0-9]+/g,'');
-}
-
-function toAliasCandidate(value){
-    return normalizeImportText(value)
-        .split(/\s+/)
-        .filter(Boolean)
-        .map(token=>token.charAt(0).toUpperCase()+token.slice(1))
-        .join(' ');
-}
-
-function isTierImportHeaderLine(line){
-    const normalized=normalizeImportText(String(line||'').replace(/[\t,]+/g,' '));
-    return [
-        'tuong tier',
-        'hero tier',
-        'name tier',
-        'champion tier',
-        'tuong role tier',
-        'tuong vai tro tier',
-        'tuong vi tri tier',
-        'hero role tier',
-        'name role tier',
-        'champion role tier'
-    ].includes(normalized);
-}
-
-function splitTierImportLine(line){
-    const trimmed=String(line||'').trim();
-    if(!trimmed) return null;
-
-    if(trimmed.includes('\t')){
-        const parts=trimmed.split(/\t+/).map(part=>part.trim()).filter(Boolean);
-        if(parts.length!==2) return null;
-        return {heroName:parts[0],tier:parts[1]};
-    }
-
-    if(trimmed.includes(',')){
-        const parts=trimmed.split(',').map(part=>part.trim()).filter(Boolean);
-        if(parts.length!==2) return null;
-        return {heroName:parts[0],tier:parts[1]};
-    }
-
-    const tokens=trimmed.split(/\s+/).filter(Boolean);
-    if(tokens.length<2) return null;
-    return {
-        heroName:tokens.slice(0,-1).join(' '),
-        tier:tokens[tokens.length-1]
-    };
-}
-
-function buildTierImportHeroLookup(){
-    const lookup={exact:new Map(),normalized:new Map(),loose:new Map()};
-    const add=(map,key,hero)=>{ if(key&&!map.has(key)) map.set(key,hero); };
-    heroes.forEach(hero=>{
-        const name=String(hero.name||'').trim();
-        if(!name) return;
-        add(lookup.exact,name.toLowerCase(),hero);
-        add(lookup.normalized,normalizeImportText(name),hero);
-        add(lookup.loose,makeLooseImportKey(name),hero);
-    });
-    return lookup;
-}
-
-function findHeroForTierImport(rawName,lookup){
-    const candidates=Array.from(new Set([
-        String(rawName||'').trim(),
-        normalizeHeroName(rawName),
-        normalizeHeroName(toAliasCandidate(rawName))
-    ].filter(Boolean)));
-
-    for(const candidate of candidates){
-        const exact=lookup.exact.get(candidate.toLowerCase());
-        if(exact) return exact;
-    }
-    for(const candidate of candidates){
-        const normalized=lookup.normalized.get(normalizeImportText(candidate));
-        if(normalized) return normalized;
-    }
-    for(const candidate of candidates){
-        const loose=lookup.loose.get(makeLooseImportKey(candidate));
-        if(loose) return loose;
-    }
-    return null;
-}
-
-function getImportColumnMeta(roleCode){
-    const existing=getOfficialHeaderCells().find(cell=>{
-        const label=getCellLabel(cell).toUpperCase();
-        const imgAlt=(cell.querySelector('img')?.getAttribute('alt')||'').toUpperCase();
-        return label===roleCode||imgAlt===roleCode;
-    });
-    if(existing){
-        const img=existing.querySelector('img');
-        return {
-            label:getCellLabel(existing)||roleCode,
-            icon:normalizeImagePath(img?.getAttribute('src')||img?.src||''),
-            alt:img?.getAttribute('alt')||roleCode
-        };
-    }
-    return {...IMPORT_COLUMN_META[roleCode]};
-}
-
-function getImportTierColor(tier){
-    const labelCell=Array.from(document.querySelectorAll('#tier-grid .tier-label'))
-        .find(cell=>getCellLabel(cell).toUpperCase()===tier);
-    return normalizeHexColor(labelCell?.querySelector('.tier-color-picker')?.value,IMPORT_TIER_COLORS[tier]);
-}
-
-function buildTierImportContentData(validItems){
-    const cellsByTierRole=new Map();
-    validItems.forEach(item=>{
-        const key=`${item.tier}:${item.roleCode}`;
-        if(!cellsByTierRole.has(key)) cellsByTierRole.set(key,[]);
-        cellsByTierRole.get(key).push(getHeroRefForStorage(item.hero));
-    });
-
-    return {
-        columns:IMPORT_ROLE_COLUMNS.map(getImportColumnMeta),
-        rows:IMPORT_TIER_ROWS.map(tier=>({
-            label:tier,
-            color:getImportTierColor(tier),
-            cells:IMPORT_ROLE_COLUMNS.map(roleCode=>cellsByTierRole.get(`${tier}:${roleCode}`)||[])
-        }))
-    };
-}
-
-function setTierImportApplyEnabled(enabled){
-    const button=document.getElementById('tier-import-apply-btn');
-    if(button) button.disabled=!enabled;
-}
-
-function renderTierImportPreviewTable(result){
-    const rows=result.contentData.rows||[];
-    return `
-        <div class="tier-import-table-wrap">
-            <table class="tier-import-table">
-                <thead>
-                    <tr>
-                        <th>Tier</th>
-                        ${IMPORT_ROLE_COLUMNS.map(role=>`<th>${role}</th>`).join('')}
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows.map(row=>`
-                        <tr>
-                            <td class="tier-import-tier" style="background:${escapeTierHtml(row.color)}">${escapeTierHtml(row.label)}</td>
-                            ${IMPORT_ROLE_COLUMNS.map((role,index)=>{
-                                const heroesInCell=row.cells?.[index]||[];
-                                return `<td class="tier-import-cell">
-                                    <span class="tier-import-count">${heroesInCell.length} tướng</span>
-                                    <div class="tier-import-heroes">
-                                        ${heroesInCell.map(heroRef=>{
-                                            const heroName=getHeroNameFromValue(heroRef);
-                                            return `<span class="tier-import-chip"><img src="${escapeTierHtml(getHeroImgUrl(heroRef))}" alt="${escapeTierHtml(heroName)}" data-hero-name="${escapeTierHtml(heroName)}" onerror="handleTierHeroImageError(this, this.dataset.heroName, '${TIER_HERO_FALLBACK_IMAGE}')">${escapeTierHtml(heroName)}</span>`;
-                                        }).join('')}
-                                    </div>
-                                </td>`;
-                            }).join('')}
-                        </tr>`).join('')}
-                </tbody>
-            </table>
-        </div>`;
-}
-
-async function previewTierListImport(){
-    if(getUserRole()!=='Admin'){
-        alert('Chỉ Admin mới được import Tier List chính.');
-        return;
-    }
-
-    if(heroes.length===0) await loadHeroesFromApi();
-    const input=document.getElementById('tier-import-input');
-    const result=parseTierImportText(input?.value||'');
-    lastTierImportPreview=result.summary.validItems>0?result:null;
-    renderTierImportResult(result);
-}
-
-function parseTierImportText(rawText){
-    const lookup=buildTierImportHeroLookup();
-    const errors=[];
-    const unresolvedHeroes=[];
-    const validItems=[];
-    const seenHeroIds=new Set();
-    let linesRead=0;
-
-    String(rawText||'').split(/\r?\n/).forEach((line,index)=>{
-        const lineNumber=index+1;
-        const trimmed=line.trim();
-        if(!trimmed||isTierImportHeaderLine(trimmed)) return;
-        linesRead++;
-
-        const parts=splitTierImportLine(trimmed);
-        if(!parts||!parts.heroName||!parts.tier){
-            errors.push({lineNumber,message:`Dong ${lineNumber}: khong doc duoc du 2 cot Ten tuong va Tier.`});
-            return;
-        }
-
-        const tier=String(parts.tier||'').trim().toUpperCase();
-        if(!IMPORT_TIER_ROWS.includes(tier)){
-            errors.push({lineNumber,message:`Dong ${lineNumber}: tier "${parts.tier}" khong hop le. Chi nhan S, A, B, C, D.`});
-            return;
-        }
-
-        const hero=findHeroForTierImport(parts.heroName,lookup);
-        if(!hero){
-            unresolvedHeroes.push({lineNumber,heroName:parts.heroName,tier});
-            return;
-        }
-
-        const primaryRoleCode=typeof getHeroPrimaryRoleCode==='function'?getHeroPrimaryRoleCode(hero):(hero.primaryRoleCode||hero.role||'');
-        if(!primaryRoleCode||!IMPORT_ROLE_COLUMNS.includes(primaryRoleCode)){
-            errors.push({lineNumber,message:`Dong ${lineNumber}: tuong "${hero.name}" chua co Primary Role hop le trong he thong.`});
-            return;
-        }
-
-        const heroKey=hero.id!==undefined&&hero.id!==null?`id:${hero.id}`:`name:${normalizeImportText(hero.name)}`;
-        if(seenHeroIds.has(heroKey)){
-            errors.push({lineNumber,message:`Dong ${lineNumber}: tuong "${parts.heroName}" bi trung, da bo qua dong nay.`});
-            return;
-        }
-
-        seenHeroIds.add(heroKey);
-        validItems.push({lineNumber,hero,heroName:hero.name,roleCode:primaryRoleCode,tier});
-    });
-
-    if(linesRead===0){
-        errors.push({lineNumber:0,message:'Chua co dong du lieu hop le de import.'});
-    }
-
-    const contentData=buildTierImportContentData(validItems);
-    return {
-        contentData,
-        validItems,
-        errors,
-        unresolvedHeroes,
-        summary:{
-            linesRead,
-            validItems:validItems.length,
-            errors:errors.length,
-            unresolvedHeroes:unresolvedHeroes.length
-        }
-    };
-}
-
-function renderTierImportSummary(result){
-    const target=document.getElementById('tier-import-summary');
-    if(!target) return;
-    target.innerHTML=`
-        <div class="tier-import-stats">
-            <div class="tier-import-stat"><span>Dong da doc</span><strong>${result.summary.linesRead}</strong></div>
-            <div class="tier-import-stat"><span>Hero hop le</span><strong>${result.summary.validItems}</strong></div>
-            <div class="tier-import-stat"><span>Loi du lieu</span><strong>${result.summary.errors}</strong></div>
-            <div class="tier-import-stat"><span>Khong tim thay</span><strong>${result.summary.unresolvedHeroes}</strong></div>
-        </div>`;
-}
-
-function renderTierImportIssues(result){
-    const blocks=[];
-    if(result.errors.length){
-        blocks.push(`
-            <div class="tier-import-list-block">
-                <strong>Loi du lieu (${result.errors.length})</strong>
-                <ul>${result.errors.map(error=>`<li>${escapeTierHtml(error.message)}</li>`).join('')}</ul>
-            </div>`);
-    }
-    if(result.unresolvedHeroes.length){
-        blocks.push(`
-            <div class="tier-import-list-block">
-                <strong>Khong tim thay tuong (${result.unresolvedHeroes.length})</strong>
-                <ul>${result.unresolvedHeroes.map(item=>`<li>Dong ${item.lineNumber}: ${escapeTierHtml(item.heroName)} (tier ${item.tier})</li>`).join('')}</ul>
-            </div>`);
-    }
-    return blocks.join('');
-}
-
-function renderTierImportResult(result){
-    const feedback=document.getElementById('tier-import-feedback');
-    const preview=document.getElementById('tier-import-preview');
-    if(feedback){
-        const hasWarnings=result.errors.length>0||result.unresolvedHeroes.length>0;
-        const type=result.summary.validItems===0?'error':(hasWarnings?'warning':'success');
-        const message=result.summary.validItems===0
-            ? 'Khong co hero hop le de ap dung. Kiem tra loi ben duoi.'
-            : (hasWarnings?'Preview da tao cho phan hop le. He thong se xep cot theo Primary Role tu database.':'Preview hop le, co the ap dung vao Tier List chinh thuc.');
-        feedback.innerHTML=`<div class="tier-import-alert ${type}">${escapeTierHtml(message)}</div>`;
-    }
-    renderTierImportSummary(result);
-    if(preview){
-        preview.innerHTML=renderTierImportPreviewTable(result)+renderTierImportIssues(result);
-    }
-    setTierImportApplyEnabled(result.summary.validItems>0);
-}
-
-async function applyTierListImport(){
-    if(getUserRole()!=='Admin'){
-        alert('Chi Admin moi duoc ap dung import Tier List chinh.');
-        return;
-    }
-    if(!lastTierImportPreview?.contentData||lastTierImportPreview.summary.validItems===0){
-        alert('Hay bam "Xem truoc" va dam bao co it nhat 1 hero hop le truoc khi ap dung.');
-        return;
-    }
-
-    const summary=lastTierImportPreview.summary;
-    const warning=(summary.errors||summary.unresolvedHeroes)
-        ? `\nCon ${summary.errors} loi du lieu va ${summary.unresolvedHeroes} tuong khong tim thay. Nhung dong loi se khong duoc luu.`
-        : '';
-    const confirmed=confirm(`Ap dung ${summary.validItems} hero hop le vao Tier List chinh thuc?${warning}\nTier giu nguyen theo preview va cot se duoc sap theo Primary Role DSL -> JGL -> MID -> ADL -> SUP.`);
-    if(!confirmed) return;
-
-    const button=document.getElementById('tier-import-apply-btn');
-    const originalText=button?.textContent;
-    if(button){
-        button.disabled=true;
-        button.textContent='Dang ap dung...';
-    }
-
-    try{
-        const response=await fetch(OFFICIAL_TIER_LIST_API,{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({
-                title:OFFICIAL_TIER_LIST_TITLE,
-                isOfficial:true,
-                importMode:OFFICIAL_TIER_LIST_IMPORT_MODE,
-                contentData:lastTierImportPreview.contentData
-            })
-        });
-        if(!response.ok) throw new Error(await readApiError(response));
-        officialTierListPayload=normalizeOfficialTierListPayload(await response.json());
-        renderOfficialTierList(officialTierListPayload.contentData||lastTierImportPreview.contentData,officialTierListPayload);
-        await loadOfficialTierList();
-        showTierToast(`Da ap dung ${summary.validItems} hero vao Tier List chinh.`);
-    }catch(error){
-        console.error('Cannot apply tier list import:',error);
-        alert(`Khong ap dung duoc Tier List import: ${error.message}`);
-        setTierImportApplyEnabled(true);
-    }finally{
-        if(button){
-            button.textContent=originalText;
-            button.disabled=false;
-        }
-    }
-}
-
-function initTierListImportUi(){
-    const input=document.getElementById('tier-import-input');
-    const importDescription=document.querySelector('#tier-import-panel .tier-import-head p');
-    const importHeading=document.querySelector('#tier-import-panel .tier-import-head h2');
-    if(importHeading) importHeading.textContent='Import tu bang du lieu';
-    if(importDescription){
-        importDescription.textContent='Dan du lieu 2 cot: Ten tuong va Tier. Role se duoc he thong tu xac dinh theo Primary Role.';
-    }
-    if(input){
-        input.placeholder='Ten tuong\tTier\nBillow\tS\nRyoma\tA\nMarja\tS';
-    }
-    if(!input||input.dataset.bound==='true') return;
-    input.dataset.bound='true';
-    input.addEventListener('input',()=>{
-        lastTierImportPreview=null;
-        setTierImportApplyEnabled(false);
-        const feedback=document.getElementById('tier-import-feedback');
-        const summary=document.getElementById('tier-import-summary');
-        const preview=document.getElementById('tier-import-preview');
-        if(feedback) feedback.innerHTML='<div class="tier-import-alert warning">Du lieu da thay doi. Bam "Xem truoc" de parse lai truoc khi ap dung.</div>';
-        if(summary) summary.innerHTML='';
-        if(preview) preview.innerHTML='';
-    });
-}
-
 async function readApiError(response){
     try{
         const payload=await response.json();
@@ -1883,7 +1781,6 @@ async function loadOfficialTierList(){
         if(!response.ok) throw new Error(await readApiError(response));
 
         const payload=await response.json();
-        if(payload.exists===false) return;
         officialTierListPayload=normalizeOfficialTierListPayload(payload);
         renderOfficialTierList(officialTierListPayload.contentData,officialTierListPayload);
     }catch(error){
@@ -1906,10 +1803,6 @@ function exportOfficialTierList(button){
 
 function filterModalHeroes(){
     filterHeroPool('modal');
-}
-
-function saveOfficialTierList(){
-    alert('✅ Đã lưu Meta Chính thành công! (Sẽ gọi API POST /api/tier-lists khi kết nối backend)');
 }
 
 async function submitCommunityTierList(){
@@ -1956,29 +1849,21 @@ window.saveOfficialTierList=async function saveOfficialTierList(){
     const originalText=button?.textContent;
     if(button){
         button.disabled=true;
-        button.textContent='Dang luu...';
+        button.textContent='Dang cap nhat...';
     }
 
     try{
-        const response=await fetch(OFFICIAL_TIER_LIST_API,{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({
-                title:OFFICIAL_TIER_LIST_TITLE,
-                isOfficial:true,
-                contentData:serializeOfficialTierList()
-            })
-        });
+        const response=await fetch(ADMIN_OFFICIAL_TIER_LIST_API,{method:'POST'});
 
         if(!response.ok) throw new Error(await readApiError(response));
 
         const payload=normalizeOfficialTierListPayload(await response.json());
         officialTierListPayload=payload;
         renderOfficialTierList(payload.contentData,payload);
-        alert('Da luu Tier List chinh. Nguoi ngoai vao trang se thay ngay.');
+        alert('Da cap nhat Tier List chinh tu diem hero. Nguoi xem se thay du lieu moi ngay sau khi tai lai trang.');
     }catch(error){
         console.error('Cannot save official tier list:',error);
-        alert(`Khong luu duoc Tier List chinh: ${error.message}`);
+        alert(`Khong cap nhat duoc Tier List chinh: ${error.message}`);
     }finally{
         if(button){
             button.disabled=false;
@@ -1988,7 +1873,6 @@ window.saveOfficialTierList=async function saveOfficialTierList(){
 };
 
 window.setCommunityView=setCommunityView;
-window.previewTierListImport=previewTierListImport;
-window.applyTierListImport=applyTierListImport;
+window.toggleTierListSavedState=toggleTierListSavedState;
 
 initApp();

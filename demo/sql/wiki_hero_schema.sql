@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS hero_attribute_mapping (
 -- (Spring JPA ddl-auto=update sẽ tự thêm, nhưng chạy thủ công cũng an toàn)
 ALTER TABLE heroes ADD COLUMN IF NOT EXISTS hero_class VARCHAR(30) DEFAULT NULL;
 ALTER TABLE heroes ADD COLUMN IF NOT EXISTS primary_role_id BIGINT DEFAULT NULL;
+ALTER TABLE heroes ADD COLUMN IF NOT EXISTS ban_pick_score DECIMAL(5,2) DEFAULT NULL;
 
 -- =============================
 -- 2. Seed: 5 Vị trí đi đường

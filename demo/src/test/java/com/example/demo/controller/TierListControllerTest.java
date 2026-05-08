@@ -29,6 +29,27 @@ import static org.mockito.Mockito.when;
 class TierListControllerTest {
 
     @Test
+    void getOfficialTierListReturnsGeneratedPreviewWhenOfficialIsMissing() {
+        TierListRepository tierListRepository = mock(TierListRepository.class);
+        HeroContentDataService heroContentDataService = mock(HeroContentDataService.class);
+        TierListCommunityService communityService = mock(TierListCommunityService.class);
+
+        TierListController controller = new TierListController(
+                tierListRepository,
+                new ObjectMapper(),
+                heroContentDataService,
+                communityService
+        );
+
+        Map<String, Object> payload = Map.of("exists", false, "isOfficial", true);
+        when(tierListRepository.findFirstByIsOfficialTrueOrderByUpdatedAtDesc()).thenReturn(Optional.empty());
+        when(communityService.buildGeneratedOfficialTierListPreview(null)).thenReturn(payload);
+
+        assertEquals(payload, controller.getOfficialTierList(null).getBody());
+        verify(communityService).buildGeneratedOfficialTierListPreview(null);
+    }
+
+    @Test
     void createTierListUsesPrimaryRoleImportNormalizationForOfficialImport() throws Exception {
         TierListRepository tierListRepository = mock(TierListRepository.class);
         HeroContentDataService heroContentDataService = mock(HeroContentDataService.class);
@@ -145,5 +166,93 @@ class TierListControllerTest {
 
         assertEquals(tierLists, controller.getMyCommunityTierLists(authentication).getBody());
         verify(communityService).getCurrentUserCommunityTierLists(principal, authentication);
+    }
+
+    @Test
+    void getSavedTierListsRequiresAuthentication() {
+        TierListController controller = new TierListController(
+                mock(TierListRepository.class),
+                new ObjectMapper(),
+                mock(HeroContentDataService.class),
+                mock(TierListCommunityService.class)
+        );
+
+        assertThrows(ResponseStatusException.class, () -> controller.getSavedTierLists(null));
+    }
+
+    @Test
+    void getSavedTierListsDelegatesToService() {
+        TierListRepository tierListRepository = mock(TierListRepository.class);
+        HeroContentDataService heroContentDataService = mock(HeroContentDataService.class);
+        TierListCommunityService communityService = mock(TierListCommunityService.class);
+        Authentication authentication = mock(Authentication.class);
+
+        TierListController controller = new TierListController(
+                tierListRepository,
+                new ObjectMapper(),
+                heroContentDataService,
+                communityService
+        );
+
+        GoogleUserPrincipal principal = new GoogleUserPrincipal("user@atg.test", "User", "", "USER");
+        List<Map<String, Object>> tierLists = List.of(Map.of("id", 8L));
+
+        when(authentication.getPrincipal()).thenReturn(principal);
+        when(communityService.getCurrentUserSavedTierLists(principal, authentication)).thenReturn(tierLists);
+
+        assertEquals(tierLists, controller.getSavedTierLists(authentication).getBody());
+        verify(communityService).getCurrentUserSavedTierLists(principal, authentication);
+    }
+
+    @Test
+    void saveTierListDelegatesToService() {
+        TierListRepository tierListRepository = mock(TierListRepository.class);
+        HeroContentDataService heroContentDataService = mock(HeroContentDataService.class);
+        TierListCommunityService communityService = mock(TierListCommunityService.class);
+        Authentication authentication = mock(Authentication.class);
+
+        TierListController controller = new TierListController(
+                tierListRepository,
+                new ObjectMapper(),
+                heroContentDataService,
+                communityService
+        );
+
+        GoogleUserPrincipal principal = new GoogleUserPrincipal("user@atg.test", "User", "", "USER");
+        Map<String, Object> payload = Map.of("saved", true, "tierListId", 8L);
+
+        when(authentication.getPrincipal()).thenReturn(principal);
+        when(communityService.saveTierList(8L, principal, authentication)).thenReturn(payload);
+
+        assertEquals(payload, controller.saveTierList(8L, authentication).getBody());
+        verify(communityService).saveTierList(8L, principal, authentication);
+    }
+
+    @Test
+    void getRatingSummaryDelegatesCombinedRatingPayloadToService() {
+        TierListRepository tierListRepository = mock(TierListRepository.class);
+        HeroContentDataService heroContentDataService = mock(HeroContentDataService.class);
+        TierListCommunityService communityService = mock(TierListCommunityService.class);
+        Authentication authentication = mock(Authentication.class);
+
+        TierListController controller = new TierListController(
+                tierListRepository,
+                new ObjectMapper(),
+                heroContentDataService,
+                communityService
+        );
+
+        Map<String, Object> payload = Map.of(
+                "average", 3.5,
+                "count", 2L,
+                "averageUserRating", 3.5,
+                "userRatingCount", 2L,
+                "adminRating", 3.0
+        );
+
+        when(communityService.getRatingSummary(7L, authentication)).thenReturn(payload);
+
+        assertEquals(payload, controller.getRatingSummary(7L, authentication).getBody());
+        verify(communityService).getRatingSummary(7L, authentication);
     }
 }

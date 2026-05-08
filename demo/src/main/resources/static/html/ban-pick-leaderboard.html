@@ -4,29 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ban/Pick Leaderboard - ATG Academy</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/style.css?v=20260507-css-modules">
+    <link rel="stylesheet" href="/css/ban-pick.css?v=20260507-css-modules">
+<script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <style>
-        body { background: radial-gradient(circle at top left, #dbeafe, transparent 32%), #f8fafc; }
-        .leader-shell { max-width: 1080px; margin: 0 auto; padding: 38px 18px 78px; }
-        .leader-hero { align-items: end; background: #0f172a; border-radius: 28px; color: #fff; display: flex; justify-content: space-between; gap: 18px; margin-bottom: 22px; padding: 30px; }
-        .leader-hero span { color: #facc15; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
-        .leader-hero h1 { font-size: clamp(2rem, 4vw, 3.8rem); font-weight: 950; line-height: 1; margin: 6px 0 0; }
-        .leader-hero a { background: #facc15; border-radius: 999px; color: #0f172a; font-weight: 950; padding: 12px 16px; text-decoration: none; white-space: nowrap; }
-        .leader-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 22px; box-shadow: 0 18px 42px rgba(15,23,42,.08); overflow: hidden; }
-        .leader-row { align-items: center; display: grid; gap: 12px; grid-template-columns: 68px 1fr 110px 110px 130px; padding: 16px 20px; }
-        .leader-row:not(:last-child) { border-bottom: 1px solid #f1f5f9; }
-        .leader-row.header { background: #f8fafc; color: #64748b; font-size: .78rem; font-weight: 950; letter-spacing: .08em; text-transform: uppercase; }
-        .rank { align-items: center; background: #0f172a; border-radius: 14px; color: #fff; display: inline-flex; font-weight: 950; height: 38px; justify-content: center; width: 42px; }
-        .player strong { color: #0f172a; display: block; font-weight: 950; }
-        .player span { color: #64748b; font-size: .85rem; font-weight: 800; }
-        .metric { color: #0f172a; font-weight: 950; }
-        .heroes { color: #64748b; font-size: .88rem; font-weight: 800; }
-        @media (max-width: 820px) { .leader-hero { align-items: flex-start; flex-direction: column; } .leader-row { grid-template-columns: 52px 1fr; } .leader-row.header { display: none; } .metric, .heroes { grid-column: 2; } }
-    </style>
 </head>
-<body>
+<body data-ban-pick-view="leaderboard">
 <div id="header-placeholder"></div>
 <main class="leader-shell">
     <section class="leader-hero">
@@ -42,7 +25,7 @@
 </main>
 
 <script src="/js/auth.js?v=30260429-banpick-product"></script>
-<script src="/js/header-loader.js?v=30260429-banpick-product"></script>
+<script src="/js/header-loader.js?v=20260507-tierlist-route-cleanup"></script>
 <script>
     function escapeHtml(value) {
         return String(value || '').replace(/[&<>"']/g, char => ({

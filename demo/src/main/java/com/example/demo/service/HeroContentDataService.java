@@ -2,14 +2,17 @@ package com.example.demo.service;
 
 import com.example.demo.dto.wiki.HeroSummaryDto;
 import com.example.demo.entity.Hero;
+import com.example.demo.entity.HeroRole;
 import com.example.demo.repository.HeroRepository;
 import com.example.demo.util.SlugUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -22,6 +25,18 @@ import java.util.stream.Collectors;
 public class HeroContentDataService {
 
     private static final List<String> OFFICIAL_IMPORT_ROLE_ORDER = List.of("DSL", "JGL", "MID", "ADL", "SUP");
+    private static final List<String> OFFICIAL_SCORE_TIER_ORDER = List.of("S", "A", "B", "C", "D");
+    private static final BigDecimal SCORE_THRESHOLD_S = new BigDecimal("9");
+    private static final BigDecimal SCORE_THRESHOLD_A = new BigDecimal("7.5");
+    private static final BigDecimal SCORE_THRESHOLD_B = new BigDecimal("5");
+    private static final BigDecimal SCORE_THRESHOLD_C = new BigDecimal("2.5");
+    private static final Map<String, String> OFFICIAL_SCORE_TIER_COLORS = Map.of(
+            "S", "#e74c3c",
+            "A", "#9b59b6",
+            "B", "#3498db",
+            "C", "#2ecc71",
+            "D", "#95a5a6"
+    );
 
     private final HeroRepository heroRepository;
 
@@ -44,6 +59,58 @@ public class HeroContentDataService {
     @Transactional(readOnly = true)
     public Object enrichForResponse(Object contentData) {
         return transformKnownHeroContent(contentData, loadCatalog(), true);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> generateOfficialTierListFromHeroScores() {
+        Map<String, List<List<Map<String, Object>>>> cellsByTier = new LinkedHashMap<>();
+        for (String tier : OFFICIAL_SCORE_TIER_ORDER) {
+            List<List<Map<String, Object>>> roleCells = new ArrayList<>();
+            for (int index = 0; index < OFFICIAL_IMPORT_ROLE_ORDER.size(); index++) {
+                roleCells.add(new ArrayList<>());
+            }
+            cellsByTier.put(tier, roleCells);
+        }
+
+        heroRepository.findAllWithRolesAndAttributes().stream()
+                .sorted(Comparator
+                        .comparing((Hero hero) -> normalizeBanPickScore(hero.getBanPickScore()))
+                        .reversed()
+                        .thenComparing(hero -> StringUtils.hasText(hero.getName()) ? hero.getName() : "", String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(hero -> hero.getId() != null ? hero.getId() : Long.MAX_VALUE))
+                .forEach(hero -> {
+                    String tier = resolveTierFromBanPickScore(hero.getBanPickScore());
+                    int roleIndex = resolveOfficialTierListRoleIndex(hero);
+                    if (roleIndex < 0) {
+                        return;
+                    }
+                    cellsByTier.get(tier).get(roleIndex).add(buildHeroStorageRef(hero));
+                });
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("columns", buildOfficialImportColumns());
+        result.put("rows", OFFICIAL_SCORE_TIER_ORDER.stream()
+                .map(tier -> buildOfficialScoreTierRow(tier, cellsByTier.get(tier)))
+                .toList());
+        result.put("source", "HERO_BAN_PICK_SCORE");
+        return result;
+    }
+
+    public String resolveTierFromBanPickScore(BigDecimal score) {
+        BigDecimal normalizedScore = normalizeBanPickScore(score);
+        if (normalizedScore.compareTo(SCORE_THRESHOLD_S) > 0) {
+            return "S";
+        }
+        if (normalizedScore.compareTo(SCORE_THRESHOLD_A) > 0) {
+            return "A";
+        }
+        if (normalizedScore.compareTo(SCORE_THRESHOLD_B) > 0) {
+            return "B";
+        }
+        if (normalizedScore.compareTo(SCORE_THRESHOLD_C) > 0) {
+            return "C";
+        }
+        return "D";
     }
 
     private Object transformKnownHeroContent(Object contentData, Catalog catalog, boolean enrich) {
@@ -232,6 +299,20 @@ public class HeroContentDataService {
         return result;
     }
 
+    private Map<String, Object> buildHeroStorageRef(Hero hero) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("heroId", hero.getId());
+        return result;
+    }
+
+    private Map<String, Object> buildOfficialScoreTierRow(String label, List<List<Map<String, Object>>> cells) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("label", label);
+        row.put("color", OFFICIAL_SCORE_TIER_COLORS.getOrDefault(label, "#95a5a6"));
+        row.put("cells", cells != null ? cells : List.of());
+        return row;
+    }
+
     private Object rebuildOfficialTierListByPrimaryRole(Object contentData, Catalog catalog) {
         if (!(contentData instanceof Map<?, ?> map) || !(map.get("rows") instanceof List<?> rows)) {
             return contentData;
@@ -289,6 +370,29 @@ public class HeroContentDataService {
                 .orElse(-1);
     }
 
+    private int resolveOfficialTierListRoleIndex(Hero hero) {
+        String roleCode = resolveOfficialTierListRoleCode(hero);
+        return StringUtils.hasText(roleCode) ? OFFICIAL_IMPORT_ROLE_ORDER.indexOf(roleCode) : -1;
+    }
+
+    private String resolveOfficialTierListRoleCode(Hero hero) {
+        if (hero == null) {
+            return "";
+        }
+
+        String primaryRoleCode = normalizeRoleCode(hero.getPrimaryRole() != null ? hero.getPrimaryRole().getCode() : null);
+        if (StringUtils.hasText(primaryRoleCode)) {
+            return primaryRoleCode;
+        }
+
+        return HeroSummaryDto.subRoleEntities(hero).stream()
+                .map(HeroRole::getCode)
+                .map(this::normalizeRoleCode)
+                .filter(StringUtils::hasText)
+                .findFirst()
+                .orElse("");
+    }
+
     private String normalizeRoleCode(String roleCode) {
         if (!StringUtils.hasText(roleCode)) {
             return "";
@@ -335,6 +439,13 @@ public class HeroContentDataService {
                 .replace('Đ', 'D')
                 .replaceAll("\\p{M}", "")
                 .toLowerCase(Locale.ROOT);
+    }
+
+    private BigDecimal normalizeBanPickScore(BigDecimal score) {
+        if (score == null || score.signum() < 0) {
+            return BigDecimal.ZERO;
+        }
+        return score;
     }
 
     private record Catalog(Map<Long, Hero> byId, Map<String, Hero> byName, Map<String, Hero> bySlug) {

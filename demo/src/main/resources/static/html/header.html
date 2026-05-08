@@ -11,7 +11,28 @@
             <div class="hidden md:flex space-x-6 items-center h-full">
                 <!-- Using data-page attributes for header-loader.js to highlight -->
                 <a href="/html/index.html" data-page="index" class="text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent">Home</a>
-                <a href="/html/tier-list.html" data-page="tier-list" class="text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent">Tier List</a>
+                <div class="nav-dropdown">
+                    <button type="button" data-page="tier-list" class="nav-dropdown-trigger text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent" aria-haspopup="true" aria-expanded="false">
+                        <span>Tier List</span>
+                        <svg class="nav-dropdown-caret" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 011.08 1.04l-4.25 4.51a.75.75 0 01-1.08 0l-4.25-4.51a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <div class="nav-dropdown-menu" role="menu" aria-label="Tier List pages">
+                        <a href="/tier-list" data-page="tier-list-meta" class="nav-dropdown-item" role="menuitem">
+                            <strong>Tier List Meta</strong>
+                            <small>Trang gốc gồm meta chính thức và 6 tier list cộng đồng nổi bật.</small>
+                        </a>
+                        <a href="/tier-list/all" data-page="tier-list-all" class="nav-dropdown-item" role="menuitem">
+                            <strong>Tất cả tier list</strong>
+                            <small>Xem toàn bộ community tier list đang có trên ATG Academy.</small>
+                        </a>
+                        <a href="/tier-list/mine" data-page="tier-list-mine" class="nav-dropdown-item" role="menuitem">
+                            <strong>Tier list bản thân</strong>
+                            <small>Xem nhanh các tier list cộng đồng do chính bạn tạo.</small>
+                        </a>
+                    </div>
+                </div>
                 <div class="nav-dropdown">
                     <button type="button" data-page="ban-pick" class="nav-dropdown-trigger text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent" aria-haspopup="true" aria-expanded="false">
                         <span>Ban/Pick</span>
@@ -36,6 +57,7 @@
                 </div>
                 <a href="/html/giao-an.html" data-page="giao-an" class="text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent">Tactics & Guides</a>
                 <a href="/html/esports.html" data-page="esports" class="text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent">Esports</a>
+                <a href="/esports/data" data-page="esports-data" class="text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent">Esports Data</a>
                 <a href="/html/wiki.html" data-page="wiki" class="text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent">Wiki</a>
             </div>
             
