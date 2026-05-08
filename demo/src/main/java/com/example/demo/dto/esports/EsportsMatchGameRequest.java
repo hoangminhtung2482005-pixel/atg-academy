@@ -5,6 +5,7 @@ public record EsportsMatchGameRequest(
         Long blueTeamId,
         Long redTeamId,
         Long winnerTeamId,
-        Integer durationSeconds
+        Integer durationSeconds,
+        Long draftFormatId
 ) {
 }

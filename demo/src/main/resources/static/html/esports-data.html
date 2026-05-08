@@ -4,188 +4,369 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Esports Data - ATG Academy</title>
-    <meta name="description" content="Thong ke pick/ban draft esports theo giai dau tren ATG Academy. Theo doi Hero Statistics, top hero bi cam nhieu nhat va ap luc ban ben xanh tu du lieu draft da luu.">
+    <meta name="description" content="Dashboard analytics draft/esports tren ATG Academy: KPI overview, side advantage, meta insights, top bans va Hero Statistics theo giai dau, doi tuyen va khoang ngay.">
     <link rel="stylesheet" href="/css/style.css?v=20260507-css-modules">
-    <link rel="stylesheet" href="/css/esports.css?v=20260508-esports-data">
+    <link rel="stylesheet" href="/css/esports.css?v=20260509-esports-analytics-dashboard">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
-<body>
+<body class="esports-analytics-body">
     <div id="header-placeholder"></div>
 
     <main class="esports-page esports-data-page">
-        <section class="esports-hero section-shell" aria-labelledby="esports-data-hero-title">
-            <div class="esports-hero-card">
-                <div class="hero-copy">
-                    <span class="eyebrow">ESPORTS DATA</span>
-                    <h1 id="esports-data-hero-title">Draft Hero Analytics</h1>
-                    <p>
-                        Tong hop du lieu draft esports da luu trong database de theo doi hero duoc PICK, BAN
-                        va hien dien nhieu nhat theo tung giai dau. Khi chua chon giai dau, trang nay dung
-                        toan bo du lieu draft hien co.
-                    </p>
-                    <div class="hero-tags" aria-label="Chi so thong ke">
-                        <span>Hero Statistics</span>
-                        <span>Top BAN</span>
-                        <span>Draft Only</span>
-                    </div>
-                    <div class="hero-actions">
-                        <a class="primary-action" href="#esports-data-dashboard">Xem thong ke</a>
-                        <a class="back-pill" href="/html/esports.html">Quay lai Esports</a>
+        <section class="analytics-shell" id="esports-data-dashboard" aria-labelledby="analytics-dashboard-title">
+            <aside class="analytics-sidebar" aria-label="Sidebar analytics">
+                <div class="analytics-brand">
+                    <span class="analytics-brand-mark">ATG</span>
+                    <div class="analytics-brand-copy">
+                        <strong>ATG Analytics</strong>
+                        <span>AoV Analytics dashboard</span>
                     </div>
                 </div>
 
-                <div class="hero-visual-card esports-data-visual" aria-label="Esports Data visual">
-                    <img src="/images/backgrounds/aer-bg-3.png" alt="Esports Data overview" onerror="this.onerror=null;this.src='/images/backgrounds/aer-bg.png';">
-                </div>
-            </div>
-        </section>
-
-        <section class="esports-data-section section-shell" id="esports-data-dashboard" aria-labelledby="esports-data-title">
-            <div class="data-toolbar">
-                <div class="section-heading data-heading">
-                    <div>
-                        <h2 id="esports-data-title">Esports Data</h2>
-                        <p id="esports-data-note">Dang tai du lieu draft esports...</p>
-                    </div>
-                    <span class="data-scope-pill" id="data-scope-pill">Tat ca du lieu draft</span>
+                <div class="analytics-sidebar-card">
+                    <span class="analytics-sidebar-kicker">Live Scope</span>
+                    <strong id="sidebar-scope-label">Toàn bộ dữ liệu draft</strong>
+                    <p id="sidebar-scope-note">Trang này đang tổng hợp toàn bộ dữ liệu draft esports hiện có trong hệ thống.</p>
                 </div>
 
-                <label class="data-filter" for="tournament-filter">
-                    <span>Giai dau</span>
-                    <select id="tournament-filter" aria-label="Loc theo giai dau">
-                        <option value="">Tat ca du lieu draft</option>
-                    </select>
-                </label>
-            </div>
-
-            <div class="data-state" id="data-state" hidden></div>
-
-            <article class="stats-panel hero-stats-panel" aria-labelledby="hero-stats-title">
-                <div class="stats-panel-header hero-stats-header">
-                    <div>
-                        <h3 id="hero-stats-title">Hero Statistics</h3>
-                        <p id="hero-stats-summary">Dang tong hop du lieu PICK/BAN theo hero...</p>
+                <nav class="analytics-nav" aria-label="Analytics sections">
+                    <div class="analytics-nav-group">
+                        <p>ANALYTICS</p>
+                        <a class="analytics-nav-item is-active" href="/esports/data" aria-current="page">Dashboard</a>
+                        <button type="button" class="analytics-nav-item is-disabled" disabled aria-disabled="true">Thêm trận</button>
+                        <a class="analytics-nav-item" href="/html/wiki.html">Tướng</a>
+                        <button type="button" class="analytics-nav-item is-disabled" disabled aria-disabled="true">Lịch sử</button>
                     </div>
 
-                    <div class="hero-stats-toolbar">
-                        <span class="hero-stats-toolbar-label">Sap xep bang</span>
-                        <div class="hero-stats-toolbar-controls">
-                            <div class="hero-stats-sort-pills" id="hero-stats-sort-pills" aria-label="Tuy chon sap xep Hero Statistics">
-                                <button type="button" class="hero-sort-pill is-active" data-sort-key="presenceCount">Picks &amp; Bans Σ</button>
-                                <button type="button" class="hero-sort-pill" data-sort-key="pickCount">Picks Σ</button>
-                                <button type="button" class="hero-sort-pill" data-sort-key="pickWinRate">Picks WR</button>
-                                <button type="button" class="hero-sort-pill" data-sort-key="banCount">Bans Σ</button>
-                            </div>
-                            <button type="button" class="hero-sort-direction" id="hero-sort-direction" aria-label="Doi chieu sap xep">Giam dan</button>
+                    <div class="analytics-nav-group">
+                        <p>TOOLS</p>
+                        <a class="analytics-nav-item" href="/html/ban-pick-standard.html">Draft Room</a>
+                        <a class="analytics-nav-item" href="/html/tier-list.html">Meta Settings</a>
+                    </div>
+
+                    <div class="analytics-nav-group">
+                        <p>SYSTEM</p>
+                        <button type="button" class="analytics-nav-item is-disabled" disabled aria-disabled="true">Dữ liệu</button>
+                        <button type="button" class="analytics-nav-item is-disabled" disabled aria-disabled="true">Cài đặt</button>
+                    </div>
+                </nav>
+
+                <div class="analytics-sidebar-footer">
+                    <span>Nguồn dữ liệu</span>
+                    <small>`esports_matches`, `esports_match_games`, `esports_match_draft_actions`, `heroes.ban_pick_score`</small>
+                </div>
+            </aside>
+
+            <div class="analytics-main">
+                <header class="dashboard-panel analytics-header-card">
+                    <div class="analytics-header-copy">
+                        <span class="analytics-header-kicker">ESPORTS DATA HUB</span>
+                        <h1 id="analytics-dashboard-title">Draft Analytics Dashboard</h1>
+                        <p>
+                            Trung tâm phân tích dữ liệu draft/esports của ATG Academy. Mọi KPI, biểu đồ, meta
+                            insights và Hero Statistics đều đọc trực tiếp từ dữ liệu draft đã lưu trong database.
+                        </p>
+                        <div class="analytics-header-tags" aria-label="Dashboard capabilities">
+                            <span>KPI theo ván</span>
+                            <span>Side Advantage</span>
+                            <span>Meta Insights</span>
+                            <span>Hero Statistics</span>
                         </div>
                     </div>
-                </div>
 
-                <div class="stats-table-scroll hero-stats-scroll">
-                    <table class="stats-table hero-stats-table">
-                        <thead>
-                        <tr class="hero-stats-group-row">
-                            <th rowspan="2">Hero</th>
-                            <th colspan="4">Picks</th>
-                            <th colspan="4">Blue side</th>
-                            <th colspan="4">Red side</th>
-                            <th>Bans</th>
-                            <th>Picks &amp; Bans</th>
-                        </tr>
-                        <tr class="hero-stats-subhead-row">
-                            <th>Σ</th>
-                            <th>W</th>
-                            <th>L</th>
-                            <th>WR</th>
-                            <th>Σ</th>
-                            <th>W</th>
-                            <th>L</th>
-                            <th>WR</th>
-                            <th>Σ</th>
-                            <th>W</th>
-                            <th>L</th>
-                            <th>WR</th>
-                            <th>Σ</th>
-                            <th>Σ</th>
-                        </tr>
-                        </thead>
-                        <tbody id="hero-stats-body">
-                        <tr class="stats-empty-row">
-                            <td colspan="15">Dang tai du lieu...</td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </article>
+                    <div class="analytics-header-visual">
+                        <img src="/images/backgrounds/aer-bg-3.png" alt="Esports analytics preview" onerror="this.onerror=null;this.src='/images/backgrounds/aer-bg.png';">
+                        <div class="analytics-header-visual-copy">
+                            <strong id="current-scope-label">Toàn bộ dữ liệu draft</strong>
+                            <p id="current-scope-note">Đang tổng hợp dữ liệu esports draft trên toàn bộ hệ thống.</p>
+                        </div>
+                    </div>
+                </header>
 
-            <div class="esports-data-grid">
-                <article class="stats-panel" aria-labelledby="top-banned-title">
-                    <div class="stats-panel-header">
+                <section class="dashboard-panel analytics-filter-panel" aria-labelledby="analytics-filter-title">
+                    <div class="analytics-panel-head">
                         <div>
-                            <h3 id="top-banned-title">Top 5 tuong bi BAN nhieu nhat</h3>
-                            <p id="top-banned-summary">Chi tinh cac draft action co actionType = BAN.</p>
+                            <span class="analytics-panel-kicker">FILTER BAR</span>
+                            <h2 id="analytics-filter-title">Dashboard Controls</h2>
+                            <p>Bộ lọc này áp dụng đồng thời cho overview cards, biểu đồ, insights, Hero Statistics và các panel top ban.</p>
+                        </div>
+                        <div class="analytics-volume-card">
+                            <strong id="analysis-volume">0 trận · 0 ván</strong>
+                            <span id="analysis-volume-note">Đang chờ dữ liệu analytics.</span>
                         </div>
                     </div>
 
-                    <div class="stats-table-scroll">
-                        <table class="stats-table">
+                    <div class="analytics-filter-grid">
+                        <label class="analytics-filter-field" for="tournament-filter">
+                            <span>Giải đấu</span>
+                            <select id="tournament-filter" aria-label="Lọc theo giải đấu">
+                                <option value="">Tất cả giải đấu</option>
+                            </select>
+                        </label>
+
+                        <label class="analytics-filter-field" for="team-filter">
+                            <span>Đội tuyển</span>
+                            <select id="team-filter" aria-label="Lọc theo đội tuyển" disabled>
+                                <option value="">Tất cả đội tuyển</option>
+                            </select>
+                        </label>
+
+                        <label class="analytics-filter-field" for="date-from-filter">
+                            <span>Từ ngày</span>
+                            <input id="date-from-filter" type="date" aria-label="Lọc từ ngày">
+                        </label>
+
+                        <label class="analytics-filter-field" for="date-to-filter">
+                            <span>Đến ngày</span>
+                            <input id="date-to-filter" type="date" aria-label="Lọc đến ngày">
+                        </label>
+
+                    </div>
+
+                    <div class="analytics-filter-actions">
+                        <button type="button" class="analytics-reset-button" id="filter-reset-button">Đặt lại bộ lọc</button>
+                        <span class="analytics-filter-caption">Bộ lọc hiện đồng bộ cho toàn bộ KPI, chart, insight, top bans và Hero Statistics.</span>
+                    </div>
+                </section>
+
+                <div class="data-state" id="data-state" hidden></div>
+
+                <section class="analytics-kpi-grid" aria-label="Analytics overview cards">
+                    <article class="analytics-kpi-card">
+                        <span class="analytics-kpi-label">Tổng ván</span>
+                        <strong id="kpi-total-games">0</strong>
+                        <p id="kpi-total-games-note">0 trận đang được phân tích.</p>
+                    </article>
+
+                    <article class="analytics-kpi-card">
+                        <span class="analytics-kpi-label">Tướng trong meta</span>
+                        <strong id="kpi-meta-champions">0</strong>
+                        <p id="kpi-meta-champions-note">Số hero có PICK hoặc BAN trong phạm vi hiện tại.</p>
+                    </article>
+
+                    <article class="analytics-kpi-card">
+                        <span class="analytics-kpi-label">Blue Side WR</span>
+                        <strong id="kpi-blue-wr">0%</strong>
+                        <p id="kpi-blue-wr-note">Chỉ tính các game đã có winner_team_id.</p>
+                    </article>
+
+                    <article class="analytics-kpi-card">
+                        <span class="analytics-kpi-label">Độ chính xác draft</span>
+                        <strong id="kpi-draft-accuracy">Chưa đủ dữ liệu</strong>
+                        <p id="kpi-draft-accuracy-note">So sánh đội có tổng ban_pick_score PICK cao hơn với winner thực tế.</p>
+                    </article>
+                </section>
+
+                <section class="analytics-two-column" aria-label="Charts and side advantage">
+                    <article class="dashboard-panel analytics-chart-panel" aria-labelledby="match-activity-title">
+                        <div class="analytics-panel-head">
+                            <div>
+                                <span class="analytics-panel-kicker">ACTIVITY</span>
+                                <h2 id="match-activity-title">Match Activity</h2>
+                                <p id="match-activity-summary">Hoạt động trận/ván theo ngày trong phạm vi filter hiện tại.</p>
+                            </div>
+                        </div>
+                        <div class="activity-chart" id="activity-chart">
+                            <div class="dashboard-empty">
+                                <strong>Đang tải dữ liệu...</strong>
+                                <p>Biểu đồ hoạt động đang chờ phản hồi từ API analytics.</p>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="dashboard-panel analytics-side-panel" aria-labelledby="side-advantage-title">
+                        <div class="analytics-panel-head">
+                            <div>
+                                <span class="analytics-panel-kicker">SIDE ADVANTAGE</span>
+                                <h2 id="side-advantage-title">BLUE vs RED</h2>
+                                <p id="side-advantage-summary">Tỷ lệ thắng được tính từ game winner thực tế của hai bên.</p>
+                            </div>
+                        </div>
+                        <div class="side-advantage-panel" id="side-advantage-panel">
+                            <div class="dashboard-empty">
+                                <strong>Đang tải dữ liệu...</strong>
+                                <p>Hệ thống đang tính BLUE/RED win rate.</p>
+                            </div>
+                        </div>
+                    </article>
+                </section>
+
+                <section class="analytics-insights-grid" aria-label="Meta insights">
+                    <article class="dashboard-panel analytics-list-panel" aria-labelledby="power-picks-title">
+                        <div class="analytics-panel-head">
+                            <div>
+                                <span class="analytics-panel-kicker">META INSIGHTS</span>
+                                <h2 id="power-picks-title">Power Picks</h2>
+                                <p id="power-picks-summary">Hero có đủ mẫu PICK và win rate cao nhất trong filter hiện tại.</p>
+                            </div>
+                        </div>
+                        <div class="stats-list" id="power-picks-list">
+                            <div class="dashboard-empty">
+                                <strong>Đang tải dữ liệu...</strong>
+                                <p>Đang phân tích các hero có hiệu suất PICK tốt nhất.</p>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="dashboard-panel analytics-list-panel" aria-labelledby="trap-picks-title">
+                        <div class="analytics-panel-head">
+                            <div>
+                                <span class="analytics-panel-kicker">META INSIGHTS</span>
+                                <h2 id="trap-picks-title">Trap Picks</h2>
+                                <p id="trap-picks-summary">Hero có đủ mẫu PICK nhưng win rate thấp, cần cẩn trọng khi draft.</p>
+                            </div>
+                        </div>
+                        <div class="stats-list" id="trap-picks-list">
+                            <div class="dashboard-empty">
+                                <strong>Đang tải dữ liệu...</strong>
+                                <p>Đang nhận diện các trap pick trong meta hiện tại.</p>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="dashboard-panel analytics-list-panel" aria-labelledby="top-teams-title">
+                        <div class="analytics-panel-head">
+                            <div>
+                                <span class="analytics-panel-kicker">META INSIGHTS</span>
+                                <h2 id="top-teams-title">Top Teams</h2>
+                                <p id="top-teams-summary">Đội có tỷ lệ thắng cao nhất theo game winners trong phạm vi hiện tại.</p>
+                            </div>
+                        </div>
+                        <div class="stats-list" id="top-teams-list">
+                            <div class="dashboard-empty">
+                                <strong>Đang tải dữ liệu...</strong>
+                                <p>Đang tổng hợp hiệu suất đội tuyển từ kết quả từng ván.</p>
+                            </div>
+                        </div>
+                    </article>
+                </section>
+
+                <article class="dashboard-panel hero-stats-panel" aria-labelledby="hero-stats-title">
+                    <div class="stats-panel-header hero-stats-header">
+                        <div>
+                            <span class="analytics-panel-kicker">TABLE</span>
+                            <h2 id="hero-stats-title">Hero Statistics</h2>
+                            <p id="hero-stats-summary">Đang tổng hợp dữ liệu PICK/BAN theo hero...</p>
+                        </div>
+
+                        <div class="hero-stats-toolbar">
+                            <span class="hero-stats-toolbar-label">Sắp xếp bảng</span>
+                            <div class="hero-stats-toolbar-controls">
+                                <div class="hero-stats-sort-pills" id="hero-stats-sort-pills" aria-label="Tùy chọn sắp xếp Hero Statistics">
+                                    <button type="button" class="hero-sort-pill is-active" data-sort-key="presenceCount">Picks &amp; Bans &Sigma;</button>
+                                    <button type="button" class="hero-sort-pill" data-sort-key="pickCount">Picks &Sigma;</button>
+                                    <button type="button" class="hero-sort-pill" data-sort-key="pickWinRate">Picks WR</button>
+                                    <button type="button" class="hero-sort-pill" data-sort-key="banCount">Bans &Sigma;</button>
+                                </div>
+                                <button type="button" class="hero-sort-direction" id="hero-sort-direction" aria-label="Đổi chiều sắp xếp">Giảm dần</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stats-table-scroll hero-stats-scroll">
+                        <table class="stats-table hero-stats-table">
                             <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Tuong</th>
-                                <th>Luot cam</th>
-                                <th>Giai dau</th>
+                            <tr class="hero-stats-group-row">
+                                <th rowspan="2" class="hero-stats-divider">Hero</th>
+                                <th colspan="4" class="hero-stats-divider">Picks</th>
+                                <th colspan="4" class="hero-stats-divider">Blue Side Picks</th>
+                                <th colspan="4" class="hero-stats-divider">Red Side Picks</th>
+                                <th colspan="3" class="hero-stats-divider">Bans</th>
+                                <th>Picks &amp; Bans</th>
+                            </tr>
+                            <tr class="hero-stats-subhead-row">
+                                <th>&Sigma;</th>
+                                <th>W</th>
+                                <th>L</th>
+                                <th class="hero-stats-divider">WR</th>
+                                <th>&Sigma;</th>
+                                <th>W</th>
+                                <th>L</th>
+                                <th class="hero-stats-divider">WR</th>
+                                <th>&Sigma;</th>
+                                <th>W</th>
+                                <th>L</th>
+                                <th class="hero-stats-divider">WR</th>
+                                <th>&Sigma;</th>
+                                <th>Blue</th>
+                                <th class="hero-stats-divider">Red</th>
+                                <th>&Sigma;</th>
                             </tr>
                             </thead>
-                            <tbody id="top-banned-body">
+                            <tbody id="hero-stats-body">
                             <tr class="stats-empty-row">
-                                <td colspan="4">Dang tai du lieu...</td>
+                                <td colspan="17">Đang tải dữ liệu...</td>
                             </tr>
                             </tbody>
                         </table>
                     </div>
                 </article>
 
-                <article class="stats-panel stats-panel-feature" aria-labelledby="top-blue-title">
-                    <div class="stats-panel-header">
-                        <div>
-                            <h3 id="top-blue-title">Tuong bi BAN nhieu nhat ben Xanh</h3>
-                            <p id="top-blue-summary">Chi tinh actionType = BAN va teamSide = BLUE.</p>
+                <section class="analytics-ban-grid" aria-label="Top ban sections">
+                    <article class="dashboard-panel analytics-list-panel" aria-labelledby="top-banned-title">
+                        <div class="analytics-panel-head">
+                            <div>
+                                <span class="analytics-panel-kicker">BAN INSIGHTS</span>
+                                <h2 id="top-banned-title">Top 5 tướng bị cấm nhiều nhất</h2>
+                                <p id="top-banned-summary">Chỉ tính các lượt cấm có actionType = BAN.</p>
+                            </div>
                         </div>
-                    </div>
+                        <div class="stats-list" id="top-banned-list">
+                            <div class="dashboard-empty">
+                                <strong>Đang tải dữ liệu...</strong>
+                                <p>Đang tổng hợp top tướng bị cấm nhiều nhất.</p>
+                            </div>
+                        </div>
+                    </article>
 
-                    <div class="top-blue-hero" id="top-blue-hero">
-                        <div class="stats-empty-card">
-                            <strong>Dang tai du lieu...</strong>
-                            <p>He thong dang lay thong ke draft ben xanh.</p>
+                    <article class="dashboard-panel analytics-list-panel" aria-labelledby="top-blue-title">
+                        <div class="analytics-panel-head">
+                            <div>
+                                <span class="analytics-panel-kicker">BAN INSIGHTS</span>
+                                <h2 id="top-blue-title">Tướng bị cấm nhiều nhất bởi bên Xanh</h2>
+                                <p id="top-blue-summary">Chỉ tính action_type = BAN và team_side = BLUE.</p>
+                            </div>
                         </div>
-                    </div>
-                </article>
+                        <div class="top-blue-hero" id="top-blue-hero">
+                            <div class="dashboard-empty">
+                                <strong>Đang tải dữ liệu...</strong>
+                                <p>Đang kiểm tra tướng chịu áp lực cấm lớn nhất từ bên Xanh.</p>
+                            </div>
+                        </div>
+                    </article>
+                </section>
             </div>
         </section>
     </main>
 
-    <footer class="esports-footer">
-        <span>&copy; 2026 ATG Academy. Nen tang esports chuyen sau.</span>
-        <span id="data-last-updated">Dang tai du lieu...</span>
+    <footer class="esports-footer esports-data-footer">
+        <span>&copy; 2026 ATG Academy. Dashboard analytics draft/esports.</span>
+        <span id="data-last-updated">Đang tải dữ liệu...</span>
     </footer>
 
     <script>
         const DATA_API = {
             tournaments: '/api/esports/data/tournaments',
-            topBanned: '/api/esports/data/top-banned-heroes',
-            topBlueBanned: '/api/esports/data/top-blue-banned-heroes',
-            heroStats: '/api/esports/data/hero-stats'
+            dashboard: '/api/esports/data/dashboard'
         };
 
-        const DEFAULT_SCOPE_LABEL = 'Tat ca du lieu draft';
+        const DEFAULT_SCOPE_LABEL = 'Toàn bộ dữ liệu draft';
+        const ALL_TOURNAMENTS_LABEL = 'Tất cả giải đấu';
+        const ALL_TEAMS_LABEL = 'Tất cả đội tuyển';
         const HERO_AVATAR_FALLBACK = '/images/ui/default.png';
+        const TEAM_LOGO_FALLBACK = '/images/ui/logo.png';
+        const TOTAL_SYMBOL = '\u03A3';
         const HERO_STATS_SORT_OPTIONS = {
-            presenceCount: 'Picks & Bans Σ',
-            pickCount: 'Picks Σ',
+            presenceCount: 'Picks & Bans ' + TOTAL_SYMBOL,
+            pickCount: 'Picks ' + TOTAL_SYMBOL,
             pickWinRate: 'Picks WR',
-            banCount: 'Bans Σ'
+            banCount: 'Bans ' + TOTAL_SYMBOL
+        };
+
+        const dashboardState = {
+            requestId: 0,
+            payload: null
         };
 
         const heroStatsState = {
@@ -229,22 +410,6 @@
             return payload;
         }
 
-        function getTournamentFilter() {
-            return document.getElementById('tournament-filter');
-        }
-
-        function getSelectedTournamentName() {
-            const filter = getTournamentFilter();
-            return filter ? String(filter.value || '').trim() : '';
-        }
-
-        function getSelectedScopeLabel() {
-            const filter = getTournamentFilter();
-            if (!filter) return DEFAULT_SCOPE_LABEL;
-            const option = filter.options[filter.selectedIndex];
-            return option ? option.textContent.trim() : DEFAULT_SCOPE_LABEL;
-        }
-
         function safeNumber(value) {
             const parsed = Number(value);
             return Number.isFinite(parsed) ? parsed : 0;
@@ -262,21 +427,18 @@
             }) + '%';
         }
 
-        function updateScopeCopy() {
-            const scopeLabel = getSelectedScopeLabel();
-            const hasTournamentFilter = getSelectedTournamentName() !== '';
-            const scopePill = document.getElementById('data-scope-pill');
-            const note = document.getElementById('esports-data-note');
+        function formatFullDate(value) {
+            if (!value) return '';
+            const date = new Date(value + 'T00:00:00');
+            if (Number.isNaN(date.getTime())) return value;
+            return date.toLocaleDateString('vi-VN');
+        }
 
-            if (scopePill) {
-                scopePill.textContent = scopeLabel;
-            }
-
-            if (note) {
-                note.textContent = hasTournamentFilter
-                    ? 'Dang loc du lieu draft theo ' + scopeLabel + '.'
-                    : 'Dang tong hop toan bo du lieu draft esports hien co trong database.';
-            }
+        function formatShortDate(value) {
+            if (!value) return '';
+            const date = new Date(value + 'T00:00:00');
+            if (Number.isNaN(date.getTime())) return value;
+            return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
         }
 
         function setPageState(type, message) {
@@ -295,16 +457,97 @@
             state.textContent = message;
         }
 
+        function getTournamentFilter() {
+            return document.getElementById('tournament-filter');
+        }
+
+        function getTeamFilter() {
+            return document.getElementById('team-filter');
+        }
+
+        function getDateFromFilter() {
+            return document.getElementById('date-from-filter');
+        }
+
+        function getDateToFilter() {
+            return document.getElementById('date-to-filter');
+        }
+
+        function getCurrentFilters() {
+            const tournamentFilter = getTournamentFilter();
+            const teamFilter = getTeamFilter();
+            const dateFromFilter = getDateFromFilter();
+            const dateToFilter = getDateToFilter();
+
+            return {
+                tournamentName: tournamentFilter ? String(tournamentFilter.value || '').trim() : '',
+                teamCode: teamFilter ? String(teamFilter.value || '').trim() : '',
+                dateFrom: dateFromFilter ? String(dateFromFilter.value || '').trim() : '',
+                dateTo: dateToFilter ? String(dateToFilter.value || '').trim() : ''
+            };
+        }
+
+        function getSelectedOptionLabel(select) {
+            if (!select || !select.value) return '';
+            const option = select.options[select.selectedIndex];
+            return option ? option.textContent.trim() : '';
+        }
+
+        function buildScopeLabel(filters) {
+            const scopeParts = [];
+            const tournamentLabel = getSelectedOptionLabel(getTournamentFilter());
+            const teamLabel = getSelectedOptionLabel(getTeamFilter());
+
+            if (tournamentLabel) scopeParts.push(tournamentLabel);
+            if (teamLabel) scopeParts.push(teamLabel);
+
+            if (filters.dateFrom || filters.dateTo) {
+                if (filters.dateFrom && filters.dateTo) {
+                    scopeParts.push(formatFullDate(filters.dateFrom) + ' - ' + formatFullDate(filters.dateTo));
+                } else if (filters.dateFrom) {
+                    scopeParts.push('Từ ' + formatFullDate(filters.dateFrom));
+                } else {
+                    scopeParts.push('Đến ' + formatFullDate(filters.dateTo));
+                }
+            }
+
+            return scopeParts.length ? scopeParts.join(' · ') : DEFAULT_SCOPE_LABEL;
+        }
+
+        function updateScopeCopy(summary) {
+            const filters = getCurrentFilters();
+            const scopeLabel = buildScopeLabel(filters);
+            const hasSummary = summary && typeof summary.totalGames !== 'undefined';
+            const noteText = hasSummary
+                ? ('Đang phân tích ' + formatCount(summary.totalMatches) + ' trận và ' + formatCount(summary.totalGames) + ' ván trong phạm vi hiện tại.')
+                : 'Đang tổng hợp dữ liệu esports draft trên toàn bộ hệ thống.';
+
+            [
+                document.getElementById('current-scope-label'),
+                document.getElementById('sidebar-scope-label')
+            ].forEach(function(node) {
+                if (node) node.textContent = scopeLabel;
+            });
+
+            [
+                document.getElementById('current-scope-note'),
+                document.getElementById('sidebar-scope-note')
+            ].forEach(function(node) {
+                if (node) node.textContent = noteText;
+            });
+        }
+
         function renderTournamentFilter(tournaments) {
             const filter = getTournamentFilter();
             if (!filter) return;
 
             const previousValue = filter.value;
-            const options = ['<option value=\"\">' + DEFAULT_SCOPE_LABEL + '</option>']
+            const options = ['<option value=\"\">' + ALL_TOURNAMENTS_LABEL + '</option>']
                 .concat((Array.isArray(tournaments) ? tournaments : []).map(function(item) {
                     const tournamentName = item && item.tournamentName ? item.tournamentName : '';
+                    const tournamentValue = item && item.tournamentTier ? item.tournamentTier : tournamentName;
                     if (!tournamentName) return '';
-                    return '<option value=\"' + escapeHtml(tournamentName) + '\">' + escapeHtml(tournamentName) + '</option>';
+                    return '<option value=\"' + escapeHtml(tournamentValue) + '\">' + escapeHtml(tournamentName) + '</option>';
                 }))
                 .filter(Boolean)
                 .join('');
@@ -314,127 +557,232 @@
                 return option.value === previousValue;
             }) ? previousValue : '';
             filter.disabled = filter.options.length <= 1;
-            updateScopeCopy();
         }
 
-        function renderTopBannedLoading() {
-            const tbody = document.getElementById('top-banned-body');
-            const summary = document.getElementById('top-banned-summary');
+        function renderTeamFilter(teamOptions) {
+            const filter = getTeamFilter();
+            if (!filter) return false;
+
+            const previousValue = filter.value;
+            const options = ['<option value=\"\">' + ALL_TEAMS_LABEL + '</option>']
+                .concat((Array.isArray(teamOptions) ? teamOptions : []).map(function(item) {
+                    const teamCode = item && item.teamCode ? item.teamCode : '';
+                    const teamName = item && item.teamName ? item.teamName : teamCode;
+                    if (!teamCode) return '';
+                    return '<option value=\"' + escapeHtml(teamCode) + '\">' + escapeHtml(teamName) + '</option>';
+                }))
+                .filter(Boolean)
+                .join('');
+
+            filter.innerHTML = options;
+            const hasPreviousValue = Array.from(filter.options).some(function(option) {
+                return option.value === previousValue;
+            });
+            filter.value = hasPreviousValue ? previousValue : '';
+            filter.disabled = filter.options.length <= 1;
+
+            return previousValue !== '' && !hasPreviousValue;
+        }
+
+        function updateVolume(summary) {
+            const volume = document.getElementById('analysis-volume');
+            const note = document.getElementById('analysis-volume-note');
+            if (volume) {
+                volume.textContent = formatCount(summary.totalMatches) + ' trận · ' + formatCount(summary.totalGames) + ' ván';
+            }
+            if (note) {
+                note.textContent = summary.totalGames > 0
+                    ? 'Các panel bên dưới đang đọc cùng phạm vi dữ liệu này.'
+                    : 'Chưa có game nào khớp với bộ lọc hiện tại.';
+            }
+        }
+
+        function renderKpis(summary) {
+            document.getElementById('kpi-total-games').textContent = formatCount(summary.totalGames);
+            document.getElementById('kpi-total-games-note').textContent =
+                formatCount(summary.totalMatches) + ' trận đang được phân tích.';
+
+            document.getElementById('kpi-meta-champions').textContent = formatCount(summary.metaChampions);
+            document.getElementById('kpi-meta-champions-note').textContent =
+                'Hero có PICK hoặc BAN trong phạm vi hiện tại.';
+
+            document.getElementById('kpi-blue-wr').textContent = formatRate(summary.blueSideWinRate);
+            document.getElementById('kpi-blue-wr-note').textContent =
+                formatCount(summary.completedGames) + ' ván có winner được dùng để tính WR.';
+
+            const draftAccuracyNode = document.getElementById('kpi-draft-accuracy');
+            const draftAccuracyNote = document.getElementById('kpi-draft-accuracy-note');
+            if (summary.draftAccuracy === null || summary.draftAccuracy === undefined) {
+                draftAccuracyNode.textContent = 'Chưa đủ dữ liệu';
+                draftAccuracyNote.textContent = 'Cần đủ PICK data và ban_pick_score hợp lệ để tính dự đoán.';
+            } else {
+                draftAccuracyNode.textContent = formatRate(summary.draftAccuracy);
+                draftAccuracyNote.textContent =
+                    formatCount(summary.draftAccuracySampleSize) + ' ván đủ dữ liệu score được dùng để so sánh winner.';
+            }
+        }
+
+        function renderActivityChart(points) {
+            const host = document.getElementById('activity-chart');
+            const summary = document.getElementById('match-activity-summary');
+            const rows = Array.isArray(points) ? points : [];
+
             if (summary) {
-                summary.textContent = 'Dang tai thong ke BAN...';
+                summary.textContent = rows.length
+                    ? 'Biểu đồ số ván theo ngày trong phạm vi filter hiện tại.'
+                    : 'Không có dữ liệu hoạt động trận/ván trong phạm vi hiện tại.';
             }
-            if (tbody) {
-                tbody.innerHTML = '<tr class=\"stats-empty-row\"><td colspan=\"4\">Dang tai du lieu...</td></tr>';
+
+            if (!rows.length) {
+                host.innerHTML = '' +
+                    '<div class="dashboard-empty">' +
+                        '<strong>Chưa có dữ liệu activity</strong>' +
+                        '<p>Không tìm thấy trận hoặc ván nào phù hợp để dựng biểu đồ theo ngày.</p>' +
+                    '</div>';
+                return;
             }
+
+            const maxGames = rows.reduce(function(maxValue, item) {
+                return Math.max(maxValue, safeNumber(item.gameCount));
+            }, 0);
+
+            host.innerHTML = '' +
+                '<div class="activity-bars">' +
+                    rows.map(function(item) {
+                        const ratio = maxGames > 0 ? (safeNumber(item.gameCount) / maxGames) * 100 : 0;
+                        const barHeight = Math.max(14, Math.round(ratio));
+                        const title = formatFullDate(item.activityDate) + ': ' +
+                            formatCount(item.matchCount) + ' trận · ' + formatCount(item.gameCount) + ' ván';
+                        return '' +
+                            '<div class="activity-bar-group" title="' + escapeHtml(title) + '">' +
+                                '<span class="activity-bar-value">' + formatCount(item.gameCount) + '</span>' +
+                                '<div class="activity-bar-track">' +
+                                    '<div class="activity-bar-fill" style="height:' + barHeight + '%"></div>' +
+                                '</div>' +
+                                '<span class="activity-bar-label">' + escapeHtml(formatShortDate(item.activityDate)) + '</span>' +
+                            '</div>';
+                    }).join('') +
+                '</div>';
         }
 
-        function renderTopBanned(items) {
-            const tbody = document.getElementById('top-banned-body');
-            const summary = document.getElementById('top-banned-summary');
-            if (!tbody) return;
+        function renderSideAdvantage(sideAdvantage) {
+            const host = document.getElementById('side-advantage-panel');
+            const summary = document.getElementById('side-advantage-summary');
 
-            const scopeLabel = getSelectedScopeLabel();
+            if (!sideAdvantage || safeNumber(sideAdvantage.completedGames) <= 0) {
+                if (summary) {
+                    summary.textContent = 'Chưa có game winner phù hợp để tính BLUE/RED side advantage.';
+                }
+                host.innerHTML = '' +
+                    '<div class="dashboard-empty">' +
+                        '<strong>Chưa có side advantage</strong>' +
+                        '<p>BLUE và RED cần game đã có winner_team_id để hiển thị win rate thật.</p>' +
+                    '</div>';
+                return;
+            }
+
+            if (summary) {
+                summary.textContent = 'Tính trên ' + formatCount(sideAdvantage.completedGames) + ' ván đã có winner.';
+            }
+
+            host.innerHTML = '' +
+                '<div class="side-advantage-stats">' +
+                    '<div class="side-advantage-stat side-blue">' +
+                        '<span>BLUE</span>' +
+                        '<strong>' + formatRate(sideAdvantage.blueWinRate) + '</strong>' +
+                        '<small>' + formatCount(sideAdvantage.blueWins) + ' ván thắng</small>' +
+                    '</div>' +
+                    '<div class="side-advantage-stat side-red">' +
+                        '<span>RED</span>' +
+                        '<strong>' + formatRate(sideAdvantage.redWinRate) + '</strong>' +
+                        '<small>' + formatCount(sideAdvantage.redWins) + ' ván thắng</small>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="side-advantage-bar">' +
+                    '<div class="side-advantage-bar-blue" style="width:' + Math.max(0, Math.min(100, safeNumber(sideAdvantage.blueWinRate))) + '%"></div>' +
+                    '<div class="side-advantage-bar-red" style="width:' + Math.max(0, Math.min(100, safeNumber(sideAdvantage.redWinRate))) + '%"></div>' +
+                '</div>' +
+                '<div class="side-advantage-footnote">BLUE vs RED được tính trực tiếp từ winner_team_id so với blue_team_id/red_team_id.</div>';
+        }
+
+        function renderHeroInsightList(hostId, summaryId, items, emptyTitle, emptyText) {
+            const host = document.getElementById(hostId);
+            const summary = document.getElementById(summaryId);
             const rows = Array.isArray(items) ? items : [];
 
             if (summary) {
                 summary.textContent = rows.length
-                    ? 'Top ' + rows.length + ' hero bi cam nhieu nhat trong ' + scopeLabel + '.'
-                    : 'Chua co draft BAN phu hop trong ' + scopeLabel + '.';
+                    ? 'Top ' + rows.length + ' hero đủ mẫu PICK trong phạm vi hiện tại.'
+                    : emptyText;
             }
 
             if (!rows.length) {
-                tbody.innerHTML = '<tr class=\"stats-empty-row\"><td colspan=\"4\">Chua co du lieu draft BAN de thong ke.</td></tr>';
+                host.innerHTML = '' +
+                    '<div class="dashboard-empty">' +
+                        '<strong>' + escapeHtml(emptyTitle) + '</strong>' +
+                        '<p>' + escapeHtml(emptyText) + '</p>' +
+                    '</div>';
                 return;
             }
 
-            tbody.innerHTML = rows.map(function(item, index) {
+            host.innerHTML = rows.map(function(item, index) {
                 const heroName = item.heroName || ('Hero #' + item.heroId);
                 const heroAvatarUrl = item.heroAvatarUrl || HERO_AVATAR_FALLBACK;
-                const tournamentName = item.tournamentName || scopeLabel;
-
                 return '' +
-                    '<tr>' +
-                        '<td><span class=\"table-rank-pill\">' + (index + 1) + '</span></td>' +
-                        '<td>' +
-                            '<div class=\"hero-stat-cell\">' +
-                                '<img src=\"' + escapeHtml(heroAvatarUrl) + '\" alt=\"' + escapeHtml(heroName) + '\">' +
-                                '<div class=\"hero-stat-copy\">' +
+                    '<div class="stats-list-item">' +
+                        '<div class="stats-list-rank">' + (index + 1) + '</div>' +
+                        '<div class="stats-list-main">' +
+                            '<div class="hero-stat-cell">' +
+                                '<img src="' + escapeHtml(heroAvatarUrl) + '" alt="' + escapeHtml(heroName) + '">' +
+                                '<div class="hero-stat-copy">' +
                                     '<strong>' + escapeHtml(heroName) + '</strong>' +
-                                    '<span>Hero ID: ' + escapeHtml(item.heroId) + '</span>' +
+                                    '<span>Picks ' + formatCount(item.pickCount) + ' · W ' + formatCount(item.pickWins) + ' · L ' + formatCount(item.pickLosses) + '</span>' +
                                 '</div>' +
                             '</div>' +
-                        '</td>' +
-                        '<td><span class=\"count-pill\">' + formatCount(item.banCount) + '</span></td>' +
-                        '<td><span class=\"table-scope-pill\">' + escapeHtml(tournamentName) + '</span></td>' +
-                    '</tr>';
+                        '</div>' +
+                        '<div class="stats-list-metric">' + formatRate(item.pickWinRate) + '</div>' +
+                    '</div>';
             }).join('');
         }
 
-        function renderTopBlueHeroLoading() {
-            const host = document.getElementById('top-blue-hero');
-            const summary = document.getElementById('top-blue-summary');
-            if (summary) {
-                summary.textContent = 'Dang tai thong ke BLUE side BAN...';
-            }
-            if (host) {
-                host.innerHTML = '' +
-                    '<div class=\"stats-empty-card\">' +
-                        '<strong>Dang tai du lieu...</strong>' +
-                        '<p>He thong dang lay thong ke draft ben xanh.</p>' +
-                    '</div>';
-            }
-        }
-
-        function renderTopBlueHero(items) {
-            const host = document.getElementById('top-blue-hero');
-            const summary = document.getElementById('top-blue-summary');
-            if (!host) return;
-
-            const scopeLabel = getSelectedScopeLabel();
-            const topHero = Array.isArray(items) && items.length ? items[0] : null;
+        function renderTopTeams(items) {
+            const host = document.getElementById('top-teams-list');
+            const summary = document.getElementById('top-teams-summary');
+            const rows = Array.isArray(items) ? items : [];
 
             if (summary) {
-                summary.textContent = topHero
-                    ? 'Hero bi BLUE side cam nhieu nhat trong ' + scopeLabel + '.'
-                    : 'Chua co du lieu BLUE side BAN trong ' + scopeLabel + '.';
+                summary.textContent = rows.length
+                    ? 'Xếp hạng theo win rate từ game winners thực tế.'
+                    : 'Chưa đủ mẫu game winner để hiển thị Top Teams.';
             }
 
-            if (!topHero) {
+            if (!rows.length) {
                 host.innerHTML = '' +
-                    '<div class=\"stats-empty-card\">' +
-                        '<strong>Chua co du lieu BLUE side</strong>' +
-                        '<p>Khong tim thay draft action BAN cua ben xanh trong pham vi hien tai.</p>' +
+                    '<div class="dashboard-empty">' +
+                        '<strong>Chưa đủ mẫu Top Teams</strong>' +
+                        '<p>Cần thêm game winner hợp lệ để so sánh win rate giữa các đội tuyển.</p>' +
                     '</div>';
                 return;
             }
 
-            const heroName = topHero.heroName || ('Hero #' + topHero.heroId);
-            const heroAvatarUrl = topHero.heroAvatarUrl || HERO_AVATAR_FALLBACK;
-            const tournamentName = topHero.tournamentName || scopeLabel;
-
-            host.innerHTML = '' +
-                '<div class=\"top-blue-hero-head\">' +
-                    '<img class=\"top-blue-hero-avatar\" src=\"' + escapeHtml(heroAvatarUrl) + '\" alt=\"' + escapeHtml(heroName) + '\">' +
-                    '<div class=\"top-blue-hero-copy\">' +
-                        '<span class=\"feature-kicker\">Top BLUE BAN</span>' +
-                        '<h4>' + escapeHtml(heroName) + '</h4>' +
-                        '<p>Hero ID: ' + escapeHtml(topHero.heroId) + '</p>' +
-                    '</div>' +
-                '</div>' +
-                '<div class=\"top-blue-hero-metrics\">' +
-                    '<div class=\"metric-tile\">' +
-                        '<strong>' + formatCount(topHero.banCount) + '</strong>' +
-                        '<span>Luot cam</span>' +
-                    '</div>' +
-                    '<div class=\"metric-tile\">' +
-                        '<strong>BLUE</strong>' +
-                        '<span>Chi tinh team_side</span>' +
-                    '</div>' +
-                '</div>' +
-                '<div class=\"top-blue-hero-footer\">' +
-                    '<span class=\"table-scope-pill\">' + escapeHtml(tournamentName) + '</span>' +
-                    '<small>Chi tinh action_type = BAN.</small>' +
-                '</div>';
+            host.innerHTML = rows.map(function(item, index) {
+                const teamName = item.teamName || item.teamCode || ('Team #' + item.teamId);
+                const teamLogo = item.logoUrl || TEAM_LOGO_FALLBACK;
+                return '' +
+                    '<div class="stats-list-item">' +
+                        '<div class="stats-list-rank">' + (index + 1) + '</div>' +
+                        '<div class="stats-list-main">' +
+                            '<div class="hero-stat-cell">' +
+                                '<img src="' + escapeHtml(teamLogo) + '" alt="' + escapeHtml(teamName) + '">' +
+                                '<div class="hero-stat-copy">' +
+                                    '<strong>' + escapeHtml(teamName) + '</strong>' +
+                                    '<span>' + escapeHtml(item.teamCode || '') + ' · ' + formatCount(item.wins) + 'W / ' + formatCount(item.losses) + 'L</span>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="stats-list-metric">' + formatRate(item.winRate) + '</div>' +
+                    '</div>';
+            }).join('');
         }
 
         function compareHeroStats(a, b, sortKey, sortDirection) {
@@ -446,14 +794,10 @@
             }
 
             const presenceDelta = safeNumber(b && b.presenceCount) - safeNumber(a && a.presenceCount);
-            if (presenceDelta !== 0) {
-                return presenceDelta;
-            }
+            if (presenceDelta !== 0) return presenceDelta;
 
             const pickDelta = safeNumber(b && b.pickCount) - safeNumber(a && a.pickCount);
-            if (pickDelta !== 0) {
-                return pickDelta;
-            }
+            if (pickDelta !== 0) return pickDelta;
 
             return String((a && a.heroName) || '').localeCompare(String((b && b.heroName) || ''), 'vi');
         }
@@ -465,27 +809,15 @@
         }
 
         function updateHeroStatsSortUi() {
-            const sortPills = document.querySelectorAll('.hero-sort-pill');
-            sortPills.forEach(function(button) {
+            document.querySelectorAll('.hero-sort-pill').forEach(function(button) {
                 button.classList.toggle('is-active', button.dataset.sortKey === heroStatsState.sortKey);
             });
 
             const directionButton = document.getElementById('hero-sort-direction');
             if (directionButton) {
                 const isDescending = heroStatsState.sortDirection === 'desc';
-                directionButton.textContent = isDescending ? 'Giam dan' : 'Tang dan';
-                directionButton.setAttribute('aria-label', isDescending ? 'Doi sang tang dan' : 'Doi sang giam dan');
-            }
-        }
-
-        function renderHeroStatsLoading() {
-            const tbody = document.getElementById('hero-stats-body');
-            const summary = document.getElementById('hero-stats-summary');
-            if (summary) {
-                summary.textContent = 'Dang tong hop du lieu PICK/BAN theo hero...';
-            }
-            if (tbody) {
-                tbody.innerHTML = '<tr class=\"stats-empty-row\"><td colspan=\"15\">Dang tai du lieu...</td></tr>';
+                directionButton.textContent = isDescending ? 'Giảm dần' : 'Tăng dần';
+                directionButton.setAttribute('aria-label', isDescending ? 'Đổi sang tăng dần' : 'Đổi sang giảm dần');
             }
         }
 
@@ -497,19 +829,19 @@
             if (!tbody) return;
 
             const rows = getSortedHeroStatsItems();
-            const scopeLabel = getSelectedScopeLabel();
-            const activeSortLabel = HERO_STATS_SORT_OPTIONS[heroStatsState.sortKey] || 'Picks & Bans Σ';
+            const scopeLabel = buildScopeLabel(getCurrentFilters());
+            const activeSortLabel = HERO_STATS_SORT_OPTIONS[heroStatsState.sortKey] || ('Picks & Bans ' + TOTAL_SYMBOL);
 
             updateHeroStatsSortUi();
 
             if (summary) {
                 summary.textContent = rows.length
-                    ? 'Tong hop ' + rows.length + ' hero co PICK hoac BAN trong ' + scopeLabel + '. Sap xep theo ' + activeSortLabel + '.'
-                    : 'Chua co du lieu draft PICK/BAN phu hop trong ' + scopeLabel + '.';
+                    ? 'Tổng hợp ' + rows.length + ' hero có PICK hoặc BAN trong ' + scopeLabel + '. Sắp xếp theo ' + activeSortLabel + '.'
+                    : 'Chưa có dữ liệu draft PICK/BAN phù hợp trong ' + scopeLabel + '.';
             }
 
             if (!rows.length) {
-                tbody.innerHTML = '<tr class=\"stats-empty-row\"><td colspan=\"15\">Chua co du lieu draft de tong hop Hero Statistics.</td></tr>';
+                tbody.innerHTML = '<tr class="stats-empty-row"><td colspan="17">Chưa có dữ liệu draft để tổng hợp Hero Statistics.</td></tr>';
                 return;
             }
 
@@ -519,36 +851,179 @@
 
                 return '' +
                     '<tr>' +
-                        '<td>' +
-                            '<div class=\"hero-stat-cell hero-stats-hero-cell\">' +
-                                '<img src=\"' + escapeHtml(heroAvatarUrl) + '\" alt=\"' + escapeHtml(heroName) + '\">' +
-                                '<div class=\"hero-stat-copy\">' +
+                        '<td class="hero-stats-divider">' +
+                            '<div class="hero-stat-cell hero-stats-hero-cell">' +
+                                '<img src="' + escapeHtml(heroAvatarUrl) + '" alt="' + escapeHtml(heroName) + '">' +
+                                '<div class="hero-stat-copy">' +
                                     '<strong>' + escapeHtml(heroName) + '</strong>' +
                                     '<span>Hero ID: ' + escapeHtml(item.heroId) + '</span>' +
                                 '</div>' +
                             '</div>' +
                         '</td>' +
-                        '<td class=\"hero-stats-number hero-stats-number-strong\">' + formatCount(item.pickCount) + '</td>' +
-                        '<td class=\"hero-stats-number hero-stats-number-win\">' + formatCount(item.pickWins) + '</td>' +
-                        '<td class=\"hero-stats-number hero-stats-number-loss\">' + formatCount(item.pickLosses) + '</td>' +
-                        '<td class=\"hero-stats-number hero-stats-number-rate\">' + formatRate(item.pickWinRate) + '</td>' +
-                        '<td class=\"hero-stats-number\">' + formatCount(item.bluePickCount) + '</td>' +
-                        '<td class=\"hero-stats-number hero-stats-number-win\">' + formatCount(item.blueWins) + '</td>' +
-                        '<td class=\"hero-stats-number hero-stats-number-loss\">' + formatCount(item.blueLosses) + '</td>' +
-                        '<td class=\"hero-stats-number hero-stats-number-rate\">' + formatRate(item.blueWinRate) + '</td>' +
-                        '<td class=\"hero-stats-number\">' + formatCount(item.redPickCount) + '</td>' +
-                        '<td class=\"hero-stats-number hero-stats-number-win\">' + formatCount(item.redWins) + '</td>' +
-                        '<td class=\"hero-stats-number hero-stats-number-loss\">' + formatCount(item.redLosses) + '</td>' +
-                        '<td class=\"hero-stats-number hero-stats-number-rate\">' + formatRate(item.redWinRate) + '</td>' +
-                        '<td class=\"hero-stats-number\">' + formatCount(item.banCount) + '</td>' +
-                        '<td class=\"hero-stats-number hero-stats-number-strong\">' + formatCount(item.presenceCount) + '</td>' +
+                        '<td class="hero-stats-number hero-stats-number-strong">' + formatCount(item.pickCount) + '</td>' +
+                        '<td class="hero-stats-number hero-stats-number-win">' + formatCount(item.pickWins) + '</td>' +
+                        '<td class="hero-stats-number hero-stats-number-loss">' + formatCount(item.pickLosses) + '</td>' +
+                        '<td class="hero-stats-number hero-stats-number-rate hero-stats-divider">' + formatRate(item.pickWinRate) + '</td>' +
+                        '<td class="hero-stats-number">' + formatCount(item.bluePickCount) + '</td>' +
+                        '<td class="hero-stats-number hero-stats-number-win">' + formatCount(item.blueWins) + '</td>' +
+                        '<td class="hero-stats-number hero-stats-number-loss">' + formatCount(item.blueLosses) + '</td>' +
+                        '<td class="hero-stats-number hero-stats-number-rate hero-stats-divider">' + formatRate(item.blueWinRate) + '</td>' +
+                        '<td class="hero-stats-number">' + formatCount(item.redPickCount) + '</td>' +
+                        '<td class="hero-stats-number hero-stats-number-win">' + formatCount(item.redWins) + '</td>' +
+                        '<td class="hero-stats-number hero-stats-number-loss">' + formatCount(item.redLosses) + '</td>' +
+                        '<td class="hero-stats-number hero-stats-number-rate hero-stats-divider">' + formatRate(item.redWinRate) + '</td>' +
+                        '<td class="hero-stats-number">' + formatCount(item.banCount) + '</td>' +
+                        '<td class="hero-stats-number">' + formatCount(item.blueBanCount) + '</td>' +
+                        '<td class="hero-stats-number hero-stats-divider">' + formatCount(item.redBanCount) + '</td>' +
+                        '<td class="hero-stats-number hero-stats-number-strong">' + formatCount(item.presenceCount) + '</td>' +
                     '</tr>';
             }).join('');
         }
 
+        function renderTopBanned(items) {
+            const host = document.getElementById('top-banned-list');
+            const summary = document.getElementById('top-banned-summary');
+            const rows = Array.isArray(items) ? items : [];
+            const scopeLabel = buildScopeLabel(getCurrentFilters());
+
+            if (summary) {
+                summary.textContent = rows.length
+                    ? 'Top ' + rows.length + ' tướng bị cấm nhiều nhất trong ' + scopeLabel + '.'
+                    : 'Chưa có dữ liệu BAN phù hợp trong ' + scopeLabel + '.';
+            }
+
+            if (!rows.length) {
+                host.innerHTML = '' +
+                    '<div class="dashboard-empty">' +
+                        '<strong>Chưa có dữ liệu BAN</strong>' +
+                        '<p>Không tìm thấy lượt cấm nào phù hợp để xếp hạng Top 5.</p>' +
+                    '</div>';
+                return;
+            }
+
+            host.innerHTML = rows.map(function(item, index) {
+                const heroName = item.heroName || ('Hero #' + item.heroId);
+                const heroAvatarUrl = item.heroAvatarUrl || HERO_AVATAR_FALLBACK;
+                return '' +
+                    '<div class="stats-list-item">' +
+                        '<div class="stats-list-rank">' + (index + 1) + '</div>' +
+                        '<div class="stats-list-main">' +
+                            '<div class="hero-stat-cell">' +
+                                '<img src="' + escapeHtml(heroAvatarUrl) + '" alt="' + escapeHtml(heroName) + '">' +
+                                '<div class="hero-stat-copy">' +
+                                    '<strong>' + escapeHtml(heroName) + '</strong>' +
+                                    '<span>Chỉ tính actionType = BAN</span>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="stats-list-metric">' + formatCount(item.banCount) + '</div>' +
+                    '</div>';
+            }).join('');
+        }
+
+        function renderTopBlueHero(item) {
+            const host = document.getElementById('top-blue-hero');
+            const summary = document.getElementById('top-blue-summary');
+            const scopeLabel = buildScopeLabel(getCurrentFilters());
+
+            if (!item) {
+                if (summary) {
+                    summary.textContent = 'Chưa có dữ liệu BAN của bên Xanh trong ' + scopeLabel + '.';
+                }
+                host.innerHTML = '' +
+                    '<div class="dashboard-empty">' +
+                        '<strong>Chưa có dữ liệu BLUE side</strong>' +
+                        '<p>Không tìm thấy lượt cấm của bên Xanh trong phạm vi filter hiện tại.</p>' +
+                    '</div>';
+                return;
+            }
+
+            if (summary) {
+                summary.textContent = 'Hero chịu áp lực cấm cao nhất từ bên Xanh trong ' + scopeLabel + '.';
+            }
+
+            const heroName = item.heroName || ('Hero #' + item.heroId);
+            const heroAvatarUrl = item.heroAvatarUrl || HERO_AVATAR_FALLBACK;
+
+            host.innerHTML = '' +
+                '<div class="top-blue-hero-card">' +
+                    '<div class="top-blue-hero-head">' +
+                        '<img class="top-blue-hero-avatar" src="' + escapeHtml(heroAvatarUrl) + '" alt="' + escapeHtml(heroName) + '">' +
+                        '<div class="top-blue-hero-copy">' +
+                            '<span class="feature-kicker">Top BLUE Ban</span>' +
+                            '<h3>' + escapeHtml(heroName) + '</h3>' +
+                            '<p>Tướng bị cấm nhiều nhất bởi bên Xanh trong phạm vi hiện tại.</p>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="top-blue-hero-metrics">' +
+                        '<div class="metric-tile">' +
+                            '<strong>' + formatCount(item.banCount) + '</strong>' +
+                            '<span>Lượt cấm</span>' +
+                        '</div>' +
+                        '<div class="metric-tile">' +
+                            '<strong>BLUE</strong>' +
+                            '<span>team_side = BLUE</span>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+        }
+
+        function renderDashboard(payload) {
+            const summary = payload && payload.summary ? payload.summary : {
+                totalMatches: 0,
+                totalGames: 0,
+                metaChampions: 0,
+                blueSideWinRate: 0,
+                draftAccuracy: null,
+                completedGames: 0,
+                draftAccuracySampleSize: 0
+            };
+
+            updateScopeCopy(summary);
+            updateVolume(summary);
+            renderKpis(summary);
+            renderActivityChart(payload && payload.matchActivity ? payload.matchActivity : []);
+            renderSideAdvantage(payload && payload.sideAdvantage ? payload.sideAdvantage : null);
+            renderHeroInsightList(
+                'power-picks-list',
+                'power-picks-summary',
+                payload && payload.powerPicks ? payload.powerPicks : [],
+                'Chưa đủ mẫu Power Picks',
+                'Không có hero nào đủ mẫu PICK để xếp nhóm Power Picks.'
+            );
+            renderHeroInsightList(
+                'trap-picks-list',
+                'trap-picks-summary',
+                payload && payload.trapPicks ? payload.trapPicks : [],
+                'Chưa đủ mẫu Trap Picks',
+                'Không có hero nào đủ mẫu PICK để xếp nhóm Trap Picks.'
+            );
+            renderTopTeams(payload && payload.topTeams ? payload.topTeams : []);
+            renderHeroStats(payload && payload.heroStats ? payload.heroStats : []);
+            renderTopBanned(payload && payload.topBannedHeroes ? payload.topBannedHeroes : []);
+            renderTopBlueHero(payload ? payload.topBlueBannedHero : null);
+            updateLastUpdated();
+        }
+
+        function renderDashboardLoading() {
+            setPageState('', '');
+            updateScopeCopy(null);
+
+            document.getElementById('analysis-volume').textContent = 'Đang tải dữ liệu...';
+            document.getElementById('analysis-volume-note').textContent = 'Đồng bộ KPI, biểu đồ và bảng thống kê.';
+            document.getElementById('hero-stats-body').innerHTML = '<tr class="stats-empty-row"><td colspan="17">Đang tải dữ liệu...</td></tr>';
+            document.getElementById('hero-stats-summary').textContent = 'Đang tổng hợp dữ liệu PICK/BAN theo hero...';
+            document.getElementById('top-banned-list').innerHTML = '<div class="dashboard-empty"><strong>Đang tải dữ liệu...</strong><p>Đang tổng hợp top tướng bị cấm nhiều nhất.</p></div>';
+            document.getElementById('top-blue-hero').innerHTML = '<div class="dashboard-empty"><strong>Đang tải dữ liệu...</strong><p>Đang kiểm tra tướng chịu áp lực cấm lớn nhất từ bên Xanh.</p></div>';
+            document.getElementById('power-picks-list').innerHTML = '<div class="dashboard-empty"><strong>Đang tải dữ liệu...</strong><p>Đang phân tích các hero có hiệu suất PICK tốt nhất.</p></div>';
+            document.getElementById('trap-picks-list').innerHTML = '<div class="dashboard-empty"><strong>Đang tải dữ liệu...</strong><p>Đang nhận diện các trap pick trong meta hiện tại.</p></div>';
+            document.getElementById('top-teams-list').innerHTML = '<div class="dashboard-empty"><strong>Đang tải dữ liệu...</strong><p>Đang tổng hợp hiệu suất đội tuyển từ kết quả từng ván.</p></div>';
+            document.getElementById('activity-chart').innerHTML = '<div class="dashboard-empty"><strong>Đang tải dữ liệu...</strong><p>Biểu đồ hoạt động đang chờ phản hồi từ API analytics.</p></div>';
+            document.getElementById('side-advantage-panel').innerHTML = '<div class="dashboard-empty"><strong>Đang tải dữ liệu...</strong><p>Hệ thống đang tính BLUE/RED win rate.</p></div>';
+        }
+
         function bindHeroStatsSortControls() {
-            const sortPills = document.querySelectorAll('.hero-sort-pill');
-            sortPills.forEach(function(button) {
+            document.querySelectorAll('.hero-sort-pill').forEach(function(button) {
                 button.addEventListener('click', function() {
                     const nextKey = button.dataset.sortKey || 'presenceCount';
                     if (heroStatsState.sortKey === nextKey) {
@@ -575,54 +1050,40 @@
         function updateLastUpdated() {
             const lastUpdated = document.getElementById('data-last-updated');
             if (!lastUpdated) return;
-            lastUpdated.textContent = 'Cap nhat lan cuoi: ' + new Date().toLocaleString('vi-VN');
+            lastUpdated.textContent = 'Cập nhật lần cuối: ' + new Date().toLocaleString('vi-VN');
         }
 
-        async function loadEsportsDataStats() {
-            const tournamentName = getSelectedTournamentName();
-            const params = { limit: 5 };
-            if (tournamentName) {
-                params.tournamentName = tournamentName;
+        async function loadDashboardData() {
+            const filters = getCurrentFilters();
+            if (filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo) {
+                setPageState('error', 'Khoảng ngày không hợp lệ. Vui lòng chọn "Từ ngày" sớm hơn hoặc bằng "Đến ngày".');
+                return;
             }
 
-            setPageState('', '');
-            updateScopeCopy();
-            renderHeroStatsLoading();
-            renderTopBannedLoading();
-            renderTopBlueHeroLoading();
+            const requestId = ++dashboardState.requestId;
+            renderDashboardLoading();
 
             try {
-                const [topBanned, topBlue, heroStats] = await Promise.all([
-                    fetchJson(buildApiUrl(DATA_API.topBanned, params)),
-                    fetchJson(buildApiUrl(DATA_API.topBlueBanned, { tournamentName: params.tournamentName, limit: 1 })),
-                    fetchJson(buildApiUrl(DATA_API.heroStats, { tournamentName: params.tournamentName }))
-                ]);
+                const payload = await fetchJson(buildApiUrl(DATA_API.dashboard, filters));
+                if (requestId !== dashboardState.requestId) return;
 
-                renderHeroStats(Array.isArray(heroStats) ? heroStats : []);
-                renderTopBanned(Array.isArray(topBanned) ? topBanned : []);
-                renderTopBlueHero(Array.isArray(topBlue) ? topBlue : []);
-                updateLastUpdated();
-            } catch (error) {
-                console.error('Esports data load error:', error);
-                renderHeroStats([]);
-                renderTopBanned([]);
-                renderTopBlueHero([]);
-                setPageState('error', 'Khong the tai thong ke Esports Data. Vui long kiem tra server hoac thu lai sau.');
-                const lastUpdated = document.getElementById('data-last-updated');
-                if (lastUpdated) {
-                    lastUpdated.textContent = 'Khong the tai du lieu';
+                const teamSelectionWasReset = renderTeamFilter(payload && payload.teamOptions ? payload.teamOptions : []);
+                if (teamSelectionWasReset && filters.teamCode) {
+                    await loadDashboardData();
+                    return;
                 }
+
+                dashboardState.payload = payload;
+                renderDashboard(payload || {});
+            } catch (error) {
+                if (requestId !== dashboardState.requestId) return;
+                console.error('Esports dashboard load error:', error);
+                setPageState('error', 'Không thể tải dashboard Esports Data. Vui lòng kiểm tra server hoặc thử lại sau.');
+                document.getElementById('data-last-updated').textContent = 'Không thể tải dữ liệu';
             }
         }
 
-        async function loadEsportsDataPage() {
-            const filter = getTournamentFilter();
-            if (filter) {
-                filter.addEventListener('change', loadEsportsDataStats);
-            }
-
-            bindHeroStatsSortControls();
-
+        async function loadTournaments() {
             try {
                 const tournaments = await fetchJson(DATA_API.tournaments);
                 renderTournamentFilter(Array.isArray(tournaments) ? tournaments : []);
@@ -630,8 +1091,36 @@
                 console.error('Esports tournaments load error:', error);
                 renderTournamentFilter([]);
             }
+        }
 
-            await loadEsportsDataStats();
+        function bindFilters() {
+            const tournamentFilter = getTournamentFilter();
+            const teamFilter = getTeamFilter();
+            const dateFromFilter = getDateFromFilter();
+            const dateToFilter = getDateToFilter();
+            const resetButton = document.getElementById('filter-reset-button');
+
+            [tournamentFilter, teamFilter, dateFromFilter, dateToFilter].forEach(function(node) {
+                if (!node) return;
+                node.addEventListener('change', loadDashboardData);
+            });
+
+            if (resetButton) {
+                resetButton.addEventListener('click', function() {
+                    if (tournamentFilter) tournamentFilter.value = '';
+                    if (teamFilter) teamFilter.value = '';
+                    if (dateFromFilter) dateFromFilter.value = '';
+                    if (dateToFilter) dateToFilter.value = '';
+                    loadDashboardData();
+                });
+            }
+        }
+
+        async function loadEsportsDataPage() {
+            bindFilters();
+            bindHeroStatsSortControls();
+            await loadTournaments();
+            await loadDashboardData();
         }
 
         if (document.readyState === 'loading') {

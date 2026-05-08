@@ -22,14 +22,12 @@ public class StaticPageRedirectController {
             "/ban-pick-leaderboard.html",
             "/ban-pick-profile.html",
             "/ban-pick-result.html",
-            "/content.html",
             "/create-guide.html",
             "/esports.html",
             "/esports-data.html",
             "/giao-an.html",
             "/guide-detail.html",
             "/header.html",
-            "/tactics-guides.html",
             "/tier-list-all.html",
             "/tier-list-detail.html",
             "/tier-list-mine.html",
@@ -80,7 +78,12 @@ public class StaticPageRedirectController {
         return "redirect:/html/giao-an.html";
     }
 
-    @GetMapping({"/ban-pick", "/ban-pick.html"})
+    @GetMapping({"/tactics-guides.html", "/html/tactics-guides.html"})
+    public String redirectLegacyTacticsGuidesPage() {
+        return "redirect:/html/giao-an.html";
+    }
+
+    @GetMapping({"/ban-pick", "/ban-pick.html", "/html/ban-pick.html"})
     public String redirectBanPickEntry(
             @RequestParam(required = false) String room,
             @RequestParam(required = false) String mode

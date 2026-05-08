@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Esports Data Admin - AoV Tactics & Guides</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css?v=20260507-css-modules">
+    <link rel="stylesheet" href="/css/admin.css?v=20260509-esports-data-admin">
+</head>
+<body data-page="admin-esports-data">
+<div id="toast" class="toast-box"></div>
+
+<aside class="admin-sidebar">
+    <div class="sidebar-brand">
+        <a href="/html/index.html" class="back-link">← Về trang chủ</a>
+        <div class="brand-row">
+            <div class="brand-mark">ATG</div>
+            <div>
+                <div class="brand-name">AoV Tactics</div>
+                <div class="brand-subtitle">Admin Panel</div>
+            </div>
+        </div>
+    </div>
+
+    <nav class="sidebar-nav">
+        <a class="nav-item" href="/html/admin.html">Tổng quan</a>
+        <a class="nav-item" href="/html/admin-heroes.html">Quản lý Tướng</a>
+        <a class="nav-item" href="/html/admin-attributes.html">Đặc điểm tướng</a>
+        <a class="nav-item" href="/html/admin.html#guides">Cẩm nang</a>
+        <a class="nav-item" href="/html/admin.html#users">Người dùng</a>
+        <a class="nav-item" href="/html/admin.html#teams">Quản lý Đội</a>
+        <a class="nav-item" href="/html/admin.html#esports">Giải đấu AER 2026</a>
+        <a class="nav-item active" href="/html/admin-esports-data.html">Esports Data / Draft</a>
+    </nav>
+</aside>
+
+<main class="admin-shell">
+    <header class="topbar">
+        <h1>Esports Data / Draft</h1>
+        <span id="header-clock" class="clock"></span>
+    </header>
+
+    <section class="admin-page">
+        <div class="admin-page-header">
+            <div>
+                <p class="eyebrow">Esports Draft Admin</p>
+                <h2>Quản trị Esports Data</h2>
+                <p>Quản lý series, game, 18 phase draft và final lineup sau swap để dữ liệu public `/esports/data` tự thống kê lại đúng.</p>
+            </div>
+            <div class="header-actions">
+                <a class="btn btn-light" href="/esports/data" target="_blank" rel="noopener">Mở /esports/data</a>
+                <button id="btn-refresh-admin-esports" type="button" class="btn btn-dark">Làm mới</button>
+            </div>
+        </div>
+
+        <section class="admin-section">
+            <div class="section-header">
+                <div>
+                    <h3>Luồng quản trị</h3>
+                    <p>Chọn match trước, sau đó quản lý game, lưu 18 phase draft theo hard rule và cuối cùng upsert final lineup 10 hero đã PICK.</p>
+                </div>
+            </div>
+            <div class="summary-grid">
+                <article class="summary-card">
+                    <span class="summary-label">Draft Rule</span>
+                    <strong class="summary-value">18 phase cố định</strong>
+                    <p class="summary-note">Khóa cứng BLUE/RED + BAN/PICK theo AOV Standard 18.</p>
+                </article>
+                <article class="summary-card">
+                    <span class="summary-label">Final Lineup</span>
+                    <strong class="summary-value">10 hero sau swap</strong>
+                    <p class="summary-note">Chỉ lấy từ PICK, không dùng BAN, mỗi side đủ DSL/JGL/MID/ADL/SUP.</p>
+                </article>
+                <article class="summary-card">
+                    <span class="summary-label">Nguồn thống kê</span>
+                    <strong class="summary-value">Draft actions</strong>
+                    <p class="summary-note">Public Esports Data vẫn aggregate từ `esports_match_draft_actions`.</p>
+                </article>
+                <article class="summary-card">
+                    <span class="summary-label">Trạng thái chọn</span>
+                    <strong id="selection-summary-value" class="summary-value">Chưa chọn match</strong>
+                    <p id="selection-summary-note" class="summary-note">Chọn một series để mở game, draft và lineup.</p>
+                </article>
+            </div>
+            <div id="page-error" class="error-state hidden"></div>
+        </section>
+
+        <section class="admin-section">
+            <div class="section-header">
+                <div>
+                    <h3>Match / Series</h3>
+                    <p>Lọc theo giải, team và ngày; chọn một match để quản lý games và draft.</p>
+                </div>
+                <span id="match-count-pill" class="count-pill">0 match</span>
+            </div>
+
+            <div class="filter-grid esports-match-filter-grid">
+                <label class="field">
+                    <span>Tìm series</span>
+                    <input id="match-filter-search" type="search" placeholder="Tên đội, mã đội hoặc stage">
+                </label>
+                <label class="field">
+                    <span>Giải / Tier</span>
+                    <select id="match-filter-tier"></select>
+                </label>
+                <label class="field">
+                    <span>Team</span>
+                    <select id="match-filter-team"></select>
+                </label>
+                <label class="field">
+                    <span>Từ ngày</span>
+                    <input id="match-filter-date-from" type="date">
+                </label>
+                <label class="field">
+                    <span>Đến ngày</span>
+                    <input id="match-filter-date-to" type="date">
+                </label>
+                <button id="btn-match-filter-reset" type="button" class="btn btn-light">Xóa lọc</button>
+            </div>
+
+            <div class="admin-two-column">
+                <div class="panel-stack">
+                    <div id="matches-error" class="error-state hidden"></div>
+                    <div class="admin-table-card">
+                        <table class="admin-table admin-table-compact">
+                            <thead>
+                            <tr>
+                                <th>Ngày</th>
+                                <th>Series</th>
+                                <th>Giải</th>
+                                <th>Stage</th>
+                                <th>Tỷ số</th>
+                                <th>Thao tác</th>
+                            </tr>
+                            </thead>
+                            <tbody id="matches-tbody">
+                            <tr><td colspan="6" class="table-state">Đang tải danh sách match...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="form-card admin-form-pane">
+                    <div class="form-pane-header">
+                        <div>
+                            <h4 id="match-form-title">Tạo match mới</h4>
+                            <p id="match-form-subtitle">Dùng API admin hiện có để tạo hoặc sửa một series.</p>
+                        </div>
+                    </div>
+                    <div id="match-form-error" class="inline-error hidden"></div>
+                    <form id="match-form" class="form-grid">
+                        <input id="mf-id" type="hidden">
+                        <label class="field">
+                            <span>Ngày thi đấu *</span>
+                            <input id="mf-date" type="datetime-local" required>
+                        </label>
+                        <div class="form-grid two">
+                            <label class="field">
+                                <span>Team 1 *</span>
+                                <select id="mf-team1" required></select>
+                            </label>
+                            <label class="field">
+                                <span>Team 2 *</span>
+                                <select id="mf-team2" required></select>
+                            </label>
+                        </div>
+                        <div class="form-grid three">
+                            <label class="field">
+                                <span>Score 1 *</span>
+                                <input id="mf-score1" type="number" min="0" required>
+                            </label>
+                            <label class="field">
+                                <span>Score 2 *</span>
+                                <input id="mf-score2" type="number" min="0" required>
+                            </label>
+                            <label class="field">
+                                <span>Giải / Tier *</span>
+                                <select id="mf-tier" required></select>
+                            </label>
+                        </div>
+                        <label class="field">
+                            <span>Stage *</span>
+                            <select id="mf-stage" required></select>
+                        </label>
+                        <div class="modal-actions">
+                            <button id="btn-match-reset" type="button" class="btn btn-light">Hủy chỉnh sửa</button>
+                            <button id="btn-match-submit" type="submit" class="btn btn-primary">Lưu match</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <section class="admin-section">
+            <div class="section-header">
+                <div>
+                    <h3>Game / Ván</h3>
+                    <p>Danh sách game trong match đang chọn. Khi xóa game, draft actions và lineup sẽ cascade theo backend.</p>
+                </div>
+                <span id="game-count-pill" class="count-pill">0 game</span>
+            </div>
+
+            <div id="selected-match-card" class="selected-summary empty">
+                Chưa chọn match để quản lý game.
+            </div>
+
+            <div class="admin-two-column compact-gap">
+                <div class="panel-stack">
+                    <div id="games-error" class="error-state hidden"></div>
+                    <div class="admin-table-card">
+                        <table class="admin-table admin-table-compact">
+                            <thead>
+                            <tr>
+                                <th>Game</th>
+                                <th>Blue</th>
+                                <th>Red</th>
+                                <th>Winner</th>
+                                <th>Duration</th>
+                                <th>Draft Format</th>
+                                <th>Thao tác</th>
+                            </tr>
+                            </thead>
+                            <tbody id="games-tbody">
+                            <tr><td colspan="7" class="table-state">Chọn match để tải danh sách game.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="form-card admin-form-pane">
+                    <div class="form-pane-header">
+                        <div>
+                            <h4 id="game-form-title">Thêm game mới</h4>
+                            <p id="game-form-subtitle">Draft format mặc định là AOV Standard 18 Phase.</p>
+                        </div>
+                    </div>
+                    <div id="game-form-error" class="inline-error hidden"></div>
+                    <form id="game-form" class="form-grid">
+                        <input id="gf-id" type="hidden">
+                        <input id="gf-draft-format-id" type="hidden">
+                        <div class="form-grid three">
+                            <label class="field">
+                                <span>Game Number *</span>
+                                <input id="gf-game-number" type="number" min="1" required>
+                            </label>
+                            <label class="field">
+                                <span>Winner Team</span>
+                                <select id="gf-winner-team"></select>
+                            </label>
+                            <label class="field">
+                                <span>Duration (seconds)</span>
+                                <input id="gf-duration" type="number" min="0" placeholder="1800">
+                            </label>
+                        </div>
+                        <div class="form-grid two">
+                            <label class="field">
+                                <span>Blue Team *</span>
+                                <select id="gf-blue-team" required></select>
+                            </label>
+                            <label class="field">
+                                <span>Red Team *</span>
+                                <select id="gf-red-team" required></select>
+                            </label>
+                        </div>
+                        <label class="field">
+                            <span>Draft Format</span>
+                            <input id="gf-draft-format-name" type="text" value="AOV Standard 18 Phase" readonly>
+                            <small class="field-help">Admin page này khóa cứng flow 18 phase theo hard phase rule hiện có.</small>
+                        </label>
+                        <div class="modal-actions">
+                            <button id="btn-game-reset" type="button" class="btn btn-light">Hủy chỉnh sửa</button>
+                            <button id="btn-game-submit" type="submit" class="btn btn-primary">Lưu game</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <section class="admin-section">
+            <div class="section-header">
+                <div>
+                    <h3>Draft Actions</h3>
+                    <p>18 phase cố định. Admin chỉ chọn hero; `team_side` và `action_type` bị khóa theo hard rule.</p>
+                </div>
+                <div class="header-actions">
+                    <span id="draft-status-chip" class="count-pill">Chưa chọn game</span>
+                    <button id="btn-draft-restore" type="button" class="btn btn-light">Khôi phục đã lưu</button>
+                    <button id="btn-draft-clear" type="button" class="btn btn-danger">Xóa draft</button>
+                    <button id="btn-draft-save" type="button" class="btn btn-primary">Lưu draft</button>
+                </div>
+            </div>
+
+            <div id="selected-game-card" class="selected-summary empty">
+                Chưa chọn game để nhập 18 phase draft.
+            </div>
+            <div id="draft-error" class="error-state hidden"></div>
+            <div class="info-note">Hero đã dùng ở phase khác sẽ bị khóa trong picker. UI vẫn hiển thị rõ backend reject nếu phase hoặc hero không hợp lệ.</div>
+            <div class="admin-table-card">
+                <table class="admin-table draft-phase-table">
+                    <thead>
+                    <tr>
+                        <th>Phase</th>
+                        <th>Side</th>
+                        <th>Action</th>
+                        <th>Hero hiện tại</th>
+                        <th>Tìm hero</th>
+                        <th>Hero picker</th>
+                    </tr>
+                    </thead>
+                    <tbody id="draft-phases-tbody">
+                    <tr><td colspan="6" class="table-state">Chọn game để mở 18 phase cố định.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="admin-section">
+            <div class="section-header">
+                <div>
+                    <h3>Final Lineup</h3>
+                    <p>Chỉ chọn hero đã PICK trong game, không lấy BAN, không trùng hero và mỗi side chỉ có đúng DSL/JGL/MID/ADL/SUP.</p>
+                </div>
+                <div class="header-actions">
+                    <span id="lineup-status-chip" class="count-pill">Lineup 0 / 10</span>
+                    <button id="btn-lineup-restore" type="button" class="btn btn-light">Khôi phục đã lưu</button>
+                    <button id="btn-lineup-clear" type="button" class="btn btn-danger">Xóa lineup</button>
+                    <button id="btn-lineup-save" type="button" class="btn btn-primary">Lưu lineup</button>
+                </div>
+            </div>
+
+            <div id="lineup-error" class="error-state hidden"></div>
+            <div class="info-note">Nếu picker lineup chưa đủ hero, hãy lưu draft trước để backend cập nhật đủ 10 PICK của game.</div>
+            <div id="lineup-grid" class="lineup-grid">
+                <div class="selected-summary empty">Chọn game để nhập final lineup.</div>
+            </div>
+        </section>
+
+        <section class="admin-section">
+            <div class="section-header">
+                <div>
+                    <h3>Preview / Verify</h3>
+                    <p>Kiểm tra nhanh độ đầy đủ của draft và final lineup trước khi mở thống kê public.</p>
+                </div>
+                <div class="header-actions">
+                    <a class="btn btn-light" href="/esports/data" target="_blank" rel="noopener">Xem thống kê public</a>
+                </div>
+            </div>
+            <div id="verify-summary-grid" class="summary-grid">
+                <article class="summary-card">
+                    <span class="summary-label">Draft</span>
+                    <strong class="summary-value">0 / 18</strong>
+                    <p class="summary-note">Chọn game để xem tóm tắt.</p>
+                </article>
+            </div>
+            <div id="verify-details-grid" class="verify-grid">
+                <article class="verify-card">
+                    <h4>Blue BAN</h4>
+                    <div class="verify-items"><div class="empty-muted">Chưa có dữ liệu.</div></div>
+                </article>
+            </div>
+        </section>
+    </section>
+</main>
+
+<script src="/js/auth.js?v=20260424-account-profile"></script>
+<script src="/js/admin-esports-data.js?v=20260509-draft-admin"></script>
+</body>
+</html>

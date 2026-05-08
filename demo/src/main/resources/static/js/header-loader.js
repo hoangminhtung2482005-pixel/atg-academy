@@ -5,11 +5,34 @@
  * và kích hoạt lại Google Sign-In nếu có.
  */
 (function () {
+    function getWikiPageKey() {
+        const path = window.location.pathname.toLowerCase();
+        const filename = path.substring(path.lastIndexOf('/') + 1).replace('.html', '');
+        if (filename !== 'wiki') return '';
+
+        const rawTab = (new URL(window.location.href).searchParams.get('tab') || '').trim().toLowerCase();
+        switch (rawTab) {
+            case 'spells':
+                return 'wiki-spells';
+            case 'items':
+                return 'wiki-items';
+            case 'arcana':
+                return 'wiki-arcana';
+            case 'enchantments':
+                return 'wiki-enchantments';
+            case '':
+            case 'heroes':
+            default:
+                return 'wiki-home';
+        }
+    }
+
     function getCurrentPage() {
         const path = window.location.pathname.toLowerCase();
         const filename = path.substring(path.lastIndexOf('/') + 1).replace('.html', '');
-        if (filename === 'tactics-guides') return 'giao-an';
         if (filename === 'esports-leaderboard') return 'esports';
+        const wikiPageKey = getWikiPageKey();
+        if (wikiPageKey) return wikiPageKey;
         if (path === '/esports/data' || path === '/esports/data/' || filename === 'esports-data') return 'esports-data';
         if (path === '/tier-list' || path === '/tier-list/' || filename === 'tier-list') return 'tier-list-meta';
         if (path.endsWith('/tier-list/all') || filename === 'tier-list-all') return 'tier-list-all';
@@ -23,13 +46,15 @@
         const currentPage = getCurrentPage();
         const isBanPickPage = currentPage.startsWith('ban-pick');
         const isTierListPage = currentPage.startsWith('tier-list');
+        const isWikiPage = currentPage.startsWith('wiki-') || currentPage === 'esports-data';
         const navLinks = document.querySelectorAll('nav [data-page]');
 
         navLinks.forEach(link => {
             const page = link.getAttribute('data-page');
             const isActive = page === currentPage
                 || (page === 'ban-pick' && isBanPickPage)
-                || (page === 'tier-list' && isTierListPage);
+                || (page === 'tier-list' && isTierListPage)
+                || (page === 'wiki' && isWikiPage);
             link.classList.toggle('active', isActive);
         });
     }
@@ -88,7 +113,7 @@
         const placeholder = document.getElementById('header-placeholder');
         if (!placeholder) return;
 
-        fetch('/html/header.html?v=20260508-esports-data', { cache: 'no-store' })
+        fetch('/html/header.html?v=20260508-wiki-dropdown', { cache: 'no-store' })
             .then(response => {
                 if (!response.ok) throw new Error('Không thể tải header.html');
                 return response.text();

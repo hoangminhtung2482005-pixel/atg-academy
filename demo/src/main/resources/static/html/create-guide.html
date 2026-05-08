@@ -421,6 +421,8 @@
         let selectedGuideHeroImage = '';
         let selectedGuideLane = '';
         let selectedGuideSpell = '';
+        let selectedGuideSpellSlug = '';
+        let selectedGuideSpellIconUrl = '';
 
         const heroImageMap = {
             "Aoi": "Aoi.jpeg",
@@ -623,14 +625,46 @@
         }
 
         // --- Spell Selection Pool ---
-        const spellsList = [
-            "Bộc Phá", "Cấp Cứu", "Gầm Thét", "Lá Chắn Sinh Mệnh", "Ngất Ngư", "Suy Nhược", "Thanh Tẩy", "Trừng Trị", "Tốc Biến", "Tốc Hành", "Tụ Bảo Bồn", "Viện Binh Liên Hiệp"
-        ];
+        const SPELLS_API = '/api/spells';
+        let spellOptions = [];
+
+        async function loadSpellOptions() {
+            if (spellOptions.length > 0) {
+                return spellOptions;
+            }
+
+            const response = await fetch(SPELLS_API, { headers: { 'Accept': 'application/json' } });
+            if (!response.ok) {
+                throw new Error('Không thể tải dữ liệu bổ trợ.');
+            }
+
+            const payload = await response.json();
+            spellOptions = Array.isArray(payload) ? payload : [];
+            return spellOptions;
+        }
         
-        function initSpellPool() {
+        async function initSpellPool() {
             const grid = document.getElementById('spell-options-grid');
+            if (!grid) return;
+
+            grid.innerHTML = '<div style="color: var(--text-color, #2f3640); font-weight: 600;">Đang tải bổ trợ...</div>';
+
+            let spells;
+            try {
+                spells = await loadSpellOptions();
+            } catch (error) {
+                console.error('Spell pool load error:', error);
+                grid.innerHTML = '<div style="color: #b91c1c; font-weight: 600;">Không thể tải dữ liệu bổ trợ.</div>';
+                return;
+            }
+
+            if (!spells.length) {
+                grid.innerHTML = '<div style="color: var(--text-color, #2f3640); font-weight: 600;">Chưa có dữ liệu bổ trợ.</div>';
+                return;
+            }
+
             grid.innerHTML = '';
-            spellsList.forEach(spell => {
+            spells.forEach(spell => {
                 const btn = document.createElement('div');
                 btn.style.display = 'flex';
                 btn.style.flexDirection = 'column';
@@ -642,18 +676,22 @@
                 btn.style.transition = 'background 0.2s';
                 btn.onmouseover = () => btn.style.background = 'rgba(255,255,255,0.8)';
                 btn.onmouseout = () => btn.style.background = 'transparent';
-                
-                const iconUrl = `/images/spells/${encodeURI(spell).replace(/'/g, "%27")}.png?v=3`;
-                btn.onclick = () => selectSpell(spell, iconUrl);
+
+                const iconUrl = spell.iconUrl || '';
+                btn.onclick = () => selectSpell(spell);
 
                 const icon = document.createElement('img');
                 icon.src = iconUrl;
+                icon.alt = spell.name || 'Spell';
                 icon.style.width = '48px';
                 icon.style.height = '48px';
                 icon.style.borderRadius = '50%';
+                if (!iconUrl) {
+                    icon.style.display = 'none';
+                }
                 
                 const label = document.createElement('span');
-                label.innerText = spell;
+                label.innerText = spell.name || '';
                 label.style.fontWeight = 'bold';
                 label.style.color = 'var(--text-color, #2f3640)';
                 label.style.fontSize = '0.9rem';
@@ -666,29 +704,32 @@
             });
         }
 
-        function toggleSpellPool() {
+        async function toggleSpellPool() {
             const pool = document.getElementById('giao-an-spell-pool');
             if (pool.style.display === 'none') {
                 pool.style.display = 'block';
                 if (document.getElementById('spell-options-grid').children.length === 0) {
-                    initSpellPool();
+                    await initSpellPool();
                 }
             } else {
                 pool.style.display = 'none';
             }
         }
 
-        function selectSpell(spellName, iconUrl) {
+        function selectSpell(spell) {
             const dropZone = document.getElementById('target-spell-drop');
             const nameLabel = document.getElementById('selected-spell-name');
+            const iconUrl = spell.iconUrl || '';
             
-            dropZone.style.backgroundImage = `url("${iconUrl}")`;
+            dropZone.style.backgroundImage = iconUrl ? `url("${iconUrl}")` : '';
             dropZone.innerText = '';
             dropZone.style.border = '2px solid var(--gold-color, #d4af37)';
             dropZone.style.borderRadius = '50%'; // Make it match the spell icon shape
             
-            nameLabel.innerText = spellName;
-            selectedGuideSpell = spellName;
+            nameLabel.innerText = spell.name || '';
+            selectedGuideSpell = spell.name || '';
+            selectedGuideSpellSlug = spell.slug || '';
+            selectedGuideSpellIconUrl = iconUrl;
             
             toggleSpellPool();
         }
@@ -737,6 +778,8 @@
             const heroName = selectedGuideHeroName || getCleanSelectedText('selected-hero-name', 'Chưa chọn');
             const lane = selectedGuideLane || getCleanSelectedText('selected-role-name', 'Chưa chọn');
             const spell = selectedGuideSpell || getCleanSelectedText('selected-spell-name', 'Chưa chọn');
+            const spellSlug = selectedGuideSpellSlug || '';
+            const spellIconUrl = selectedGuideSpellIconUrl || '';
             const sections = getGuideSections();
             const saveButton = document.getElementById('save-guide-btn');
 
@@ -745,6 +788,9 @@
                 authorName,
                 heroName,
                 lane,
+                spell,
+                spellSlug,
+                spellIconUrl,
                 category,
                 excerpt,
                 coverImageUrl: selectedGuideHeroImage || (heroName ? getHeroImage(heroName) : '/images/backgrounds/bg-map.jpg'),
@@ -755,6 +801,8 @@
                     heroName,
                     lane,
                     spell,
+                    spellSlug,
+                    spellIconUrl,
                     category,
                     excerpt,
                     coverImageUrl: selectedGuideHeroImage || (heroName ? getHeroImage(heroName) : '/images/backgrounds/bg-map.jpg'),

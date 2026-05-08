@@ -37,11 +37,15 @@ import java.util.stream.Collectors;
 @Service
 public class TierListCommunityService {
 
+    public static final int COMMUNITY_TIER_LIST_LIMIT = 5;
+
     private static final int COMMUNITY_HIGHLIGHT_LIMIT = 6;
     private static final int COMMUNITY_NEWEST_SLOT_COUNT = 2;
     private static final int RECENT_RATING_WINDOW_DAYS = 30;
     private static final String OFFICIAL_TIER_LIST_TITLE = "Tier List Meta";
     private static final String OFFICIAL_TIER_LIST_CREATOR = "ATG Academy";
+    private static final String COMMUNITY_TIER_LIST_LIMIT_MESSAGE =
+            "B\u1ea1n ch\u1ec9 c\u00f3 th\u1ec3 l\u01b0u t\u1ed1i \u0111a 5 tier list.";
     private static final String TOP_AVERAGE_BADGE = "Top \u0111i\u1ec3m TB 30 ng\u00e0y";
     private static final String MOST_RATINGS_BADGE = "Nhi\u1ec1u \u0111\u00e1nh gi\u00e1 30 ng\u00e0y";
     private static final String MOST_FIVE_STAR_BADGE = "Nhi\u1ec1u 5 sao 30 ng\u00e0y";
@@ -167,6 +171,22 @@ public class TierListCommunityService {
                 .filter(savedTierList -> savedTierList.getTierList() != null && !savedTierList.getTierList().isOfficial())
                 .map(savedTierList -> buildTierListResponse(savedTierList.getTierList(), authentication, savedTierList))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasReachedCommunityTierListLimit(User author) {
+        if (author == null || author.getId() == null) {
+            return false;
+        }
+        return tierListRepository.countByAuthorIdAndIsOfficialFalse(author.getId()) >= COMMUNITY_TIER_LIST_LIMIT;
+    }
+
+    public int getCommunityTierListLimit() {
+        return COMMUNITY_TIER_LIST_LIMIT;
+    }
+
+    public String getCommunityTierListLimitMessage() {
+        return COMMUNITY_TIER_LIST_LIMIT_MESSAGE;
     }
 
     @Transactional(readOnly = true)
@@ -494,7 +514,7 @@ public class TierListCommunityService {
         try {
             return objectMapper.writeValueAsString(contentData);
         } catch (JacksonException exception) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Khong the luu du lieu Tier List chinh");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Không thể lưu dữ liệu Tier List chính");
         }
     }
 
@@ -535,7 +555,7 @@ public class TierListCommunityService {
                                             Authentication authentication) {
         TierList tierList = findTierList(tierListId);
         if (tierList.isOfficial()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chi luu Community Tier List");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chỉ lưu Community Tier List");
         }
 
         User user = findOrCreateUser(principal);
@@ -560,7 +580,7 @@ public class TierListCommunityService {
     public Map<String, Object> unsaveTierList(Long tierListId, GoogleUserPrincipal principal) {
         TierList tierList = findTierList(tierListId);
         if (tierList.isOfficial()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chi bo luu Community Tier List");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chỉ bỏ lưu Community Tier List");
         }
 
         User user = findOrCreateUser(principal);
@@ -608,7 +628,7 @@ public class TierListCommunityService {
     public Map<String, Object> addComment(Long tierListId, GoogleUserPrincipal principal, String content) {
         String normalizedContent = content != null ? content.trim() : "";
         if (!StringUtils.hasText(normalizedContent)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Noi dung binh luan khong duoc de trong");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nội dung bình luận không được để trống");
         }
         if (normalizedContent.length() > 2000) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Binh luan toi da 2000 ky tu");
@@ -633,7 +653,7 @@ public class TierListCommunityService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chi Admin");
         }
         if (Double.isNaN(ratingValue) || Double.isInfinite(ratingValue) || ratingValue < 1 || ratingValue > 5) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Diem Admin phai tu 1 den 5");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Điểm Admin phải từ 1 đến 5");
         }
 
         TierList tierList = findTierList(tierListId);
@@ -660,15 +680,15 @@ public class TierListCommunityService {
     @Transactional
     public void deleteTierList(Long tierListId, GoogleUserPrincipal principal) {
         if (principal == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Chua dang nhap");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Chưa đăng nhập");
         }
 
         TierList tierList = findTierList(tierListId);
         if (tierList.isOfficial()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Khong xoa Tier List chinh thuc bang endpoint nay");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không xóa Tier List chính thức bằng endpoint này");
         }
         if (!isOwner(tierList, principal) && !principal.isAdmin()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Khong co quyen xoa Tier List nay");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không có quyền xóa Tier List này");
         }
 
         userSavedTierListRepository.deleteByTierListId(tierListId);
@@ -711,7 +731,7 @@ public class TierListCommunityService {
 
     private TierList findTierList(Long tierListId) {
         return tierListRepository.findById(tierListId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Khong tim thay Tier List"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy Tier List"));
     }
 
     private Map<String, Object> buildCommentResponse(TierListComment comment) {

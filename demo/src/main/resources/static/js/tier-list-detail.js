@@ -58,6 +58,8 @@ function showDetailToast(message,type='success'){
     showDetailToast._timer=setTimeout(()=>toast.classList.remove('is-visible'),2800);
 }
 
+window.showDetailToast=showDetailToast;
+
 function setDetailState(message,isError=false){
     const state=document.getElementById('tier-detail-state');
     const shell=document.getElementById('tier-detail-shell');
@@ -114,7 +116,7 @@ function renderDetailSaveButton(){
     }
     const isSaved=isDetailTierListSaved();
     button.hidden=false;
-    button.textContent=isSaved?'Bo luu':'Luu';
+    button.textContent=isSaved?'Bỏ lưu':'Lưu';
     button.classList.toggle('tier-saved-btn',isSaved);
 }
 
@@ -155,11 +157,11 @@ async function logTierListDeleteFailure(url,response){
 }
 
 function resolveTierDeleteErrorMessage(status, fallback){
-    if(status===401) return 'Vui long dang nhap de xoa Tier List.';
-    if(status===403) return 'Ban khong co quyen xoa Tier List nay.';
-    if(status===404) return 'Tier List khong ton tai hoac da bi xoa.';
-    if(status===405) return 'Loi ky thuat: endpoint xoa Tier List khong chap nhan DELETE.';
-    return fallback||'Khong xoa duoc Tier List.';
+    if(status===401) return 'Vui lòng đăng nhập để xóa Tier List.';
+    if(status===403) return 'Bạn không có quyền xóa Tier List này.';
+    if(status===404) return 'Tier List không tồn tại hoặc đã bị xóa.';
+    if(status===405) return 'Lỗi kỹ thuật: endpoint xóa Tier List không chấp nhận DELETE.';
+    return fallback||'Không xóa được Tier List.';
 }
 
 async function loadTierDetail(){
@@ -476,8 +478,7 @@ async function saveTierAdminRating(ratingValue){
 
 async function toggleDetailSavedState(){
     if(!tierDetailData||!tierDetailId||tierDetailData.isOfficial) return;
-    if(!getDetailUser()){
-        showDetailToast('Vui long dang nhap de luu Tier List.','error');
+    if(typeof requireLoginForPersistentAction==='function'&&!requireLoginForPersistentAction('luu Tier List')){
         return;
     }
 
@@ -486,7 +487,7 @@ async function toggleDetailSavedState(){
     const originalText=button?.textContent;
     if(button){
         button.disabled=true;
-        button.textContent=isSaved?'Dang bo luu...':'Dang luu...';
+        button.textContent=isSaved?'Đang bỏ lưu...':'Đang lưu...';
     }
 
     try{
@@ -507,10 +508,10 @@ async function toggleDetailSavedState(){
             };
         }
         renderDetailSaveButton();
-        showDetailToast(isSaved?'Da bo luu Tier List.':'Da luu Tier List.');
+        showDetailToast(isSaved?'Đã bỏ lưu Tier List.':'Đã lưu Tier List.');
     }catch(error){
         console.error('Cannot toggle saved detail tier list:',error);
-        showDetailToast(error.message||'Khong cap nhat duoc trang thai luu Tier List.','error');
+        showDetailToast(error.message||'Không cập nhật được trạng thái lưu Tier List.','error');
     }finally{
         if(button){
             button.disabled=false;

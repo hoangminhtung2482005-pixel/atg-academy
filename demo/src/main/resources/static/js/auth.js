@@ -220,7 +220,7 @@ function refreshAuthUserProfile(options) {
                 if (response.status === 401) {
                     return null;
                 }
-                const message = await readApiErrorMessage(response, 'Khong the tai thong tin tai khoan.');
+                const message = await readApiErrorMessage(response, 'Không thể tải thông tin tài khoản.');
                 if (!settings.silent) {
                     console.error(message);
                 }

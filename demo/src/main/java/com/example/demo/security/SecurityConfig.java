@@ -50,9 +50,10 @@ public class SecurityConfig {
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler)
                 )
-                .authorizeHttpRequests(authorize -> authorize
+                        .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/wiki/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/spells/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/esports/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/guides/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tier-lists/**").permitAll()

@@ -196,7 +196,7 @@ public class BanPickHistoryService {
 
     private User findUser(GoogleUserPrincipal principal) {
         return userRepository.findByEmail(principal.email())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Chua dang nhap"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Chưa đăng nhập"));
     }
 
     private List<String> heroNames(BanPickRoom room,

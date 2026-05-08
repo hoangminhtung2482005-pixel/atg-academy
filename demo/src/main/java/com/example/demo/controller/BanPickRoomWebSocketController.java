@@ -78,7 +78,7 @@ public class BanPickRoomWebSocketController {
                 && token.getPrincipal() instanceof GoogleUserPrincipal googleUserPrincipal) {
             return googleUserPrincipal;
         }
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Chua dang nhap");
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Chưa đăng nhập");
     }
 
     @MessageExceptionHandler

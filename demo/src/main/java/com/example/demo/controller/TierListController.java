@@ -139,11 +139,17 @@ public class TierListController {
         User author = communityService.findOrCreateUser(currentUser);
 
         boolean isOfficialRequest = currentUser.isAdmin() && Boolean.TRUE.equals(body.get("isOfficial"));
+        if (!isOfficialRequest && communityService.hasReachedCommunityTierListLimit(author)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                    "message", communityService.getCommunityTierListLimitMessage(),
+                    "tierListLimit", communityService.getCommunityTierListLimit()
+            ));
+        }
         TierList tierList = isOfficialRequest
                 ? tierListRepository.findFirstByIsOfficialTrueOrderByUpdatedAtDesc().orElseGet(TierList::new)
                 : new TierList();
 
-        String defaultTitle = isOfficialRequest ? "Tier List Meta" : "Tier List cua " + author.resolveDisplayName();
+        String defaultTitle = isOfficialRequest ? "Tier List Meta" : "Tier List của " + author.resolveDisplayName();
         tierList.setTitle(String.valueOf(body.getOrDefault("title", defaultTitle)));
         if (body.containsKey("description") || body.containsKey("note")) {
             tierList.setDescription(readText(body, "description", "note"));
@@ -170,7 +176,7 @@ public class TierListController {
         TierList tierList = opt.get();
         boolean isAuthor = tierList.getAuthor() != null && currentUser.email().equals(tierList.getAuthor().getEmail());
         if (!isAuthor && !currentUser.isAdmin()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Khong co quyen"));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Không có quyền"));
         }
 
         if (body.containsKey("title")) {
@@ -208,7 +214,7 @@ public class TierListController {
 
     private GoogleUserPrincipal getCurrentUser(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof GoogleUserPrincipal principal)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Chua dang nhap");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Chưa đăng nhập");
         }
         return principal;
     }

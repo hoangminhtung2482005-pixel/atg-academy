@@ -1,8 +1,10 @@
 package com.example.demo.repository;
 
 import com.example.demo.dto.esports.EsportsDraftTournamentAggregate;
+import com.example.demo.dto.esports.EsportsHeroBanBreakdownAggregate;
 import com.example.demo.dto.esports.EsportsHeroBanStatAggregate;
 import com.example.demo.dto.esports.EsportsHeroPickStatAggregate;
+import com.example.demo.entity.BanPickActionType;
 import com.example.demo.entity.BanPickTeamSide;
 import com.example.demo.entity.EsportsMatchDraftAction;
 import org.springframework.data.domain.Pageable;
@@ -11,12 +13,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
 public interface EsportsMatchDraftActionRepository extends JpaRepository<EsportsMatchDraftAction, Long> {
 
     List<EsportsMatchDraftAction> findByGameIdOrderByStepNumberAsc(Long gameId);
+
+    List<EsportsMatchDraftAction> findByGameIdAndActionTypeOrderByStepNumberAsc(Long gameId, BanPickActionType actionType);
 
     boolean existsByGameIdAndStepNumber(Long gameId, Integer stepNumber);
 
@@ -90,11 +95,19 @@ public interface EsportsMatchDraftActionRepository extends JpaRepository<Esports
     List<EsportsHeroPickStatAggregate> findHeroPickStats(@Param("tournamentTier") String tournamentTier);
 
     @Query("""
-            select new com.example.demo.dto.esports.EsportsHeroBanStatAggregate(
+            select new com.example.demo.dto.esports.EsportsHeroBanBreakdownAggregate(
                 hero.id,
                 hero.name,
                 hero.avatarUrl,
-                count(action.id)
+                count(action.id),
+                coalesce(sum(case
+                    when action.teamSide = com.example.demo.entity.BanPickTeamSide.BLUE then 1
+                    else 0
+                end), 0),
+                coalesce(sum(case
+                    when action.teamSide = com.example.demo.entity.BanPickTeamSide.RED then 1
+                    else 0
+                end), 0)
             )
             from EsportsMatchDraftAction action
             join action.hero hero
@@ -105,7 +118,7 @@ public interface EsportsMatchDraftActionRepository extends JpaRepository<Esports
             group by hero.id, hero.name, hero.avatarUrl
             order by count(action.id) desc, hero.name asc
             """)
-    List<EsportsHeroBanStatAggregate> findHeroBanStats(@Param("tournamentTier") String tournamentTier);
+    List<EsportsHeroBanBreakdownAggregate> findHeroBanStats(@Param("tournamentTier") String tournamentTier);
 
     @Query("""
             select new com.example.demo.dto.esports.EsportsDraftTournamentAggregate(
@@ -119,4 +132,27 @@ public interface EsportsMatchDraftActionRepository extends JpaRepository<Esports
             order by max(esportsMatch.matchDate) desc
             """)
     List<EsportsDraftTournamentAggregate> findDraftTournamentsOrderByLatestMatchDesc();
+
+    @Query("""
+            select action
+            from EsportsMatchDraftAction action
+            join fetch action.hero hero
+            join fetch action.team team
+            join fetch action.game game
+            join fetch game.match esportsMatch
+            join fetch game.blueTeam blueTeam
+            join fetch game.redTeam redTeam
+            left join fetch game.winnerTeam winnerTeam
+            where (:tournamentTier is null or esportsMatch.tier = :tournamentTier)
+              and (:teamCode is null
+                    or upper(blueTeam.teamCode) = :teamCode
+                    or upper(redTeam.teamCode) = :teamCode)
+              and (:dateFrom is null or esportsMatch.matchDate >= :dateFrom)
+              and (:dateTo is null or esportsMatch.matchDate <= :dateTo)
+            order by esportsMatch.matchDate asc, game.gameNumber asc, action.stepNumber asc
+            """)
+    List<EsportsMatchDraftAction> findAllForAnalytics(@Param("tournamentTier") String tournamentTier,
+                                                      @Param("teamCode") String teamCode,
+                                                      @Param("dateFrom") LocalDateTime dateFrom,
+                                                      @Param("dateTo") LocalDateTime dateTo);
 }

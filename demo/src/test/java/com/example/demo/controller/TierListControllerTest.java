@@ -133,6 +133,43 @@ class TierListControllerTest {
     }
 
     @Test
+    void createTierListRejectsCommunityTierListWhenQuotaIsReached() throws Exception {
+        TierListRepository tierListRepository = mock(TierListRepository.class);
+        HeroContentDataService heroContentDataService = mock(HeroContentDataService.class);
+        TierListCommunityService communityService = mock(TierListCommunityService.class);
+        Authentication authentication = mock(Authentication.class);
+
+        TierListController controller = new TierListController(
+                tierListRepository,
+                new ObjectMapper(),
+                heroContentDataService,
+                communityService
+        );
+
+        GoogleUserPrincipal principal = new GoogleUserPrincipal("user@atg.test", "User", "", "USER");
+        User author = new User();
+        author.setId(42L);
+        author.setEmail(principal.email());
+        author.setName("ATG User");
+
+        when(authentication.getPrincipal()).thenReturn(principal);
+        when(communityService.findOrCreateUser(principal)).thenReturn(author);
+        when(communityService.hasReachedCommunityTierListLimit(author)).thenReturn(true);
+        when(communityService.getCommunityTierListLimitMessage()).thenReturn("Ban chi co the luu toi da 5 tier list.");
+        when(communityService.getCommunityTierListLimit()).thenReturn(5);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> response = (Map<String, Object>) controller.createTierList(authentication, Map.of(
+                "title", "Tier List Moi",
+                "contentData", Map.of("rows", List.of())
+        )).getBody();
+
+        assertEquals("Ban chi co the luu toi da 5 tier list.", response.get("message"));
+        assertEquals(5, response.get("tierListLimit"));
+        verify(tierListRepository, never()).save(any(TierList.class));
+    }
+
+    @Test
     void getMyCommunityTierListsRequiresAuthentication() {
         TierListController controller = new TierListController(
                 mock(TierListRepository.class),

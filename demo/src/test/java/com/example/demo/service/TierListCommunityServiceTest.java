@@ -378,6 +378,24 @@ class TierListCommunityServiceTest {
     }
 
     @Test
+    void hasReachedCommunityTierListLimitReturnsTrueAtFiveCommunityTierLists() {
+        User author = user(42L, "player@atg.test", "Player");
+        when(tierListRepository.countByAuthorIdAndIsOfficialFalse(42L)).thenReturn(5L);
+
+        assertThat(service.hasReachedCommunityTierListLimit(author)).isTrue();
+        assertThat(service.getCommunityTierListLimit()).isEqualTo(5);
+        assertThat(service.getCommunityTierListLimitMessage()).isEqualTo("Bạn chỉ có thể lưu tối đa 5 tier list.");
+    }
+
+    @Test
+    void hasReachedCommunityTierListLimitReturnsFalseBelowFiveCommunityTierLists() {
+        User author = user(42L, "player@atg.test", "Player");
+        when(tierListRepository.countByAuthorIdAndIsOfficialFalse(42L)).thenReturn(4L);
+
+        assertThat(service.hasReachedCommunityTierListLimit(author)).isFalse();
+    }
+
+    @Test
     void saveTierListCreatesReferenceWithoutCloningTierList() {
         GoogleUserPrincipal principal = new GoogleUserPrincipal("xibi@atg.test", "Xibi", "https://avatar/xibi", "USER");
         User currentUser = user(42L, principal.email(), "Xibi");

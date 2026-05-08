@@ -58,7 +58,7 @@ public class BanPickHistoryController {
 
     private GoogleUserPrincipal currentUser(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof GoogleUserPrincipal principal)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Chua dang nhap");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Chưa đăng nhập");
         }
         return principal;
     }

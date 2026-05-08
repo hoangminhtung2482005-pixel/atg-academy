@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.esports.EsportsDraftTournamentAggregate;
+import com.example.demo.dto.esports.EsportsHeroBanBreakdownAggregate;
 import com.example.demo.dto.esports.EsportsHeroBanStatAggregate;
 import com.example.demo.dto.esports.EsportsHeroBanStatResponse;
 import com.example.demo.dto.esports.EsportsHeroPickStatAggregate;
@@ -8,6 +9,7 @@ import com.example.demo.dto.esports.EsportsHeroStatResponse;
 import com.example.demo.dto.esports.EsportsTournamentOptionResponse;
 import com.example.demo.entity.BanPickTeamSide;
 import com.example.demo.repository.EsportsMatchDraftActionRepository;
+import com.example.demo.repository.EsportsMatchGameRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -15,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -24,7 +27,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,14 +35,15 @@ class EsportsDataServiceTest {
     @Mock
     private EsportsMatchDraftActionRepository esportsMatchDraftActionRepository;
 
+    @Mock
+    private EsportsMatchGameRepository esportsMatchGameRepository;
+
     @Test
     void getTopBannedHeroesUsesAllDraftDataWhenTournamentMissing() {
         when(esportsMatchDraftActionRepository.findTopHeroBanStats(isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(List.of(new EsportsHeroBanStatAggregate(7L, "Hayate", "/images/heroes/Hayate.jpg", 12L)));
 
-        EsportsDataService service = new EsportsDataService(esportsMatchDraftActionRepository);
-
-        List<EsportsHeroBanStatResponse> result = service.getTopBannedHeroes(null, null);
+        List<EsportsHeroBanStatResponse> result = service().getTopBannedHeroes(null, null);
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
         verify(esportsMatchDraftActionRepository).findTopHeroBanStats(isNull(), isNull(), pageableCaptor.capture());
@@ -60,9 +63,7 @@ class EsportsDataServiceTest {
         when(esportsMatchDraftActionRepository.findTopHeroBanStats(eq("0"), eq(BanPickTeamSide.BLUE), any(Pageable.class)))
                 .thenReturn(List.of(new EsportsHeroBanStatAggregate(9L, "Aya", null, 4L)));
 
-        EsportsDataService service = new EsportsDataService(esportsMatchDraftActionRepository);
-
-        List<EsportsHeroBanStatResponse> result = service.getTopBlueBannedHeroes("AER International", 99);
+        List<EsportsHeroBanStatResponse> result = service().getTopBlueBannedHeroes("AER International", 99);
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
         verify(esportsMatchDraftActionRepository).findTopHeroBanStats(eq("0"), eq(BanPickTeamSide.BLUE), pageableCaptor.capture());
@@ -85,9 +86,7 @@ class EsportsDataServiceTest {
                 new EsportsDraftTournamentAggregate("2", LocalDateTime.of(2026, 5, 5, 10, 0))
         ));
 
-        EsportsDataService service = new EsportsDataService(esportsMatchDraftActionRepository);
-
-        List<EsportsTournamentOptionResponse> result = service.getAvailableTournaments();
+        List<EsportsTournamentOptionResponse> result = service().getAvailableTournaments();
 
         assertThat(result).containsExactly(
                 new EsportsTournamentOptionResponse("AER Challenger", "2"),
@@ -97,13 +96,28 @@ class EsportsDataServiceTest {
 
     @Test
     void getTopBannedHeroesRejectsUnknownTournamentName() {
-        EsportsDataService service = new EsportsDataService(esportsMatchDraftActionRepository);
+        when(esportsMatchDraftActionRepository.findDraftTournamentsOrderByLatestMatchDesc()).thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.getTopBannedHeroes("Unknown League", 5))
+        assertThatThrownBy(() -> service().getTopBannedHeroes("Unknown League", 5))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("tournamentName khong hop le.");
 
-        verifyNoInteractions(esportsMatchDraftActionRepository);
+        verify(esportsMatchDraftActionRepository).findDraftTournamentsOrderByLatestMatchDesc();
+    }
+
+    @Test
+    void getHeroStatsAcceptsExistingRawTournamentTierFromDraftCatalog() {
+        when(esportsMatchDraftActionRepository.findDraftTournamentsOrderByLatestMatchDesc()).thenReturn(List.of(
+                new EsportsDraftTournamentAggregate("TEST_OTHER_DRAFT_2026", LocalDateTime.of(2026, 5, 8, 10, 0))
+        ));
+        when(esportsMatchDraftActionRepository.findHeroPickStats("TEST_OTHER_DRAFT_2026")).thenReturn(List.of());
+        when(esportsMatchDraftActionRepository.findHeroBanStats("TEST_OTHER_DRAFT_2026")).thenReturn(List.of());
+
+        List<EsportsHeroStatResponse> result = service().getHeroStats("TEST_OTHER_DRAFT_2026");
+
+        assertThat(result).isEmpty();
+        verify(esportsMatchDraftActionRepository).findHeroPickStats("TEST_OTHER_DRAFT_2026");
+        verify(esportsMatchDraftActionRepository).findHeroBanStats("TEST_OTHER_DRAFT_2026");
     }
 
     @Test
@@ -113,13 +127,11 @@ class EsportsDataServiceTest {
                 new EsportsHeroPickStatAggregate(9L, "Aya", null, 1L, 0L, 0L, 0L, 1L, 0L)
         ));
         when(esportsMatchDraftActionRepository.findHeroBanStats("1")).thenReturn(List.of(
-                new EsportsHeroBanStatAggregate(7L, "Hayate", "/images/heroes/Hayate.jpg", 2L),
-                new EsportsHeroBanStatAggregate(11L, "Toro", "/images/heroes/Toro.jpg", 5L)
+                new EsportsHeroBanBreakdownAggregate(7L, "Hayate", "/images/heroes/Hayate.jpg", 2L, 1L, 1L),
+                new EsportsHeroBanBreakdownAggregate(11L, "Toro", "/images/heroes/Toro.jpg", 5L, 3L, 2L)
         ));
 
-        EsportsDataService service = new EsportsDataService(esportsMatchDraftActionRepository);
-
-        List<EsportsHeroStatResponse> result = service.getHeroStats("AER Pro League");
+        List<EsportsHeroStatResponse> result = service().getHeroStats("AER Pro League");
 
         verify(esportsMatchDraftActionRepository).findHeroPickStats("1");
         verify(esportsMatchDraftActionRepository).findHeroBanStats("1");
@@ -129,17 +141,36 @@ class EsportsDataServiceTest {
                         4L, 3L, 1L, 75.0D,
                         3L, 2L, 1L, 66.66666666666667D,
                         1L, 1L, 0L, 100.0D,
-                        2L, 6L),
+                        2L, 1L, 1L, 6L),
                 new EsportsHeroStatResponse(11L, "Toro", "/images/heroes/Toro.jpg",
                         0L, 0L, 0L, 0D,
                         0L, 0L, 0L, 0D,
                         0L, 0L, 0L, 0D,
-                        5L, 5L),
+                        5L, 3L, 2L, 5L),
                 new EsportsHeroStatResponse(9L, "Aya", null,
                         1L, 0L, 1L, 0D,
                         0L, 0L, 0L, 0D,
                         1L, 0L, 1L, 0D,
-                        0L, 1L)
+                        0L, 0L, 0L, 1L)
+        );
+    }
+
+    @Test
+    void getDashboardRejectsInvalidDateRange() {
+        assertThatThrownBy(() -> service().getDashboard(
+                null,
+                null,
+                LocalDate.of(2026, 5, 9),
+                LocalDate.of(2026, 5, 1)
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("date range khong hop le.");
+    }
+
+    private EsportsDataService service() {
+        return new EsportsDataService(
+                esportsMatchDraftActionRepository,
+                esportsMatchGameRepository
         );
     }
 }

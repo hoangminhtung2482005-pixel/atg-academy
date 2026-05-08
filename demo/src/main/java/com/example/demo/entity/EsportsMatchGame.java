@@ -36,7 +36,8 @@ import java.util.List;
         indexes = {
                 @Index(name = "idx_esports_match_games_match_id", columnList = "match_id"),
                 @Index(name = "idx_esports_match_games_blue_team_id", columnList = "blue_team_id"),
-                @Index(name = "idx_esports_match_games_red_team_id", columnList = "red_team_id")
+                @Index(name = "idx_esports_match_games_red_team_id", columnList = "red_team_id"),
+                @Index(name = "idx_esports_match_games_draft_format_id", columnList = "draft_format_id")
         }
 )
 @Getter
@@ -69,6 +70,10 @@ public class EsportsMatchGame {
     @JoinColumn(name = "winner_team_id")
     private EsportsTeam winnerTeam;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "draft_format_id")
+    private EsportsDraftFormat draftFormat;
+
     @Column(name = "duration_seconds")
     private Integer durationSeconds;
 
@@ -80,6 +85,9 @@ public class EsportsMatchGame {
 
     @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<EsportsMatchDraftAction> draftActions = new ArrayList<>();
+
+    @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<EsportsMatchGameLineup> lineups = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

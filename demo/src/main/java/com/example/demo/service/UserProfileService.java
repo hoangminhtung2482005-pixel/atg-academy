@@ -81,7 +81,7 @@ public class UserProfileService {
 
     private User findCurrentUser(GoogleUserPrincipal principal) {
         return userRepository.findByEmail(principal.email())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Khong tim thay tai khoan hien tai"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Không tìm thấy tài khoản hiện tại"));
     }
 
     private UserContentItemResponse toGuideItem(Guide guide) {
@@ -116,15 +116,15 @@ public class UserProfileService {
 
     private String normalizeDisplayName(String value) {
         if (value == null) {
-            throw badRequest("Ten hien thi khong duoc de trong");
+            throw badRequest("Tên hiển thị không được để trống");
         }
 
         String displayName = value.trim();
         if (!StringUtils.hasText(displayName)) {
-            throw badRequest("Ten hien thi khong duoc de trong");
+            throw badRequest("Tên hiển thị không được để trống");
         }
         if (displayName.length() > MAX_DISPLAY_NAME_LENGTH) {
-            throw badRequest("Ten hien thi toi da 80 ky tu");
+            throw badRequest("Tên hiển thị tối đa 80 ký tự");
         }
         return displayName;
     }

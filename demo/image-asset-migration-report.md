@@ -39,14 +39,14 @@
 | Billow.jpg | heroes | /images/heroes/Billow.jpg | high |
 | Biron.jpg | heroes | /images/heroes/Biron.jpg | high |
 | BMG.png | teams | /images/teams/BMG.png | high |
-| Bộc Phá.png | spells | /images/spells/Bộc Phá.png | high |
+| boc-pha.png | spells | /images/spells/boc-pha.png | high |
 | bolt-baron.jpg | heroes | /images/heroes/bolt-baron.jpg | high |
 | Bonnie.jpg | heroes | /images/heroes/Bonnie.jpg | high |
 | BOX.png | teams | /images/teams/BOX.png | high |
 | Bright.jpg | heroes | /images/heroes/Bright.jpg | high |
 | BRU.png | teams | /images/teams/BRU.png | high |
 | Butterfly.jpg | heroes | /images/heroes/Butterfly.jpg | high |
-| Cấp Cứu.png | spells | /images/spells/Cấp Cứu.png | high |
+| cap-cuu.png | spells | /images/spells/cap-cuu.png | high |
 | Capheny.jpg | heroes | /images/heroes/Capheny.jpg | high |
 | Celica.jpg | heroes | /images/heroes/Celica.jpg | high |
 | Charlotte.jpg | heroes | /images/heroes/Charlotte.jpg | high |
@@ -75,7 +75,7 @@
 | FPT.png | teams | /images/teams/FPT.png | high |
 | FS.png | teams | /images/teams/FS.png | high |
 | FW.png | teams | /images/teams/FW.png | high |
-| Gầm Thét.png | spells | /images/spells/Gầm Thét.png | high |
+| gam-thet.png | spells | /images/spells/gam-thet.png | high |
 | GAM.png | teams | /images/teams/GAM.png | high |
 | GCS_logo.png | leagues | /images/leagues/GCS_logo.png | high |
 | Gildur.jpg | heroes | /images/heroes/Gildur.jpg | high |
@@ -102,7 +102,7 @@
 | Kriknak.png | heroes | /images/heroes/Kriknak.png | high |
 | Krixi.png | heroes | /images/heroes/Krixi.png | high |
 | Krizzix.png | heroes | /images/heroes/Krizzix.png | high |
-| Lá Chắn Sinh Mệnh.png | spells | /images/spells/Lá Chắn Sinh Mệnh.png | high |
+| la-chan-sinh-menh.png | spells | /images/spells/la-chan-sinh-menh.png | high |
 | Lauriel.jpg | heroes | /images/heroes/Lauriel.jpg | high |
 | Laville.jpg | heroes | /images/heroes/Laville.jpg | high |
 | Liliana.jpg | heroes | /images/heroes/Liliana.jpg | high |
@@ -123,7 +123,7 @@
 | Murad.jpg | heroes | /images/heroes/Murad.jpg | high |
 | Nakroth.jpg | heroes | /images/heroes/Nakroth.jpg | high |
 | Natalya.jpg | heroes | /images/heroes/Natalya.jpg | high |
-| Ngất Ngư.png | spells | /images/spells/Ngất Ngư.png | high |
+| ngat-ngu.png | spells | /images/spells/ngat-ngu.png | high |
 | ngo-khong.jpg | heroes | /images/heroes/ngo-khong.jpg | high |
 | Omega.jpg | heroes | /images/heroes/Omega.jpg | high |
 | Omen.jpg | heroes | /images/heroes/Omen.jpg | high |
@@ -150,7 +150,7 @@
 | Stuart.jpg | heroes | /images/heroes/Stuart.jpg | high |
 | Superman.jpg | heroes | /images/heroes/Superman.jpg | high |
 | support.png | ui | /images/ui/support.png | high |
-| Suy Nhược.png | spells | /images/spells/Suy Nhược.png | high |
+| suy-nhuoc.png | spells | /images/spells/suy-nhuoc.png | high |
 | Taara.jpg | heroes | /images/heroes/Taara.jpg | high |
 | Tachi.jpg | heroes | /images/heroes/Tachi.jpg | high |
 | TeeMee.jpg | heroes | /images/heroes/TeeMee.jpg | high |
@@ -158,22 +158,22 @@
 | tel-annas.jpg | heroes | /images/heroes/tel-annas.jpg | high |
 | TEN.png | teams | /images/teams/TEN.png | high |
 | Thane.png | heroes | /images/heroes/Thane.png | high |
-| Thanh Tẩy.png | spells | /images/spells/Thanh Tẩy.png | high |
+| thanh-tay.png | spells | /images/spells/thanh-tay.png | high |
 | the-flash.jpg | heroes | /images/heroes/the-flash.jpg | high |
 | thorne.jpg | heroes | /images/heroes/thorne.jpg | high |
-| Tốc Biến.png | spells | /images/spells/Tốc Biến.png | high |
-| Tốc Hành.png | spells | /images/spells/Tốc Hành.png | high |
+| toc-bien.png | spells | /images/spells/toc-bien.png | high |
+| toc-hanh.png | spells | /images/spells/toc-hanh.png | high |
 | top.png | ui | /images/ui/top.png | high |
 | Toro.jpg | heroes | /images/heroes/Toro.jpg | high |
 | trieu-van.jpg | heroes | /images/heroes/trieu-van.jpg | high |
-| Trừng Trị.png | spells | /images/spells/Trừng Trị.png | high |
+| trung-tri.png | spells | /images/spells/trung-tri.png | high |
 | TS.png | teams | /images/teams/TS.png | high |
-| Tụ Bảo Bồn.png | spells | /images/spells/Tụ Bảo Bồn.png | high |
+| tu-bao-bon.png | spells | /images/spells/tu-bao-bon.png | high |
 | Tulen.jpg | heroes | /images/heroes/Tulen.jpg | high |
 | Valhein.jpg | heroes | /images/heroes/Valhein.jpg | high |
 | Veera.jpg | heroes | /images/heroes/Veera.jpg | high |
 | Veres.jpg | heroes | /images/heroes/Veres.jpg | high |
-| Viện Binh Liên Hiệp.png | spells | /images/spells/Viện Binh Liên Hiệp.png | high |
+| vien-binh-lien-hiep.png | spells | /images/spells/vien-binh-lien-hiep.png | high |
 | Violet.jpg | heroes | /images/heroes/Violet.jpg | high |
 | Volkath.jpg | heroes | /images/heroes/Volkath.jpg | high |
 | Wiro.jpg | heroes | /images/heroes/Wiro.jpg | high |
@@ -221,14 +221,14 @@
 - /images/Billow.jpg -> /images/heroes/Billow.jpg
 - /images/Biron.jpg -> /images/heroes/Biron.jpg
 - /images/BMG.png -> /images/teams/BMG.png
-- /images/Bộc Phá.png -> /images/spells/Bộc Phá.png
+- /images/spells/boc-pha.png -> /images/spells/boc-pha.png
 - /images/bolt-baron.jpg -> /images/heroes/bolt-baron.jpg
 - /images/Bonnie.jpg -> /images/heroes/Bonnie.jpg
 - /images/BOX.png -> /images/teams/BOX.png
 - /images/Bright.jpg -> /images/heroes/Bright.jpg
 - /images/BRU.png -> /images/teams/BRU.png
 - /images/Butterfly.jpg -> /images/heroes/Butterfly.jpg
-- /images/Cấp Cứu.png -> /images/spells/Cấp Cứu.png
+- /images/spells/cap-cuu.png -> /images/spells/cap-cuu.png
 - /images/Capheny.jpg -> /images/heroes/Capheny.jpg
 - /images/Celica.jpg -> /images/heroes/Celica.jpg
 - /images/Charlotte.jpg -> /images/heroes/Charlotte.jpg
@@ -257,7 +257,7 @@
 - /images/FPT.png -> /images/teams/FPT.png
 - /images/FS.png -> /images/teams/FS.png
 - /images/FW.png -> /images/teams/FW.png
-- /images/Gầm Thét.png -> /images/spells/Gầm Thét.png
+- /images/spells/gam-thet.png -> /images/spells/gam-thet.png
 - /images/GAM.png -> /images/teams/GAM.png
 - /images/GCS_logo.png -> /images/leagues/GCS_logo.png
 - /images/Gildur.jpg -> /images/heroes/Gildur.jpg
@@ -284,7 +284,7 @@
 - /images/Kriknak.png -> /images/heroes/Kriknak.png
 - /images/Krixi.png -> /images/heroes/Krixi.png
 - /images/Krizzix.png -> /images/heroes/Krizzix.png
-- /images/Lá Chắn Sinh Mệnh.png -> /images/spells/Lá Chắn Sinh Mệnh.png
+- /images/spells/la-chan-sinh-menh.png -> /images/spells/la-chan-sinh-menh.png
 - /images/Lauriel.jpg -> /images/heroes/Lauriel.jpg
 - /images/Laville.jpg -> /images/heroes/Laville.jpg
 - /images/Liliana.jpg -> /images/heroes/Liliana.jpg
@@ -305,7 +305,7 @@
 - /images/Murad.jpg -> /images/heroes/Murad.jpg
 - /images/Nakroth.jpg -> /images/heroes/Nakroth.jpg
 - /images/Natalya.jpg -> /images/heroes/Natalya.jpg
-- /images/Ngất Ngư.png -> /images/spells/Ngất Ngư.png
+- /images/spells/ngat-ngu.png -> /images/spells/ngat-ngu.png
 - /images/ngo-khong.jpg -> /images/heroes/ngo-khong.jpg
 - /images/Omega.jpg -> /images/heroes/Omega.jpg
 - /images/Omen.jpg -> /images/heroes/Omen.jpg
@@ -332,7 +332,7 @@
 - /images/Stuart.jpg -> /images/heroes/Stuart.jpg
 - /images/Superman.jpg -> /images/heroes/Superman.jpg
 - /images/support.png -> /images/ui/support.png
-- /images/Suy Nhược.png -> /images/spells/Suy Nhược.png
+- /images/spells/suy-nhuoc.png -> /images/spells/suy-nhuoc.png
 - /images/Taara.jpg -> /images/heroes/Taara.jpg
 - /images/Tachi.jpg -> /images/heroes/Tachi.jpg
 - /images/TeeMee.jpg -> /images/heroes/TeeMee.jpg
@@ -340,22 +340,22 @@
 - /images/tel-annas.jpg -> /images/heroes/tel-annas.jpg
 - /images/TEN.png -> /images/teams/TEN.png
 - /images/Thane.png -> /images/heroes/Thane.png
-- /images/Thanh Tẩy.png -> /images/spells/Thanh Tẩy.png
+- /images/spells/thanh-tay.png -> /images/spells/thanh-tay.png
 - /images/the-flash.jpg -> /images/heroes/the-flash.jpg
 - /images/thorne.jpg -> /images/heroes/thorne.jpg
-- /images/Tốc Biến.png -> /images/spells/Tốc Biến.png
-- /images/Tốc Hành.png -> /images/spells/Tốc Hành.png
+- /images/spells/toc-bien.png -> /images/spells/toc-bien.png
+- /images/spells/toc-hanh.png -> /images/spells/toc-hanh.png
 - /images/top.png -> /images/ui/top.png
 - /images/Toro.jpg -> /images/heroes/Toro.jpg
 - /images/trieu-van.jpg -> /images/heroes/trieu-van.jpg
-- /images/Trừng Trị.png -> /images/spells/Trừng Trị.png
+- /images/spells/trung-tri.png -> /images/spells/trung-tri.png
 - /images/TS.png -> /images/teams/TS.png
-- /images/Tụ Bảo Bồn.png -> /images/spells/Tụ Bảo Bồn.png
+- /images/spells/tu-bao-bon.png -> /images/spells/tu-bao-bon.png
 - /images/Tulen.jpg -> /images/heroes/Tulen.jpg
 - /images/Valhein.jpg -> /images/heroes/Valhein.jpg
 - /images/Veera.jpg -> /images/heroes/Veera.jpg
 - /images/Veres.jpg -> /images/heroes/Veres.jpg
-- /images/Viện Binh Liên Hiệp.png -> /images/spells/Viện Binh Liên Hiệp.png
+- /images/spells/vien-binh-lien-hiep.png -> /images/spells/vien-binh-lien-hiep.png
 - /images/Violet.jpg -> /images/heroes/Violet.jpg
 - /images/Volkath.jpg -> /images/heroes/Volkath.jpg
 - /images/Wiro.jpg -> /images/heroes/Wiro.jpg

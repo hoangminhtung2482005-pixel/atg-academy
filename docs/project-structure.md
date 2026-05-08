@@ -1,0 +1,597 @@
+# Project Structure - ATG Academy
+
+Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academy theo code đang có ở thời điểm review. Khi UI chưa hoàn chỉnh hoặc chỉ mới thấy backend/API, tài liệu sẽ ghi rõ thay vì khẳng định là đã hoàn tất.
+
+## Ghi chú quyền truy cập
+
+- Public `GET` đang mở cho: `Wiki`, `Spells`, `Esports`, `Guides`, `Tier Lists`, `Ban/Pick leaderboard`, `Ban/Pick result`.
+- Các thao tác ghi dữ liệu như tạo guide, tạo/rate/comment/save tier list, room Ban/Pick online, profile account đều cần đăng nhập.
+- Toàn bộ `/api/admin/**` yêu cầu role `ADMIN`.
+
+## C?y menu / module
+
+- Menu
+  - Home
+    - Route chính: `/`, `/html/index.html`
+    - Người dùng được làm gì:
+      - Xem banner/trang chủ.
+      - Xem preview `Tier List Meta`.
+      - Xem `Community Tier List` nổi bật.
+      - Xem top đội tuyển esports theo Elo.
+    - Admin được làm gì:
+      - Không thấy thao tác admin riêng trên Home.
+    - API chính:
+      - `GET /api/home/community-tier-highlights`
+      - `GET /api/home/feed`
+      - `GET /api/tier-lists/official`
+      - `GET /api/esports/teams`
+    - Ghi chú dữ liệu/DB:
+      - Homepage đang lấy dữ liệu tổng hợp từ `tier_lists`, `guides`, `esports_teams`.
+
+  - Tier List
+    - Tier List Meta
+      - Route chính: `/tier-list`, `/html/tier-list.html`
+      - Người dùng được làm gì:
+        - Xem tier list meta chính thức.
+        - Tải ảnh tier list sau khi đăng nhập.
+        - Mở modal tạo community tier list.
+      - Admin được làm gì:
+        - Regenerate và lưu `Tier List Meta` từ điểm `ban_pick_score` của hero.
+      - API chính:
+        - `GET /api/tier-lists/official`
+        - `POST /api/admin/tier-lists/official/regenerate-from-hero-scores`
+      - Ghi chú dữ liệu/DB:
+        - Tier list chính lưu trong `tier_lists`.
+        - Nguồn dữ liệu official phụ thuộc `heroes.ban_pick_score`.
+
+    - Tier List cộng đồng nổi bật
+      - Route/UI chính: cùng page `/html/tier-list.html`
+      - Người dùng được làm gì:
+        - Xem tối đa 6 community tier list nổi bật.
+        - Mở chi tiết để xem board, rating, bình luận, tải ảnh.
+      - Admin được làm gì:
+        - Có thể chấm `admin rating` ở trang chi tiết.
+      - API chính:
+        - `GET /api/tier-lists/community`
+      - Ghi chú dữ liệu/DB:
+        - Rating/comment tách riêng khỏi bảng tier list gốc.
+
+    - Tất cả Tier List
+      - Route chính: `/tier-list/all`, `/html/tier-list-all.html`
+      - Người dùng được làm gì:
+        - Xem toàn bộ community tier list hiện có.
+      - Admin được làm gì:
+        - Không thấy thao tác admin riêng trên page này ngoài quyền như user/admin ở card/detail.
+      - API chính:
+        - `GET /api/tier-lists/community/all`
+      - Ghi chú dữ liệu/DB:
+        - Dùng chung dữ liệu community tier list từ `tier_lists`.
+
+    - Tier List c?a b?n
+      - Route chính: `/tier-list/mine`, `/html/tier-list-mine.html`
+      - Người dùng được làm gì:
+        - Xem `Tier List bạn tạo`.
+        - Xem `Tier List đã lưu`.
+        - Xóa tier list của mình nếu là owner.
+      - Admin được làm gì:
+        - Có thể xóa như quyền admin nếu cần.
+      - API chính:
+        - `GET /api/tier-lists/me`
+        - `GET /api/tier-lists/saved`
+        - `POST /api/tier-lists/{id}/save`
+        - `DELETE /api/tier-lists/{id}/save`
+      - Ghi chú dữ liệu/DB:
+        - `saved` là bookmark/reference, không clone tier list.
+        - Bảng riêng: `user_saved_tier_lists`.
+
+    - Tạo community tier list
+      - Route/UI chính:
+        - Modal trên `tier-list.html`
+        - Modal trên `tier-list-all.html`
+        - Modal trên `tier-list-mine.html`
+      - User đăng nhập được làm gì:
+        - Tạo/publish community tier list.
+        - Chỉnh title, note, kéo thả hero vào board.
+        - Lưu tối đa 5 community tier list tự tạo.
+      - Anonymous được làm gì:
+        - Mở draft local.
+        - Tạo 1 draft tạm bằng `sessionStorage`.
+        - Không lưu DB.
+        - Không publish.
+        - Không lưu bookmark.
+        - Không export/tải ảnh.
+      - Admin được làm gì:
+        - Không có UI riêng cho create community ngoài quyền giống user.
+      - API chính:
+        - `POST /api/tier-lists`
+        - `PUT /api/tier-lists/{id}`
+        - `DELETE /api/tier-lists/{id}`
+        - `GET /api/users/me/content-summary` để kiểm tra quota 5 tier list
+      - Ghi chú dữ liệu/DB:
+        - Dữ liệu chính ở `tier_lists`.
+        - Rating ở `tier_list_ratings`.
+        - Comment ở `tier_list_comments`.
+        - Admin rating ở `tier_list_admin_ratings`.
+
+    - Chi tiết tier list
+      - Route chính: `/tier-list/{id}`, `/html/tier-list-detail.html?id={id}`
+      - Người dùng được làm gì:
+        - Xem board.
+        - Rate tier list.
+        - Bình luận.
+        - Lưu/bỏ lưu.
+        - Tải ảnh sau khi đăng nhập.
+      - Admin được làm gì:
+        - Chấm `admin rating`.
+      - API chính:
+        - `GET /api/tier-lists/{id}`
+        - `GET /api/tier-lists/{id}/ratings/summary`
+        - `POST /api/tier-lists/{id}/ratings`
+        - `GET /api/tier-lists/{id}/comments`
+        - `POST /api/tier-lists/{id}/comments`
+        - `PUT /api/admin/tier-lists/{id}/admin-rating`
+      - Ghi chú dữ liệu/DB:
+        - Community rating và admin rating đang tách riêng.
+
+  - Ban/Pick
+    - Free Mode
+      - Route chính: `/html/ban-pick-free.html`
+      - Người dùng được làm gì:
+        - Kéo thả tự do vào slot ban/pick.
+        - Không đi theo phase chuẩn.
+        - Xem `Ban/Pick Score & Win Rate` của 2 đội theo hero đã pick.
+      - Admin được làm gì:
+        - Không thấy thao tác admin riêng trên page này.
+      - API chính:
+        - `GET /api/wiki/heroes`
+      - Ghi chú dữ liệu/DB:
+        - Hero pool lấy từ `heroes`.
+        - Không thấy lưu history/DB riêng cho local free mode.
+
+    - Standard Mode
+      - Route chính: `/html/ban-pick-standard.html`
+      - Người dùng được làm gì:
+        - Draft theo phase chuẩn.
+        - Dùng timer từng lượt.
+        - Preview rồi confirm/cancel lượt chọn.
+        - Chuyển phase thủ công nếu cần.
+        - C? bu?c `lineup adjustment` 30 gi?y cu?i draft.
+        - Xem `Ban/Pick Score & Win Rate`.
+      - Admin được làm gì:
+        - Không thấy thao tác admin riêng trên page này.
+      - API chính:
+        - `GET /api/wiki/heroes`
+      - Ghi chú dữ liệu/DB:
+        - Mode local, chưa thấy lưu DB/history riêng.
+
+    - Solo Ban/Pick 1v1 Online
+      - Route chính: `/html/ban-pick-solo.html`
+      - Query/route phụ:
+        - `?room=CODE` để join room trực tiếp
+      - Người dùng được làm gì:
+        - Đăng nhập để tạo/join room.
+        - Chọn BO1/BO3/BO5/BO7.
+        - Roll side, ready, start.
+        - Draft realtime.
+        - Xác nhận lineup sau khi draft.
+        - Chuyển ván tiếp theo hoặc reset room.
+        - Chia sẻ link kết quả draft.
+      - Admin được làm gì:
+        - Không thấy quyền admin riêng; module đang theo người chơi đăng nhập.
+      - API chính:
+        - `POST /api/ban-pick/rooms`
+        - `GET /api/ban-pick/rooms/{roomCode}`
+        - `POST /api/ban-pick/rooms/{roomCode}/join`
+        - `POST /api/ban-pick/rooms/{roomCode}/roll-side`
+        - `POST /api/ban-pick/rooms/{roomCode}/ready`
+        - `POST /api/ban-pick/rooms/{roomCode}/start`
+        - `POST /api/ban-pick/rooms/{roomCode}/confirm`
+        - `POST /api/ban-pick/rooms/{roomCode}/lineup/reorder`
+        - `POST /api/ban-pick/rooms/{roomCode}/lineup/confirm`
+        - `POST /api/ban-pick/rooms/{roomCode}/next-game`
+        - `POST /api/ban-pick/rooms/{roomCode}/reset`
+        - WebSocket: `/ws`
+        - STOMP app destination: `/app/ban-pick/{roomCode}/*`
+        - Topic: `/topic/ban-pick/{roomCode}`
+      - Ghi chú dữ liệu/DB:
+        - Room: `ban_pick_rooms`
+        - Participant: `ban_pick_room_participants`
+        - Action: `ban_pick_actions`
+
+    - Ban/Pick Score & Win Rate
+      - Route/UI chính:
+        - Hiển thị trong `Free Mode`
+        - Hiển thị trong `Standard Mode`
+        - Hiển thị trong `Solo Online`
+      - Người dùng được làm gì:
+        - Xem tổng điểm 2 đội.
+        - Xem win rate dự đoán theo đội hình đã pick.
+      - Admin được làm gì:
+        - Chỉnh `banPickScore` của hero ở Admin Hero.
+      - API chính:
+        - `GET /api/wiki/heroes`
+        - `PUT /api/admin/wiki/heroes/{id}`
+      - Ghi chú dữ liệu/DB:
+        - Điểm đang đọc từ `heroes.ban_pick_score`.
+
+    - Hồ sơ draft
+      - Route chính: `/ban-pick/profile`, `/html/ban-pick-profile.html`
+      - Người dùng được làm gì:
+        - Xem rating.
+        - Xem win rate, W/L, tổng số trận.
+        - Xem lịch sử draft.
+        - Xem hero pick nhiều nhất.
+      - Admin được làm gì:
+        - Không thấy page admin riêng cho profile solo.
+      - API chính:
+        - `GET /api/ban-pick/profile`
+      - Ghi chú dữ liệu/DB:
+        - Yêu cầu đăng nhập.
+        - Dữ liệu tổng hợp từ `draft_histories` và `player_stats`.
+
+    - Bảng xếp hạng
+      - Route chính: `/ban-pick/leaderboard`, `/html/ban-pick-leaderboard.html`
+      - Người dùng được làm gì:
+        - Xem ranking solo Ban/Pick.
+        - Xem rating, W/L, win rate, most picked heroes.
+      - Admin được làm gì:
+        - Không thấy page admin riêng.
+      - API chính:
+        - `GET /api/ban-pick/leaderboard`
+      - Ghi chú dữ liệu/DB:
+        - Dữ liệu chính lấy từ `player_stats`.
+
+    - Kết quả draft
+      - Route chính: `/ban-pick/result/{id}`, `/html/ban-pick-result.html`
+      - Người dùng được làm gì:
+        - Xem picks/bans hai bên.
+        - Copy link kết quả.
+        - Người trong trận có thể ghi nhận bên thắng nếu chưa có winner.
+      - Admin được làm gì:
+        - Không thấy thao tác admin riêng trên page này.
+      - API chính:
+        - `GET /api/ban-pick/history/{id}`
+        - `POST /api/ban-pick/history/{id}/winner`
+      - Ghi chú dữ liệu/DB:
+        - Lưu ở `draft_histories`.
+
+  - Tactics & Guides
+    - Danh sách giáo án
+      - Route chính: `/guides`, `/html/giao-an.html`
+      - Người dùng được làm gì:
+        - Xem guide public.
+        - Tìm kiếm theo tên tướng.
+        - Lọc theo hero/lane/category.
+        - Sắp xếp theo mới nhất hoặc lượt xem.
+      - Admin được làm gì:
+        - Không thấy moderation admin riêng trên page public.
+      - API chính:
+        - `GET /api/guides`
+      - Ghi chú dữ liệu/DB:
+        - Dữ liệu chính ở `guides`.
+
+    - Tạo giáo án
+      - Route chính: `/html/create-guide.html`
+      - Người dùng được làm gì:
+        - Cần đăng nhập để lưu.
+        - Nhập title, author, hero, lane, spell, excerpt, section nội dung.
+      - Admin được làm gì:
+        - Không thấy quyền admin riêng; dùng chung flow authenticated user.
+      - API chính:
+        - `POST /api/guides`
+        - `GET /api/spells`
+      - Ghi chú dữ liệu/DB:
+        - Nội dung guide hiện lưu chủ yếu trong `guides.contentData`.
+        - Picker `spell` đã dùng API.
+        - Picker hero/lane trong form còn có phần dữ liệu frontend hardcode; cần kiểm tra thêm mức hoàn thiện.
+
+    - Chi tiết giáo án
+      - Route chính: `/guides/{id}`, `/html/guide-detail.html?id={id}`
+      - Người dùng được làm gì:
+        - Xem nội dung guide.
+        - Tăng `viewCount` khi mở chi tiết.
+      - Admin được làm gì:
+        - Không thấy action admin riêng trên page detail.
+      - API chính:
+        - `GET /api/guides/{id}`
+      - Ghi chú dữ liệu/DB:
+        - Bảng chính `guides`.
+        - Các entity như `GuideItem`, `GuideArcana`, `GuideEnchantment` còn tồn tại; mức sử dụng runtime cần kiểm tra thêm.
+
+  - Esports
+    - Ranking
+      - Route chính: `/html/esports.html`
+      - Người dùng được làm gì:
+        - Xem `Regional Strength`.
+        - Xem `Global Power Rankings`.
+        - Tìm đội.
+        - Lọc theo region.
+        - Xem Elo, matches, W/L, win rate.
+      - Admin được làm gì:
+        - Không thấy thao tác admin trên page public này.
+      - API chính:
+        - `GET /api/esports/teams`
+      - Ghi chú dữ liệu/DB:
+        - Dữ liệu chính ở `esports_teams`.
+
+    - Teams
+      - Route/UI chính:
+        - Chưa thấy page public tách riêng.
+        - Dữ liệu team đang hiển thị trong page ranking.
+      - Người dùng được làm gì:
+        - Xem danh sách đội trong bảng ranking public.
+      - Admin được làm gì:
+        - CRUD đội tuyển ở Admin.
+      - API chính:
+        - `GET /api/esports/teams`
+        - `GET/POST/PUT/DELETE /api/admin/esports/teams...`
+      - Ghi chú dữ liệu/DB:
+        - Team nằm ở `esports_teams`.
+
+    - Matches
+      - Route/UI chính:
+        - Chưa thấy page public hoàn chỉnh cho recent matches hoặc match detail.
+      - Người dùng được làm gì:
+        - Chưa thấy UI public riêng; cần kiểm tra thêm.
+      - Admin được làm gì:
+        - Thêm/sửa/xóa trận và reset match history ở Admin.
+        - Chọn một match để quản lý game, draft 18 phase, và final lineup ở page admin riêng.
+      - API chính:
+        - `GET /api/esports/matches/recent`
+        - `GET /api/esports/matches/{matchId}/games`
+        - `GET /api/esports/games/{gameId}/draft-actions`
+        - `GET /api/esports/games/{gameId}/lineups`
+        - `GET/POST/PUT/DELETE /api/admin/esports/matches...`
+        - `GET/POST /api/admin/esports/matches/{matchId}/games`
+        - `GET/PUT/DELETE /api/admin/esports/games/{gameId}`
+        - `GET/PUT /api/admin/esports/games/{gameId}/draft-actions`
+        - `GET/PUT /api/admin/esports/games/{gameId}/lineups`
+      - Ghi chú dữ liệu/DB:
+        - Admin hiện có page riêng `/html/admin-esports-data.html` để nhập dữ liệu game/draft/lineup cho match đã có.
+
+    - Esports Data
+      - Route chính: `/esports/data`, `/html/esports-data.html`
+      - Người dùng được làm gì:
+        - Xem dashboard analytics dạng data-dense với sidebar `ANALYTICS / TOOLS / SYSTEM`.
+        - Lọc đồng thời theo giải đấu, đội tuyển, và khoảng ngày.
+        - Xem `Analytics Overview` gồm tổng trận/ván, tướng trong meta, `Blue Side WR`, và `Draft Accuracy` khi đủ dữ liệu.
+        - Xem `Match Activity`, `Side Advantage`, `Power Picks`, `Trap Picks`, `Top Teams`.
+        - Xem `Hero Statistics`, `Top 5 tướng bị cấm nhiều nhất`, và `Tướng bị cấm nhiều nhất bởi bên Xanh`.
+      - Admin được làm gì:
+        - Dùng `/html/admin-esports-data.html` để nhập source data match/game/draft/lineup cho thống kê public.
+      - API chính:
+        - `GET /api/esports/data/tournaments`
+        - `GET /api/esports/data/dashboard`
+        - `GET /api/esports/data/top-banned-heroes`
+        - `GET /api/esports/data/top-blue-banned-heroes`
+        - `GET /api/esports/data/hero-stats`
+      - Ghi chú dữ liệu/DB:
+        - Dashboard public hiện lấy KPI/chart/insight/table chủ yếu từ endpoint tổng hợp `GET /api/esports/data/dashboard`.
+        - Filter `tournamentName`, `teamCode`, `dateFrom`, `dateTo` áp dụng đồng thời cho toàn bộ dashboard.
+        - Analytics đang dựa trên dữ liệu draft esports.
+        - Bảng liên quan nhìn thấy rõ: `esports_matches`, `esports_match_games`, `esports_match_draft_actions`; `Draft Accuracy` còn dùng thêm `heroes.ban_pick_score`.
+
+  - Wiki
+    - Hero Wiki
+      - Route chính: `/html/wiki.html`
+      - Người dùng được làm gì:
+        - Xem grid hero.
+        - Tìm theo tên/class/lane role.
+        - Lọc theo class và primary role.
+      - Admin được làm gì:
+        - Chỉnh dữ liệu hero ở Admin Hero.
+      - API chính:
+        - `GET /api/wiki/heroes`
+        - `GET /api/wiki/heroes/{slug}`
+      - Ghi chú dữ liệu/DB:
+        - UI public hiện thấy rõ ở mức catalog/grid.
+        - API hero detail theo `slug` đã có backend (skills, matchups, related guides), nhưng UI public cho trang chi tiết hero cần kiểm tra thêm.
+        - Dữ liệu chính: `heroes`, `hero_roles`, `hero_classes`, `hero_attributes`, `hero_skills`, `hero_matchups`.
+
+    - Bổ trợ / Spells
+      - Route chính: `/html/wiki.html?tab=spells`
+      - Người dùng được làm gì:
+        - Xem danh sách spells/bổ trợ.
+      - Admin được làm gì:
+        - Chưa thấy UI/API admin riêng cho spells.
+      - API chính:
+        - `GET /api/spells`
+        - `GET /api/spells/{slug}`
+      - Ghi chú dữ liệu/DB:
+        - Dữ liệu nằm ở bảng `spells`.
+
+    - Trang bị / Ngọc / Phù hiệu
+      - Route chính: tab trong `/html/wiki.html`
+      - Người dùng được làm gì:
+        - Hiện chỉ thấy placeholder `Coming Soon`.
+      - Admin được làm gì:
+        - Chưa thấy UI admin riêng tương ứng trong phạm vi đã inspect.
+      - API chính:
+        - Chưa thấy controller/API public tương ứng; cần kiểm tra thêm.
+      - Ghi chú dữ liệu/DB:
+        - Có entity liên quan trong project, nhưng UI public hiện chưa hoàn chỉnh.
+
+    - Esports Data
+      - Ghi chú menu:
+        - Trong header hiện đang nằm trong dropdown `Wiki`.
+        - Route thật là `/esports/data`, không phải page con vật lý bên trong `wiki.html`.
+
+  - Account
+    - Ghi chú menu:
+      - Không nằm trên nav chính.
+      - Xuất hiện trong popup tài khoản sau khi đăng nhập.
+
+    - Profile / Account Dashboard
+      - Route chính: `/html/account.html`
+      - Người dùng được làm gì:
+        - Xem email, role, level.
+        - Sửa `displayName`.
+        - Đổi `level` giữa `Normal` và `Vip`.
+        - Đăng xuất.
+      - Admin được làm gì:
+        - Nếu role `Admin`, có shortcut sang Admin Panel.
+      - API chính:
+        - `GET /api/users/me/profile`
+        - `PUT /api/users/me/profile`
+      - Ghi chú dữ liệu/DB:
+        - Dùng bảng `users`.
+
+    - Nội dung của bạn
+      - Route/UI chính: panel bên phải trong `/html/account.html`
+      - Người dùng được làm gì:
+        - Xem số guide đã đăng.
+        - Xem số community tier list đã đăng.
+        - Mở danh sách item với link sang trang detail.
+      - Admin được làm gì:
+        - Không thấy logic admin riêng; dùng chung theo user đăng nhập.
+      - API chính:
+        - `GET /api/users/me/content-summary`
+      - Ghi chú dữ liệu/DB:
+        - `tierListCount` ở đây là số tier list tự tạo, không phải danh sách đã lưu.
+
+    - Giáo án đã đăng
+      - Route/UI chính: nằm trong `Nội dung của bạn`
+      - Người dùng được làm gì:
+        - Xem list guide đã đăng của tài khoản hiện tại.
+      - API chính:
+        - `GET /api/users/me/content-summary`
+
+    - Tier List đã đăng
+      - Route/UI chính: nằm trong `Nội dung của bạn`
+      - Người dùng được làm gì:
+        - Xem list community tier list tự tạo của tài khoản hiện tại.
+      - API chính:
+        - `GET /api/users/me/content-summary`
+
+  - Admin
+    - Ghi chú menu:
+      - Link `Quản trị` chỉ xuất hiện trong popup tài khoản nếu user là `Admin`.
+      - HTML admin có thể truy cập trực tiếp bằng URL, nhưng quyền thực thi thực tế dựa vào `/api/admin/**`.
+
+    - Admin Dashboard
+      - Route chính: `/html/admin.html`
+      - Admin được làm gì:
+        - Xem tổng quan.
+        - Điều hướng sang module user, team, esports, hero, attributes.
+        - Có link sang page `Esports Data / Draft`.
+      - API chính:
+        - Gọi các API admin theo từng module con.
+      - Ghi chú dữ liệu/DB:
+        - ??y l? shell qu?n tr? ch?nh dang d?ng.
+
+    - Quản lý hero
+      - Route chính: `/html/admin-heroes.html`
+      - Admin được làm gì:
+        - Xem danh sách hero.
+        - Sửa tên, slug, ảnh, banner, mô tả.
+        - Sửa class, primary role, sub roles.
+        - Sửa attributes.
+        - Sửa `banPickScore`.
+      - API chính:
+        - `GET /api/admin/wiki/heroes`
+        - `GET /api/admin/wiki/heroes/{id}`
+        - `PUT /api/admin/wiki/heroes/{id}`
+        - `PUT /api/admin/wiki/heroes/{id}/roles`
+        - `PUT /api/admin/wiki/heroes/{id}/attributes`
+      - Ghi chú dữ liệu/DB:
+        - Tác động vào `heroes` và các bảng mapping role/class/attribute.
+
+    - Quản lý đặc điểm tướng
+      - Route chính: `/html/admin-attributes.html`
+      - Admin được làm gì:
+        - CRUD danh mục `hero attributes`.
+      - API chính:
+        - `GET /api/admin/wiki/attributes`
+        - `POST /api/admin/wiki/attributes`
+        - `PUT /api/admin/wiki/attributes/{id}`
+        - `DELETE /api/admin/wiki/attributes/{id}`
+      - Ghi chú dữ liệu/DB:
+        - Dữ liệu chính ở `hero_attributes`.
+
+    - Quản lý người dùng
+      - Route/UI chính: section `Users` trong `/html/admin.html`
+      - Admin được làm gì:
+        - Tìm/lọc user theo text, role, status.
+        - Sửa name, avatar, role, status, note.
+      - API chính:
+        - `GET /api/admin/users`
+        - `GET /api/admin/users/{id}`
+        - `PUT /api/admin/users/{id}`
+      - Ghi chú dữ liệu/DB:
+        - Dữ liệu user chính ở `users`.
+
+    - Quản lý esports
+      - Route/UI chính:
+        - Section `Teams` trong `/html/admin.html`
+        - Section `Giải đấu AER 2026` trong `/html/admin.html`
+        - Page riêng `/html/admin-esports-data.html`
+      - Admin được làm gì:
+        - CRUD đội tuyển.
+        - Bulk import match history.
+        - Thêm/sửa/xóa trận.
+        - Thêm/sửa/xóa game trong match.
+        - Nhập/sửa 18 phase draft theo hard phase rule.
+        - Nhập/sửa final lineup 10 hero sau swap.
+        - Reset match history và Elo.
+      - API chính:
+        - `GET/POST/PUT/DELETE /api/admin/esports/teams...`
+        - `POST /api/admin/esports/teams/matches/bulk-import`
+        - `GET/POST/PUT/DELETE /api/admin/esports/matches...`
+        - `GET/POST /api/admin/esports/matches/{matchId}/games`
+        - `GET/PUT/DELETE /api/admin/esports/games/{gameId}`
+        - `GET/PUT /api/admin/esports/games/{gameId}/draft-actions`
+        - `GET/PUT /api/admin/esports/games/{gameId}/lineups`
+      - Ghi chú dữ liệu/DB:
+        - Bảng chính `esports_teams`, `esports_matches`, `esports_match_games`, `esports_match_draft_actions`, `esports_match_game_lineups`.
+        - UI admin hiện đã có page riêng để quản trị game/draft/lineup mà không đổi DB schema.
+
+    - Quản lý tier list
+      - Route/UI chính:
+        - Không có page admin tách riêng trong sidebar.
+        - Quy?n admin hi?n ph?n t?n ? module Tier List public.
+      - Admin được làm gì:
+        - Regenerate/lưu `Tier List Meta`.
+        - Ghi `admin rating` cho tier list cộng đồng ở trang detail.
+      - API chính:
+        - `POST /api/admin/tier-lists/official/regenerate-from-hero-scores`
+        - `PUT /api/admin/tier-lists/{id}/admin-rating`
+      - Ghi chú dữ liệu/DB:
+        - Dùng chung dữ liệu `tier_lists`, `tier_list_admin_ratings`.
+
+    - Quản lý spells
+      - Trạng thái:
+        - Chưa thấy UI/API admin riêng cho spells trong phạm vi đã inspect.
+        - Cần kiểm tra thêm.
+
+    - Quản lý guide / cẩm nang
+      - Route/UI chính: section `Cẩm nang` trong `/html/admin.html`
+      - Trạng thái:
+        - UI hiện là placeholder `Đang phát triển`.
+        - Chưa thấy CRUD moderation backend riêng cho guide trong module admin.
+
+## Module / page phụ ngoài menu chính
+
+- `tactics-guides.html`
+  - Static page trùng `giao-an.html` đã bị xóa khỏi `static/html`.
+  - Legacy routes `/tactics-guides.html` và `/html/tactics-guides.html` được `StaticPageRedirectController` redirect sang `/html/giao-an.html`.
+
+- `ban-pick.html`
+  - Static dispatcher page đã bị xóa khỏi `static/html`.
+  - `StaticPageRedirectController` giữ các entry route `/ban-pick`, `/ban-pick.html`, `/html/ban-pick.html`.
+  - `?mode=free|standard|solo|solo-1v1` -> redirect sang mode tương ứng.
+  - `?room=CODE` -> redirect sang `/html/ban-pick-solo.html?room=CODE`.
+  - Không có query -> redirect mặc định sang `/html/ban-pick-free.html`.
+
+- `content.html`
+  - Placeholder `Quản lý nội dung sáng tạo` đã bị loại bỏ khỏi project structure.
+  - Không còn static file, menu, link nội bộ, hoặc controller redirect thay thế.
+
+- `tier-list-recommended.html`
+  - Static file không còn tồn tại trong project.
+  - Legacy routes `/tier-list/recommended`, `/tier-list-recommended.html`, `/html/tier-list-recommended.html` vẫn redirect về `/html/tier-list.html`.
+
+- Route legacy đáng chú ý
+  - `/guides` -> redirect sang `/html/giao-an.html`
+  - `/tactics-guides.html` và `/html/tactics-guides.html` -> redirect sang `/html/giao-an.html`
+  - `/tier-list/recommended` và các HTML cũ -> redirect sang `/html/tier-list.html`
+  - `/ban-pick`, `/ban-pick.html`, `/html/ban-pick.html` -> redirect theo mode hoặc room

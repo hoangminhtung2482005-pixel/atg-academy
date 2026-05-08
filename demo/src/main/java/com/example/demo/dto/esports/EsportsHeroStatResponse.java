@@ -17,6 +17,8 @@ public record EsportsHeroStatResponse(
         Long redLosses,
         Double redWinRate,
         Long banCount,
+        Long blueBanCount,
+        Long redBanCount,
         Long presenceCount
 ) {
 }

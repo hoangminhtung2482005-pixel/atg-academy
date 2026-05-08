@@ -89,7 +89,7 @@ public class GuideController {
     @GetMapping("/{id}")
     public ResponseEntity<?> getGuide(@PathVariable Long id) {
         Guide guide = guideRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Khong tim thay giao an"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy giáo án"));
 
         guide.setViewCount(safeInt(guide.getViewCount()) + 1);
         Guide saved = guideRepository.save(guide);
@@ -104,7 +104,7 @@ public class GuideController {
 
         String title = readString(body, "title");
         if (!StringUtils.hasText(title)) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Tieu de la bat buoc"));
+            return ResponseEntity.badRequest().body(Map.of("error", "Tiêu đề là bắt buộc"));
         }
 
         Object contentData = body.get("contentData");
@@ -209,7 +209,7 @@ public class GuideController {
 
     private GoogleUserPrincipal getCurrentUser(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof GoogleUserPrincipal principal)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Chua dang nhap");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Chưa đăng nhập");
         }
         return principal;
     }

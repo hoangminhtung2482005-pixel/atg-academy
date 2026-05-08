@@ -6,14 +6,14 @@
     const APP_SCRIPT_URL = '/js/tier-list-app.js?v=20260507-tierlist-auto-hero-score';
     const PAGE_META = Object.freeze({
         all: {
-            documentTitle: 'Tất cả tier list - AoV Tactics & Guides',
-            title: 'Tất cả tier list',
+            documentTitle: 'Tất cả Tier List - AoV Tactics & Guides',
+            title: 'Tất cả Tier List',
             subtitle: 'Xem toàn bộ Community Tier List đang có trên ATG Academy.'
         },
         mine: {
-            documentTitle: 'Tier list bản thân - AoV Tactics & Guides',
-            title: 'Tier list bản thân',
-            subtitle: 'Theo dõi Community Tier List do bạn tạo và các tier list bạn đã lưu dưới dạng bookmark/reference.'
+            documentTitle: 'Tier List của bạn - AoV Tactics & Guides',
+            title: 'Tier List của bạn',
+            subtitle: 'Theo dõi Community Tier List do bạn tạo và các Tier List bạn đã lưu dưới dạng bookmark/reference.'
         }
     });
 

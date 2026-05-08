@@ -19,6 +19,9 @@ public record EsportsMatchGameResponse(
         String winnerTeamName,
         String winnerTeamLogoUrl,
         Integer durationSeconds,
+        Long draftFormatId,
+        String draftFormatCode,
+        String draftFormatName,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

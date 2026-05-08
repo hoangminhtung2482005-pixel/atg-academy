@@ -30,21 +30,21 @@ function normalizeCommunityViewValue(value){
 const COMMUNITY_VIEW_CONFIG=Object.freeze({
     [COMMUNITY_VIEW.HIGHLIGHT]:{
         endpoint:`${OFFICIAL_TIER_LIST_API}/community`,
-        emptyText:'Chưa có tier list cộng đồng nổi bật nào.',
+        emptyText:'Chưa có Community Tier List nổi bật nào.',
         guestMessage:'',
-        errorText:'Không tải được danh sách tier list cộng đồng nổi bật.'
+        errorText:'Không tải được danh sách Community Tier List nổi bật.'
     },
     [COMMUNITY_VIEW.ALL]:{
         endpoint:`${OFFICIAL_TIER_LIST_API}/community/all`,
-        emptyText:'Chưa có tier list cộng đồng nào.',
+        emptyText:'Chưa có Community Tier List nào.',
         guestMessage:'',
-        errorText:'Không tải được tất cả tier list cộng đồng.'
+        errorText:'Không tải được toàn bộ Community Tier List.'
     },
     [COMMUNITY_VIEW.MINE]:{
         endpoint:`${OFFICIAL_TIER_LIST_API}/me`,
-        emptyText:'Bạn chưa tạo tier list nào.',
-        guestMessage:'Vui lòng đăng nhập để xem tier list của bạn.',
-        errorText:'Không tải được tier list của bạn.'
+        emptyText:'Bạn chưa tạo Tier List nào.',
+        guestMessage:'Vui lòng đăng nhập để xem Tier List của bạn.',
+        errorText:'Không tải được Tier List của bạn.'
     }
 });
 const COMMUNITY_SECTION=Object.freeze({
@@ -76,9 +76,292 @@ let currentCommunityView=typeof document!=='undefined'
 let communityRenderRequestId=0;
 const OFFICIAL_TIER_LIST_LEGACY_TITLES=['Tier List Meta Hien Tai','Tier List Meta Hiện Tại'];
 let modalTierDragActive=false;
+const GUEST_TIER_LIST_SESSION_KEY='atg_guest_tier_list_draft';
+const DEFAULT_MODAL_COLUMNS=Object.freeze(['DSL','JGL','MID','ADL','SUP']);
+const DEFAULT_MODAL_ROWS=Object.freeze([
+    Object.freeze({label:'S',color:'#e74c3c'}),
+    Object.freeze({label:'A',color:'#9b59b6'}),
+    Object.freeze({label:'B',color:'#3498db'}),
+    Object.freeze({label:'C',color:'#2ecc71'}),
+    Object.freeze({label:'D',color:'#95a5a6'})
+]);
+const COMMUNITY_TIER_LIST_LIMIT=5;
+const COMMUNITY_TIER_LIST_LIMIT_MESSAGE='B\u1ea1n ch\u1ec9 c\u00f3 th\u1ec3 l\u01b0u t\u1ed1i \u0111a 5 tier list.';
+const COMMUNITY_TIER_LIST_LIMIT_REACHED_MESSAGE='\u0110\u00e3 \u0111\u1ea1t gi\u1edbi h\u1ea1n 5/5 tier list.';
+let guestDraftSyncTimer=null;
+let guestDraftStorageWarningShown=false;
+let guestDraftSessionActive=false;
+let modalDraftHydrated=false;
+let guestDraftAutoRestoreAttempted=false;
+let currentUserCommunityTierListCountPromise=null;
+const currentUserCommunityTierListCountState={
+    ownerEmail:'',
+    tierListCount:0,
+    loaded:false
+};
 
 function normalizeTierListText(value){
     return String(value??'').normalize('NFC').trim();
+}
+
+function isTierListUserAuthenticated(){
+    if(typeof window.isAuthenticated==='function'){
+        try{
+            return window.isAuthenticated();
+        }catch(error){
+            console.warn('Tier list auth helper failed:',error);
+        }
+    }
+    return !!getTierListCurrentUser();
+}
+
+function buildDefaultModalContentData(){
+    return {
+        columns:DEFAULT_MODAL_COLUMNS.map(label=>({label,icon:'',alt:label})),
+        rows:DEFAULT_MODAL_ROWS.map(row=>({
+            label:row.label,
+            color:row.color,
+            cells:DEFAULT_MODAL_COLUMNS.map(()=>[])
+        }))
+    };
+}
+
+function cloneModalContentData(contentData){
+    return JSON.parse(JSON.stringify(contentData||buildDefaultModalContentData()));
+}
+
+function normalizeTierColorHex(value,fallback='#95a5a6'){
+    if(/^#[0-9a-f]{6}$/i.test(value||'')) return value.toLowerCase();
+    const rgb=String(value||'').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+    if(rgb){
+        const [r,g,b]=rgb.slice(1,4).map(part=>Math.max(0,Math.min(255,Number(part)||0)));
+        return `#${[r,g,b].map(part=>part.toString(16).padStart(2,'0')).join('')}`;
+    }
+    return fallback.toLowerCase();
+}
+
+function countGuestDraftHeroes(contentData){
+    return (contentData?.rows||[]).reduce((total,row)=>total+(row?.cells||[]).reduce((rowTotal,cell)=>{
+        return rowTotal+(Array.isArray(cell)?cell.length:0);
+    },0),0);
+}
+
+function isDefaultModalDraftContentData(contentData){
+    const normalized=contentData&&Array.isArray(contentData.columns)&&Array.isArray(contentData.rows)
+        ? contentData
+        : buildDefaultModalContentData();
+    const columnsMatch=DEFAULT_MODAL_COLUMNS.every((label,index)=>{
+        return normalizeTierListText(normalized.columns?.[index]?.label)===label;
+    });
+    const rowsMatch=DEFAULT_MODAL_ROWS.every((row,index)=>{
+        const currentRow=normalized.rows?.[index];
+        return normalizeTierListText(currentRow?.label)===row.label
+            && normalizeTierColorHex(currentRow?.color,row.color)===row.color
+            && Array.isArray(currentRow?.cells)
+            && currentRow.cells.every(cell=>Array.isArray(cell)?cell.length===0:true);
+    });
+    return columnsMatch&&rowsMatch&&countGuestDraftHeroes(normalized)===0;
+}
+
+function isGuestDraftMeaningful(payload){
+    const title=normalizeTierListText(payload?.title||'');
+    const description=normalizeTierListText((payload?.note??payload?.description)||'');
+    const contentData=payload?.contentData;
+    return Boolean(title||description||countGuestDraftHeroes(contentData)>0||!isDefaultModalDraftContentData(contentData));
+}
+
+function notifyGuestDraftStorageFailure(){
+    if(guestDraftStorageWarningShown) return;
+    guestDraftStorageWarningShown=true;
+    console.warn('Guest tier list draft could not be stored in sessionStorage.');
+    if(typeof showTierToast==='function'){
+        showTierToast('Không thể lưu draft tạm thời trong phiên trình duyệt này.','error');
+    }
+}
+
+function loadGuestDraftFromSession(){
+    try{
+        const raw=window.sessionStorage?.getItem(GUEST_TIER_LIST_SESSION_KEY);
+        if(!raw) return null;
+        const payload=JSON.parse(raw);
+        const contentData=payload?.contentData&&typeof payload.contentData==='object'
+            ? payload.contentData
+            : buildDefaultModalContentData();
+        guestDraftSessionActive=true;
+        return {
+            title:String(payload?.title||''),
+            description:String((payload?.note??payload?.description)||''),
+            contentData:cloneModalContentData(contentData),
+            updatedAt:payload?.updatedAt||null
+        };
+    }catch(error){
+        console.warn('Cannot load guest tier list draft from sessionStorage:',error);
+        try{
+            window.sessionStorage?.removeItem(GUEST_TIER_LIST_SESSION_KEY);
+        }catch(removeError){
+            console.warn('Cannot clear invalid guest tier list draft:',removeError);
+        }
+        notifyGuestDraftStorageFailure();
+        guestDraftSessionActive=false;
+        return null;
+    }
+}
+
+function clearGuestDraftSession(){
+    try{
+        window.sessionStorage?.removeItem(GUEST_TIER_LIST_SESSION_KEY);
+    }catch(error){
+        console.warn('Cannot clear guest tier list draft from sessionStorage:',error);
+    }
+    guestDraftSessionActive=false;
+}
+
+function shouldSyncGuestDraftToSession(){
+    return !isTierListUserAuthenticated()||guestDraftSessionActive;
+}
+
+function buildGuestDraftPayload(){
+    const note=document.getElementById('modal-note')?.value||'';
+    return {
+        title:document.getElementById('modal-title')?.value||'',
+        note,
+        description:note,
+        contentData:serializeModalTierList(),
+        updatedAt:new Date().toISOString()
+    };
+}
+
+function saveGuestDraftToSession(){
+    if(!shouldSyncGuestDraftToSession()) return false;
+    const payload=buildGuestDraftPayload();
+    if(!isGuestDraftMeaningful(payload)){
+        clearGuestDraftSession();
+        return false;
+    }
+    try{
+        window.sessionStorage?.setItem(GUEST_TIER_LIST_SESSION_KEY,JSON.stringify(payload));
+        guestDraftSessionActive=true;
+        return true;
+    }catch(error){
+        console.warn('Cannot save guest tier list draft to sessionStorage:',error);
+        notifyGuestDraftStorageFailure();
+        return false;
+    }
+}
+
+function queueGuestDraftSessionSync(){
+    if(!shouldSyncGuestDraftToSession()) return;
+    clearTimeout(guestDraftSyncTimer);
+    guestDraftSyncTimer=setTimeout(()=>saveGuestDraftToSession(),120);
+}
+
+function syncGuestDraftNotice(){
+    const note=document.getElementById('guest-draft-notice');
+    if(note){
+        note.hidden=isTierListUserAuthenticated();
+    }
+}
+
+function restoreGuestDraftToModal(draft){
+    const grid=document.getElementById('modal-tier-grid');
+    if(!grid||!draft) return false;
+
+    const contentData=draft.contentData&&Array.isArray(draft.contentData.columns)&&Array.isArray(draft.contentData.rows)
+        ? draft.contentData
+        : buildDefaultModalContentData();
+    const columns=Array.isArray(contentData.columns)?contentData.columns:[];
+    const rows=Array.isArray(contentData.rows)?contentData.rows:[];
+
+    const titleInput=document.getElementById('modal-title');
+    const noteInput=document.getElementById('modal-note');
+    if(titleInput) titleInput.value=String(draft.title||'');
+    if(noteInput) noteInput.value=String(draft.description||'');
+
+    const headerCells=Array.from(grid.querySelectorAll('.header-cell:not(.empty)'));
+    headerCells.forEach((cell,index)=>{
+        const label=normalizeTierListText(columns[index]?.label)||DEFAULT_MODAL_COLUMNS[index]||`Cot ${index+1}`;
+        const span=cell.querySelector('span');
+        if(span) span.textContent=label;
+    });
+
+    const tierCells=Array.from(grid.querySelectorAll('.tier-label'));
+    tierCells.forEach((labelCell,rowIndex)=>{
+        const row=rows[rowIndex]||{};
+        const span=labelCell.querySelector('span');
+        if(span){
+            span.textContent=normalizeTierListText(row.label)||DEFAULT_MODAL_ROWS[rowIndex]?.label||String(rowIndex+1);
+        }
+        labelCell.style.backgroundColor=normalizeTierColorHex(row.color,DEFAULT_MODAL_ROWS[rowIndex]?.color||'#95a5a6');
+
+        let next=labelCell.nextElementSibling;
+        for(let columnIndex=0;columnIndex<headerCells.length;columnIndex++){
+            if(!next||!next.classList.contains('tier-content')) break;
+            next.innerHTML='';
+            const heroesInCell=Array.isArray(row.cells?.[columnIndex])?row.cells[columnIndex]:[];
+            heroesInCell.forEach(hero=>next.appendChild(createTierHeroElement(hero,{pool:'modal'})));
+            next=next.nextElementSibling;
+        }
+    });
+
+    markHeroPoolSelection('modal');
+    filterHeroPool('modal');
+    guestDraftSessionActive=true;
+    modalDraftHydrated=true;
+    return true;
+}
+
+function hydrateModalDraftFromSession(options={}){
+    if(modalDraftHydrated&&!options.force) return false;
+    modalDraftHydrated=true;
+    const draft=loadGuestDraftFromSession();
+    syncGuestDraftNotice();
+    if(!draft) return false;
+    const restored=restoreGuestDraftToModal(draft);
+    if(restored&&options.showToast&&typeof showTierToast==='function'){
+        showTierToast('Đã khôi phục draft tạm thời trong phiên này.');
+    }
+    return restored;
+}
+
+function bindGuestDraftSessionSync(){
+    const modal=document.getElementById('create-modal');
+    if(!modal||modal.dataset.guestDraftBound==='true') return;
+    modal.dataset.guestDraftBound='true';
+
+    ['modal-title','modal-note'].forEach(id=>{
+        document.getElementById(id)?.addEventListener('input',queueGuestDraftSessionSync);
+    });
+
+    const grid=document.getElementById('modal-tier-grid');
+    if(grid){
+        grid.addEventListener('input',queueGuestDraftSessionSync);
+        const observer=new MutationObserver(()=>queueGuestDraftSessionSync());
+        observer.observe(grid,{
+            subtree:true,
+            childList:true,
+            characterData:true,
+            attributes:true,
+            attributeFilter:['style']
+        });
+    }
+}
+
+function getNavigationType(){
+    const navigationEntry=performance.getEntriesByType?.('navigation')?.[0];
+    if(navigationEntry?.type) return navigationEntry.type;
+    if(typeof performance.navigation?.type==='number'){
+        return performance.navigation.type===1?'reload':'navigate';
+    }
+    return '';
+}
+
+function autoRestoreGuestDraftAfterReload(){
+    if(guestDraftAutoRestoreAttempted) return;
+    guestDraftAutoRestoreAttempted=true;
+    if(isTierListUserAuthenticated()) return;
+    if(getNavigationType()!=='reload') return;
+    if(!loadGuestDraftFromSession()) return;
+    openCreateModal({restoreSessionDraft:true,showRestoreToast:true});
 }
 
 function getOfficialTierListTitleKey(value){
@@ -133,9 +416,7 @@ function normalizeHeroName(name){
 }
 
 function getUserRole(){
-    const u=localStorage.getItem('aov_user');
-    if(!u) return 'Custom';
-    try{ return JSON.parse(u).role||'Custom'; }catch(e){ return 'Custom'; }
+    return getTierListCurrentUser()?.role||'Custom';
 }
 
 async function ensureTierHeroCatalogLoaded(force=false){
@@ -180,7 +461,6 @@ function setOfficialGridEditable(isEditable){
 function applyTierListRoleUI(){
     currentUserRole=getUserRole();
     const isAdmin=currentUserRole==='Admin';
-    const isLoggedIn=currentUserRole!=='Custom';
     const grid=document.getElementById('tier-grid');
     // Admin controls
     const ac=document.getElementById('admin-controls');
@@ -189,23 +469,32 @@ function applyTierListRoleUI(){
     const bc=document.getElementById('btn-create-community');
     if(ac) ac.style.display=isAdmin?'flex':'none';
     if(hp) hp.style.display='none';
-    if(up) up.style.display=(!isAdmin&&isLoggedIn)?'flex':'none';
-    if(bc) bc.style.display=isLoggedIn?'inline-flex':'none';
+    if(up) up.style.display=(!isAdmin&&isTierListUserAuthenticated())?'flex':'none';
+    if(bc) bc.style.display=document.getElementById('create-modal')?'inline-flex':'none';
     // Official meta board is now backend-generated from hero scores for every role,
     // so the official grid stays read-only even for admins.
     if(grid){
         grid.classList.add('tier-grid-readonly');
         setOfficialGridEditable(false);
     }
+    syncGuestDraftNotice();
 }
 
 // Listen for header loaded + auth changes
 document.addEventListener('headerLoaded',()=>{ setTimeout(applyTierListRoleUI,300); });
 document.addEventListener('authChanged',()=>{
+    resetCurrentUserCommunityTierListCountState(getTierListCurrentUser()?.email||'');
+    if(isTierListUserAuthenticated()){
+        loadCurrentUserCommunityTierListCount({force:true,silent:true});
+    }
     applyTierListRoleUI();
     renderCommunityCards();
 });
 window.addEventListener('storage',()=>{
+    resetCurrentUserCommunityTierListCountState(getTierListCurrentUser()?.email||'');
+    if(isTierListUserAuthenticated()){
+        loadCurrentUserCommunityTierListCount({force:true,silent:true});
+    }
     applyTierListRoleUI();
     renderCommunityCards();
 });
@@ -547,7 +836,7 @@ async function initApp(){
         await ensureTierHeroCatalogLoaded();
         grid.innerHTML='';
         if(heroes.length===0){
-            grid.innerHTML='<div class="draft-warning" style="grid-column:1/-1">Chua co du lieu tuong trong database. Hay chay sql/seed_heroes.sql roi tai lai trang.</div>';
+        grid.innerHTML='<div class="draft-warning" style="grid-column:1/-1">Chưa có dữ liệu tướng trong database. Hãy chạy sql/seed_heroes.sql rồi tải lại trang.</div>';
         }
         heroes.forEach(hero=>{
             grid.appendChild(createHeroPoolButton(hero));
@@ -590,6 +879,12 @@ async function initApp(){
         loadOfficialTierList();
     }
     setTimeout(applyTierListRoleUI,200);
+    if(isTierListUserAuthenticated()){
+        setTimeout(()=>loadCurrentUserCommunityTierListCount({silent:true}),220);
+    }else{
+        resetCurrentUserCommunityTierListCountState();
+    }
+    setTimeout(autoRestoreGuestDraftAfterReload,260);
 }
 
 function dragStartFromList(ev,value,source='list'){
@@ -789,6 +1084,8 @@ function showTierToast(message,type='success'){
     showTierToast._timer=setTimeout(()=>toast.classList.remove('is-visible'),2600);
 }
 
+window.showTierToast=showTierToast;
+
 function getTierListCurrentUser(){
     if(typeof getAuthUser==='function') return getAuthUser();
     try{
@@ -796,6 +1093,88 @@ function getTierListCurrentUser(){
         return raw?JSON.parse(raw):null;
     }catch(error){
         return null;
+    }
+}
+
+function resetCurrentUserCommunityTierListCountState(ownerEmail=''){
+    currentUserCommunityTierListCountState.ownerEmail=String(ownerEmail||'').trim().toLowerCase();
+    currentUserCommunityTierListCountState.tierListCount=0;
+    currentUserCommunityTierListCountState.loaded=false;
+}
+
+function ensureCurrentUserCommunityTierListCountOwner(){
+    const ownerEmail=String(getTierListCurrentUser()?.email||'').trim().toLowerCase();
+    if(currentUserCommunityTierListCountState.ownerEmail!==ownerEmail){
+        resetCurrentUserCommunityTierListCountState(ownerEmail);
+    }
+    return ownerEmail;
+}
+
+function rememberCurrentUserCommunityTierListCount(count){
+    currentUserCommunityTierListCountState.tierListCount=Math.max(0,Number(count)||0);
+    currentUserCommunityTierListCountState.loaded=true;
+}
+
+async function loadCurrentUserCommunityTierListCount(options={}){
+    if(!isTierListUserAuthenticated()){
+        resetCurrentUserCommunityTierListCountState();
+        return null;
+    }
+    ensureCurrentUserCommunityTierListCountOwner();
+    if(currentUserCommunityTierListCountState.loaded&&!options.force){
+        return currentUserCommunityTierListCountState.tierListCount;
+    }
+    if(currentUserCommunityTierListCountPromise){
+        return currentUserCommunityTierListCountPromise;
+    }
+    currentUserCommunityTierListCountPromise=(async()=>{
+        const response=await fetch('/api/users/me/content-summary',{
+            headers:{Accept:'application/json'},
+            cache:'no-store'
+        });
+        if(!response.ok){
+            if(response.status===401){
+                resetCurrentUserCommunityTierListCountState();
+                return null;
+            }
+            throw new Error(await readApiError(response));
+        }
+        const payload=await response.json();
+        const tierListCount=Math.max(0,Number(payload?.tierListCount||0));
+        rememberCurrentUserCommunityTierListCount(tierListCount);
+        return tierListCount;
+    })().catch(error=>{
+        if(options.silent!==true){
+            console.warn('Cannot load current user community tier list count:',error);
+        }
+        return null;
+    }).finally(()=>{
+        currentUserCommunityTierListCountPromise=null;
+    });
+    return currentUserCommunityTierListCountPromise;
+}
+
+async function hasReachedCurrentUserCommunityTierListLimit(options={}){
+    const tierListCount=await loadCurrentUserCommunityTierListCount(options);
+    return Number.isFinite(tierListCount)&&tierListCount>=COMMUNITY_TIER_LIST_LIMIT;
+}
+
+function syncMineCommunityTierListQuota(count){
+    const safeCount=Math.max(0,Number(count)||0);
+    const countEl=document.getElementById(COMMUNITY_SECTION.MINE_CREATED.countId);
+    if(countEl){
+        countEl.textContent=`${safeCount}/${COMMUNITY_TIER_LIST_LIMIT}`;
+    }
+    const statusEl=document.getElementById(COMMUNITY_SECTION.MINE_CREATED.statusId);
+    if(!statusEl||statusEl.classList.contains('is-error')) return;
+    if(safeCount>=COMMUNITY_TIER_LIST_LIMIT){
+        statusEl.dataset.quotaWarning='true';
+        setCommunitySectionStatus(COMMUNITY_SECTION.MINE_CREATED,COMMUNITY_TIER_LIST_LIMIT_REACHED_MESSAGE,'warning');
+        return;
+    }
+    if(statusEl.dataset.quotaWarning==='true'){
+        delete statusEl.dataset.quotaWarning;
+        setCommunitySectionStatus(COMMUNITY_SECTION.MINE_CREATED,'');
     }
 }
 
@@ -847,11 +1226,11 @@ async function logTierListDeleteFailure(url,response){
 }
 
 function resolveTierDeleteErrorMessage(status,fallback){
-    if(status===401) return 'Vui long dang nhap de xoa Tier List.';
-    if(status===403) return 'Ban khong co quyen xoa Tier List nay.';
-    if(status===404) return 'Tier List khong ton tai hoac da bi xoa.';
-    if(status===405) return 'Loi ky thuat: endpoint xoa Tier List khong chap nhan DELETE.';
-    return fallback||'Khong xoa duoc Tier List.';
+    if(status===401) return 'Vui lòng đăng nhập để xóa Tier List.';
+    if(status===403) return 'Bạn không có quyền xóa Tier List này.';
+    if(status===404) return 'Tier List không tồn tại hoặc đã bị xóa.';
+    if(status===405) return 'Lỗi kỹ thuật: endpoint xóa Tier List không chấp nhận DELETE.';
+    return fallback||'Không xóa được Tier List.';
 }
 
 function openCommunityTierListDetail(id){
@@ -922,7 +1301,7 @@ function setCommunitySectionEmptyState(section,message){
     const empty=getCommunitySectionElements(section).empty;
     if(!empty) return;
     const text=empty.querySelector('.community-empty-text');
-    if(text) text.textContent=message||'Chua co tier list cong dong nao.';
+    if(text) text.textContent=message||'Chưa có Community Tier List nào.';
 }
 
 function setCommunityStatus(message,type='info'){
@@ -985,7 +1364,7 @@ async function loadSavedCommunityTierLists(){
         return {items};
     }catch(error){
         console.error('Cannot load saved tier lists:',error);
-        return {items:[],error:'Khong tai duoc tier list da luu.'};
+        return {items:[],error:'Không tải được Tier List đã lưu.'};
     }
 }
 
@@ -1002,7 +1381,7 @@ function isTierListSavedByCurrentUser(tierList){
 function buildCommunityTierSaveButtonHtml(tierList){
     if(!tierList||tierList.isOfficial) return '';
     const isSaved=isTierListSavedByCurrentUser(tierList);
-    const label=isSaved?'Bo luu':'Luu';
+    const label=isSaved?'Bỏ lưu':'Lưu';
     const extraClass=isSaved?' tier-saved-btn':'';
     return `<button type="button" class="tier-export-btn tier-secondary-btn tier-card-save-btn${extraClass}" onclick="toggleTierListSavedState(event,${tierList.id},this)">${label}</button>`;
 }
@@ -1074,12 +1453,12 @@ function createCommunityTierCard(tl){
             <div class="star-rating">
                 ${starsHtml}
                 <span class="star-rating-avg">★ ${formatRatingValue(averageRating)||0}</span>
-                <span class="star-rating-count">(${tl.userRatingCount??tl.totalRatings??0} danh gia)</span>
+                <span class="star-rating-count">(${tl.userRatingCount??tl.totalRatings??0} ??nh gi?)</span>
             </div>
             ${badgeHtml}
             <div class="tier-card-actions">
                 ${saveHtml}
-                <button type="button" class="tier-export-btn tier-card-export-btn" onclick="exportCommunityTierListFromCard(event,${tl.id},this)">Tai anh</button>
+                <button type="button" class="tier-export-btn tier-card-export-btn" onclick="exportCommunityTierListFromCard(event,${tl.id},this)">T?i ?nh</button>
                 ${deleteHtml}
             </div>
         </div>`;
@@ -1112,7 +1491,7 @@ async function renderMineCommunityCards(requestId){
     if(!getTierListCurrentUser()){
         if(pageStatus){
             pageStatus.hidden=false;
-            pageStatus.textContent='Vui long dang nhap de xem tier list cua ban va danh sach da luu.';
+            pageStatus.textContent='Vui lòng đăng nhập để xem Tier List của bạn và danh sách đã lưu.';
             pageStatus.classList.add('is-warning');
         }
         return;
@@ -1127,7 +1506,7 @@ async function renderMineCommunityCards(requestId){
     if(createdResult.requiresAuth||savedResult.requiresAuth){
         if(pageStatus){
             pageStatus.hidden=false;
-            pageStatus.textContent='Vui long dang nhap de xem tier list cua ban va danh sach da luu.';
+            pageStatus.textContent='Vui lòng đăng nhập để xem Tier List của bạn và danh sách đã lưu.';
             pageStatus.classList.add('is-warning');
         }
         return;
@@ -1136,13 +1515,14 @@ async function renderMineCommunityCards(requestId){
     if(createdResult.error){
         setCommunitySectionStatus(COMMUNITY_SECTION.MINE_CREATED,createdConfig.errorText,'error');
     }else{
-        renderCommunitySectionCards(COMMUNITY_SECTION.MINE_CREATED,createdResult.items||[],'Ban chua tao tier list nao.');
+        renderCommunitySectionCards(COMMUNITY_SECTION.MINE_CREATED,createdResult.items||[],'Bạn chưa tạo Tier List nào.');
+        syncMineCommunityTierListQuota((createdResult.items||[]).length);
     }
 
     if(savedResult.error){
         setCommunitySectionStatus(COMMUNITY_SECTION.MINE_SAVED,savedResult.error,'error');
     }else{
-        renderCommunitySectionCards(COMMUNITY_SECTION.MINE_SAVED,savedResult.items||[],'Ban chua luu tier list nao.');
+        renderCommunitySectionCards(COMMUNITY_SECTION.MINE_SAVED,savedResult.items||[],'Bạn chưa lưu Tier List nào.');
     }
 }
 
@@ -1293,8 +1673,7 @@ async function toggleTierListSavedState(event,id,button){
     }
     const tierList=communityTierListCache.get(String(id));
     if(!tierList||tierList.isOfficial) return;
-    if(!getTierListCurrentUser()){
-        showTierToast('Vui long dang nhap de luu Tier List.','error');
+    if(typeof requireLoginForPersistentAction==='function'&&!requireLoginForPersistentAction('luu Tier List')){
         return;
     }
 
@@ -1302,7 +1681,7 @@ async function toggleTierListSavedState(event,id,button){
     const originalText=button?.textContent;
     if(button){
         button.disabled=true;
-        button.textContent=isSaved?'Dang bo luu...':'Dang luu...';
+        button.textContent=isSaved?'Đang bỏ lưu...':'Đang lưu...';
     }
 
     try{
@@ -1313,10 +1692,10 @@ async function toggleTierListSavedState(event,id,button){
         if(!response.ok) throw new Error(await readApiError(response));
         await response.json();
         await renderCommunityCards();
-        showTierToast(isSaved?'Da bo luu Tier List.':'Da luu Tier List.');
+        showTierToast(isSaved?'Đã bỏ lưu Tier List.':'Đã lưu Tier List.');
     }catch(error){
         console.error('Cannot toggle saved tier list:',error);
-        showTierToast(error.message||'Khong cap nhat duoc trang thai luu Tier List.','error');
+        showTierToast(error.message||'Không cập nhật được trạng thái lưu Tier List.','error');
     }finally{
         if(button){
             button.disabled=false;
@@ -1383,11 +1762,11 @@ function clearPreview(el){
     el.parentElement.querySelectorAll('.star').forEach(s=>s.classList.remove('hover-preview'));
 }
 async function rateStar(event,id,stars){
+    const u=getTierListCurrentUser();
     if(event){
         event.preventDefault();
         event.stopPropagation();
     }
-    const u=localStorage.getItem('aov_user');
     if(!u){ showTierToast('Vui lòng đăng nhập để đánh giá.','error'); return; }
     const container=document.querySelector(`.star-rating-stars[data-id="${id}"]`);
     if(container){
@@ -1420,16 +1799,26 @@ async function rateStar(event,id,stars){
 }
 
 // === Modal ===
-async function openCreateModal(){
-    const u=localStorage.getItem('aov_user');
+async function openCreateModal(options={}){
+    const u=true; // Keep the legacy guard truthy so guest users can open a local-only draft.
     if(!u){ alert('Vui lòng đăng nhập để tạo Tier List!'); return; }
+    if(isTierListUserAuthenticated()&&await hasReachedCurrentUserCommunityTierListLimit({force:true,silent:true})){
+        showTierToast(COMMUNITY_TIER_LIST_LIMIT_MESSAGE,'error');
+        return;
+    }
     const modal=document.getElementById('create-modal');
     modal?.classList.add('active');
     document.body.style.overflow='hidden';
     const grid=document.getElementById('modal-hero-grid');
-    if(grid) grid.innerHTML='<div class="draft-warning" style="grid-column:1/-1">Dang tai danh sach tuong...</div>';
+    if(grid) grid.innerHTML='<div class="draft-warning" style="grid-column:1/-1">Đang tải danh sách tướng...</div>';
     await ensureTierHeroCatalogLoaded();
     initModalHeroes();
+    bindGuestDraftSessionSync();
+    syncGuestDraftNotice();
+    hydrateModalDraftFromSession({
+        force:options.restoreSessionDraft===true,
+        showToast:options.showRestoreToast===true
+    });
 }
 function closeCreateModal(){
     document.getElementById('create-modal').classList.remove('active');
@@ -1444,7 +1833,7 @@ function initModalHeroes(){
     if(!grid) return;
     grid.innerHTML='';
     if(heroes.length===0){
-        grid.innerHTML='<div class="draft-warning" style="grid-column:1/-1">Chua tai duoc danh sach tuong. Vui long thu lai.</div>';
+        grid.innerHTML='<div class="draft-warning" style="grid-column:1/-1">Chưa tải được danh sách tướng. Vui lòng thử lại.</div>';
         return;
     }
     heroes.forEach(hero=>{
@@ -1596,7 +1985,7 @@ function serializeModalTierList(){
             }
             return {
                 label:getCellLabel(labelCell),
-                color:normalizeHexColor(labelCell.style.backgroundColor,'#95a5a6'),
+                color:normalizeTierColorHex(labelCell.style.backgroundColor,'#95a5a6'),
                 cells
             };
         });
@@ -1683,7 +2072,7 @@ function createTierLabelCell(row){
     picker.type='color';
     picker.className='tier-color-picker';
     picker.value=color;
-    picker.title='Chon mau tier';
+    picker.title='Ch?n m?u tier';
     picker.setAttribute('oninput','updateTierColor(this)');
     cell.appendChild(picker);
 
@@ -1806,8 +2195,15 @@ function filterModalHeroes(){
 }
 
 async function submitCommunityTierList(){
-    const title=document.getElementById('modal-title')?.value||'Tier List Moi';
+    const title=document.getElementById('modal-title')?.value||'Tier List m?i';
     const description=(document.getElementById('modal-note')?.value||'').trim();
+    if(typeof requireLoginForPersistentAction==='function'&&!requireLoginForPersistentAction('dang Tier List')){
+        return;
+    }
+    if(await hasReachedCurrentUserCommunityTierListLimit({force:true,silent:true})){
+        showTierToast(COMMUNITY_TIER_LIST_LIMIT_MESSAGE,'error');
+        return;
+    }
     try{
         const response=await fetch(OFFICIAL_TIER_LIST_API,{
             method:'POST',
@@ -1825,10 +2221,15 @@ async function submitCommunityTierList(){
         const noteInput=document.getElementById('modal-note');
         if(titleInput) titleInput.value='';
         if(noteInput) noteInput.value='';
+        clearGuestDraftSession();
+        await loadCurrentUserCommunityTierListCount({force:true,silent:true});
         renderCommunityCards();
         showTierToast(`Đã đăng "${title}" lên cộng đồng.`);
     }catch(error){
         console.error('Cannot submit community tier list:',error);
+        if(error?.message===COMMUNITY_TIER_LIST_LIMIT_MESSAGE){
+            await loadCurrentUserCommunityTierListCount({force:true,silent:true});
+        }
         showTierToast(`Không đăng được Tier List: ${error.message}`,'error');
     }
 }
@@ -1841,7 +2242,7 @@ function findOfficialSaveButton(){
 
 window.saveOfficialTierList=async function saveOfficialTierList(){
     if(getUserRole()!=='Admin'){
-        alert('Chi Admin moi duoc luu Tier List chinh.');
+        alert('Chỉ Admin mới được lưu Tier List chính.');
         return;
     }
 
@@ -1849,7 +2250,7 @@ window.saveOfficialTierList=async function saveOfficialTierList(){
     const originalText=button?.textContent;
     if(button){
         button.disabled=true;
-        button.textContent='Dang cap nhat...';
+        button.textContent='Đang cập nhật...';
     }
 
     try{
@@ -1860,10 +2261,10 @@ window.saveOfficialTierList=async function saveOfficialTierList(){
         const payload=normalizeOfficialTierListPayload(await response.json());
         officialTierListPayload=payload;
         renderOfficialTierList(payload.contentData,payload);
-        alert('Da cap nhat Tier List chinh tu diem hero. Nguoi xem se thay du lieu moi ngay sau khi tai lai trang.');
+        alert('Đã cập nhật Tier List chính từ điểm hero. Người xem sẽ thấy dữ liệu mới ngay sau khi tải lại trang.');
     }catch(error){
         console.error('Cannot save official tier list:',error);
-        alert(`Khong cap nhat duoc Tier List chinh: ${error.message}`);
+        alert(`Không cập nhật được Tier List chính: ${error.message}`);
     }finally{
         if(button){
             button.disabled=false;
@@ -1874,5 +2275,8 @@ window.saveOfficialTierList=async function saveOfficialTierList(){
 
 window.setCommunityView=setCommunityView;
 window.toggleTierListSavedState=toggleTierListSavedState;
+window.saveGuestDraftToSession=saveGuestDraftToSession;
+window.loadGuestDraftFromSession=loadGuestDraftFromSession;
+window.clearGuestDraftSession=clearGuestDraftSession;
 
 initApp();

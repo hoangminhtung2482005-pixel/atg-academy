@@ -234,7 +234,7 @@ public class BanPickRoomService {
         ensureParticipant(room, user);
         ensureStatus(room, BanPickRoomStatus.IN_PROGRESS);
         if (room.getPhaseType() == BanPickPhaseType.LINEUP_ADJUSTMENT) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Dang o giai doan sap xep doi hinh.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Đang ở giai đoạn sắp xếp đội hình.");
         }
         validateConfirmRequest(request);
 
@@ -319,16 +319,16 @@ public class BanPickRoomService {
 
         BanPickTeamSide actorSide = resolveUserSide(room, user);
         if (actorSide == null) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Khong xac dinh duoc ben cua ban.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không xác định được bên của bạn.");
         }
         if (request == null || request.heroIds() == null || request.heroIds().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "heroIds is required");
         }
         if (request.teamSide() != null && request.teamSide() != actorSide) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Ban chi duoc sap xep doi hinh cua ben minh.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn chỉ được sắp xếp đội hình của bên mình.");
         }
         if (isLineupConfirmed(room, actorSide)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Doi hinh cua ban da duoc xac nhan.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Đội hình của bạn đã được xác nhận.");
         }
 
         List<Long> currentOrder = currentPickOrderForSide(room, actorSide);
@@ -359,10 +359,10 @@ public class BanPickRoomService {
 
         BanPickTeamSide actorSide = resolveUserSide(room, user);
         if (actorSide == null) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Khong xac dinh duoc ben cua ban.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không xác định được bên của bạn.");
         }
         if (request != null && request.teamSide() != null && request.teamSide() != actorSide) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Ban chi duoc xac nhan doi hinh cua ben minh.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn chỉ được xác nhận đội hình của bên mình.");
         }
 
         if (actorSide == BanPickTeamSide.BLUE) {
@@ -571,7 +571,7 @@ public class BanPickRoomService {
 
     private void ensureLineupAdjustmentPhase(BanPickRoom room) {
         if (room.getPhaseType() != BanPickPhaseType.LINEUP_ADJUSTMENT) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Chi co the thuc hien thao tac nay trong giai doan sap xep doi hinh.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ có thể thực hiện thao tác này trong giai đoạn sắp xếp đội hình.");
         }
     }
 
@@ -916,14 +916,14 @@ public class BanPickRoomService {
 
     private void validateLineupReorder(List<Long> currentOrder, List<Long> requestedOrder) {
         if (currentOrder.size() != requestedOrder.size()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Danh sach doi hinh khong hop le.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Danh sách đội hình không hợp lệ.");
         }
         Set<Long> currentSet = new LinkedHashSet<>(currentOrder);
         Set<Long> requestedSet = new LinkedHashSet<>(requestedOrder);
         if (requestedSet.size() != requestedOrder.size()
                 || currentSet.size() != currentOrder.size()
                 || !currentSet.equals(requestedSet)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Danh sach doi hinh khong hop le.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Danh sách đội hình không hợp lệ.");
         }
     }
 

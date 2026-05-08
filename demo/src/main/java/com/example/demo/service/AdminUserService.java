@@ -65,10 +65,10 @@ public class AdminUserService {
         if (request.name() != null) {
             String name = request.name().trim();
             if (!StringUtils.hasText(name)) {
-                throw badRequest("Ten nguoi dung khong duoc de trong");
+                throw badRequest("Tên người dùng không được để trống");
             }
             if (name.length() > 80) {
-                throw badRequest("Ten hien thi toi da 80 ky tu");
+                throw badRequest("Tên hiển thị tối đa 80 ký tự");
             }
             user.setDisplayName(name);
         }
@@ -80,7 +80,7 @@ public class AdminUserService {
         if (request.role() != null) {
             UserRole nextRole = parseRole(request.role());
             if (editingSelf && nextRole != UserRole.ADMIN) {
-                throw badRequest("Admin khong the tu go vai tro ADMIN cua chinh minh");
+                throw badRequest("Admin không thể tự gỡ vai trò ADMIN của chính mình");
             }
             user.setRole(nextRole.getStorageValue());
         }
@@ -88,7 +88,7 @@ public class AdminUserService {
         if (request.status() != null) {
             UserStatus nextStatus = parseStatus(request.status());
             if (editingSelf && nextStatus == UserStatus.LOCKED) {
-                throw badRequest("Admin khong the tu khoa tai khoan cua chinh minh");
+                throw badRequest("Admin không thể tự khóa tài khoản của chính mình");
             }
             user.setStatus(nextStatus);
         }
@@ -136,7 +136,7 @@ public class AdminUserService {
 
     private User findUser(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Khong tim thay nguoi dung"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
     }
 
     private UserRole parseRole(String value) {

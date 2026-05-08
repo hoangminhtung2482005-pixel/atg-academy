@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.esports.EsportsDashboardResponse;
 import com.example.demo.dto.esports.EsportsHeroBanStatResponse;
 import com.example.demo.dto.esports.EsportsHeroStatResponse;
 import com.example.demo.dto.esports.EsportsTournamentOptionResponse;
@@ -12,12 +13,14 @@ import com.example.demo.service.EsportsDraftService;
 import com.example.demo.util.EsportsTournamentCatalog;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -91,6 +94,15 @@ public class EsportsController {
         }
     }
 
+    @GetMapping("/games/{gameId}/lineups")
+    public ResponseEntity<?> getGameLineups(@PathVariable Long gameId) {
+        try {
+            return ResponseEntity.ok(esportsDraftService.getLineupsByGameId(gameId));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @GetMapping("/data/tournaments")
     public ResponseEntity<List<EsportsTournamentOptionResponse>> getDraftTournaments() {
         return ResponseEntity.ok(esportsDataService.getAvailableTournaments());
@@ -124,6 +136,25 @@ public class EsportsController {
     public ResponseEntity<?> getHeroStats(@RequestParam(required = false) String tournamentName) {
         try {
             List<EsportsHeroStatResponse> payload = esportsDataService.getHeroStats(tournamentName);
+            return ResponseEntity.ok(payload);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/data/dashboard")
+    public ResponseEntity<?> getDashboard(
+            @RequestParam(required = false) String tournamentName,
+            @RequestParam(required = false) String teamCode,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
+        try {
+            EsportsDashboardResponse payload = esportsDataService.getDashboard(
+                    tournamentName,
+                    teamCode,
+                    dateFrom,
+                    dateTo
+            );
             return ResponseEntity.ok(payload);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

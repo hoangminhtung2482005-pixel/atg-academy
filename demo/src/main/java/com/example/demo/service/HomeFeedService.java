@@ -180,12 +180,12 @@ public class HomeFeedService {
     private HomeFeedItemResponse toGuideItem(Guide guide) {
         String description = StringUtils.hasText(guide.getExcerpt())
                 ? guide.getExcerpt().trim()
-                : "GiÃ¡o Ã¡n cá»™ng Ä‘á»“ng vá»›i cÃ¡c ghi chÃº chiáº¿n thuáº­t, lá»±a chá»n tÆ°á»›ng vÃ  cÃ¡ch váº­n hÃ nh trong tráº­n.";
+                : "Giáo án cộng đồng với các ghi chú chiến thuật, lựa chọn tướng và cách vận hành trong trận.";
         String image = StringUtils.hasText(guide.getCoverImageUrl()) ? guide.getCoverImageUrl().trim() : "/images/backgrounds/bg-map.jpg";
         Integer readTime = guide.getReadingTimeMinutes() != null && guide.getReadingTimeMinutes() > 0
                 ? guide.getReadingTimeMinutes()
                 : 5;
-        String category = StringUtils.hasText(guide.getCategory()) ? guide.getCategory().trim() : "Chiáº¿n thuáº­t";
+        String category = StringUtils.hasText(guide.getCategory()) ? guide.getCategory().trim() : "Chiến thuật";
 
         return HomeFeedItemResponse.guide(
                 guide.getId(),

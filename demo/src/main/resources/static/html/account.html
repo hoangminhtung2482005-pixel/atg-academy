@@ -36,6 +36,7 @@
             text: '',
             type: 'success'
         };
+        const ACCOUNT_COMMUNITY_TIER_LIST_LIMIT = 5;
         const accountContentState = {
             ownerEmail: '',
             loading: false,
@@ -94,11 +95,15 @@
             }
         }
 
-        function formatAccountContentCount(value) {
+        function formatAccountContentCount(value, type) {
             if (accountContentState.loading && !accountContentState.loaded) {
                 return '...';
             }
-            return Number(value || 0).toLocaleString('vi-VN');
+            const normalizedCount = Number(value || 0);
+            if (type === 'tierLists') {
+                return `${normalizedCount.toLocaleString('vi-VN')}/${ACCOUNT_COMMUNITY_TIER_LIST_LIMIT}`;
+            }
+            return normalizedCount.toLocaleString('vi-VN');
         }
 
         function formatAccountContentDate(value) {
@@ -116,7 +121,7 @@
                     <div class="content-summary-top">
                         <span>
                             <span class="content-summary-label">${accountEscapeHtml(label)}</span>
-                            <strong class="content-summary-count">${formatAccountContentCount(count)}</strong>
+                            <strong class="content-summary-count">${formatAccountContentCount(count, type)}</strong>
                         </span>
                         <button type="button" class="content-summary-action${isActive ? ' is-active' : ''}" onclick="showAccountContentList('${type}')"${disabled}>Xem tất cả</button>
                     </div>

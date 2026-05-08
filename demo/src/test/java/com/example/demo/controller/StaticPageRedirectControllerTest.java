@@ -45,4 +45,10 @@ class StaticPageRedirectControllerTest {
         assertThat(controller.redirectEsportsDataPage())
                 .isEqualTo("redirect:/html/esports-data.html");
     }
+
+    @Test
+    void redirectLegacyGuidesAliasUsesSupportedTarget() {
+        assertThat(controller.redirectLegacyTacticsGuidesPage())
+                .isEqualTo("redirect:/html/giao-an.html");
+    }
 }

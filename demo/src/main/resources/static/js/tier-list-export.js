@@ -1,6 +1,52 @@
 const TIER_EXPORT_FALLBACK_IMAGE = '/images/ui/default.png';
 const TIER_EXPORT_LOGO_IMAGE = '/images/ui/logo.png';
 
+function isTierListActionAuthenticated() {
+    if (typeof window.isAuthenticated === 'function') {
+        try {
+            return window.isAuthenticated();
+        } catch (error) {
+            console.warn('Tier list auth helper failed:', error);
+        }
+    }
+
+    if (typeof window.getAuthUser === 'function') {
+        try {
+            return !!window.getAuthUser();
+        } catch (error) {
+            console.warn('Tier list auth user lookup failed:', error);
+        }
+    }
+
+    try {
+        const rawUser = window.localStorage?.getItem('aov_user');
+        return !!(rawUser && JSON.parse(rawUser));
+    } catch (error) {
+        return false;
+    }
+}
+
+function notifyTierListPersistentActionBlocked(message) {
+    if (typeof window.showDetailToast === 'function') {
+        window.showDetailToast(message, 'error');
+        return;
+    }
+    if (typeof window.showTierToast === 'function') {
+        window.showTierToast(message, 'error');
+        return;
+    }
+    window.alert(message);
+}
+
+function requireLoginForPersistentAction(actionName) {
+    if (isTierListActionAuthenticated()) return true;
+    const normalizedAction = String(actionName || 'thực hiện thao tác này').trim() || 'thực hiện thao tác này';
+    notifyTierListPersistentActionBlocked(
+        `Vui lòng đăng nhập để ${normalizedAction}. Dữ liệu guest chỉ được giữ trong phiên trình duyệt hiện tại.`
+    );
+    return false;
+}
+
 function getTierVisualKey(label) {
     const normalized = String(label || '').trim().toUpperCase();
     if (!normalized) return '';
@@ -338,6 +384,9 @@ function setTierExportButtonState(button, text, disabled = false) {
 }
 
 async function exportTierListImage(payload, button) {
+    if (!requireLoginForPersistentAction('tai anh tier list')) {
+        return;
+    }
     const originalText = button?.textContent || 'Tải ảnh';
     try {
         if (typeof html2canvas !== 'function') {
@@ -364,3 +413,5 @@ async function exportTierListImage(payload, button) {
         setTimeout(() => setTierExportButtonState(button, originalText, false), 2400);
     }
 }
+
+window.requireLoginForPersistentAction = requireLoginForPersistentAction;

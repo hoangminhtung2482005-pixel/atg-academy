@@ -18,7 +18,7 @@
             <!-- Page Header -->
             <div class="mb-2">
                 <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">📖 Wiki</h1>
-                <p class="text-slate-500 text-sm mt-1">Thư viện tra cứu thông tin Liên Quân Mobile</p>
+                <p class="text-slate-500 text-sm mt-1">Thu vi?n tra c?u th?ng tin Li?n Qu?n Mobile</p>
             </div>
 
             <!-- Tab Navigation -->
@@ -50,11 +50,23 @@
         'use strict';
 
         const HERO_API = '/api/wiki/heroes';
+        const SPELLS_API = '/api/spells';
+        const DEFAULT_TAB = 'heroes';
+        const TAB_PAGE_MAP = {
+            heroes: 'wiki-home',
+            spells: 'wiki-spells',
+            items: 'wiki-items',
+            arcana: 'wiki-arcana',
+            enchantments: 'wiki-enchantments'
+        };
 
         let heroesData = [];
-        let activeTab = 'heroes';
+        let spellsData = [];
+        let activeTab = DEFAULT_TAB;
         let activeClassFilter = 'all';
         let activeRoleFilter = 'all';
+        let spellsLoading = false;
+        let spellsReady = false;
 
         const HERO_CLASS_FILTERS = ['Đấu sĩ', 'Sát thủ', 'Pháp sư', 'Xạ thủ', 'Đỡ đòn', 'Trợ thủ'];
         const ROLE_FILTERS = [
@@ -67,6 +79,54 @@
 
         // ==================== TAB MANAGEMENT ====================
 
+        function normalizeTabId(value) {
+            var normalized = String(value || '').trim().toLowerCase();
+            return TAB_PAGE_MAP[normalized] ? normalized : DEFAULT_TAB;
+        }
+
+        function getTabFromUrl() {
+            var url = new URL(window.location.href);
+            return normalizeTabId(url.searchParams.get('tab'));
+        }
+
+        function syncTabToUrl(tabId) {
+            var url = new URL(window.location.href);
+            if (tabId === DEFAULT_TAB) {
+                url.searchParams.delete('tab');
+            } else {
+                url.searchParams.set('tab', tabId);
+            }
+            window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+        }
+
+        function updateTabButtons() {
+            var tabContainer = document.getElementById('wiki-tabs');
+            if (!tabContainer) return;
+
+            tabContainer.querySelectorAll('.wiki-tab').forEach(function (btn) {
+                var isActive = btn.getAttribute('data-tab') === activeTab;
+                btn.classList.toggle('active', isActive);
+                btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+        }
+
+        function setActiveTab(tabId, options) {
+            var nextTab = normalizeTabId(tabId);
+            var shouldSyncUrl = !options || options.syncUrl !== false;
+            var shouldRender = !options || options.render !== false;
+
+            activeTab = nextTab;
+            updateTabButtons();
+
+            if (shouldSyncUrl) {
+                syncTabToUrl(nextTab);
+            }
+
+            if (shouldRender) {
+                renderActiveTab();
+            }
+        }
+
         function initTabs() {
             const tabContainer = document.getElementById('wiki-tabs');
             if (!tabContainer) return;
@@ -77,21 +137,15 @@
 
                 const tabId = tabButton.getAttribute('data-tab');
                 if (tabId === activeTab) return;
-
-                activeTab = tabId;
-                tabContainer.querySelectorAll('.wiki-tab').forEach(function (btn) {
-                    const isActive = btn.getAttribute('data-tab') === tabId;
-                    btn.classList.toggle('active', isActive);
-                    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
-                });
-
-                renderActiveTab();
+                setActiveTab(tabId);
             });
         }
 
         function renderActiveTab() {
             if (activeTab === 'heroes') {
                 renderHeroesTab();
+            } else if (activeTab === 'spells') {
+                renderSpellsTab();
             } else {
                 renderPlaceholderTab(activeTab);
             }
@@ -276,6 +330,77 @@
             if (countEl) countEl.textContent = '⚔️ ' + count + ' tướng';
         }
 
+        // ==================== SPELLS TAB ====================
+
+        function renderSpellsTab() {
+            var content = document.getElementById('wiki-content');
+            if (!content) return;
+
+            if (!spellsReady) {
+                content.innerHTML = buildSpellSkeletonGrid();
+                if (!spellsLoading) {
+                    fetchSpells();
+                }
+                return;
+            }
+
+            if (spellsData.length === 0) {
+                content.innerHTML = buildEmptyState('✨', 'Chưa có dữ liệu Bổ trợ', 'Danh sách Bổ trợ sẽ xuất hiện khi database có dữ liệu.');
+                return;
+            }
+
+            content.innerHTML = buildSpellIntro() + buildSpellCountBadge(spellsData.length) + '<div class="wiki-spell-grid" id="spell-grid"></div>';
+            renderSpellGrid(spellsData);
+        }
+
+        async function fetchSpells() {
+            var content = document.getElementById('wiki-content');
+            spellsLoading = true;
+
+            try {
+                var response = await fetch(SPELLS_API, { headers: { 'Accept': 'application/json' } });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+
+                var spells = await response.json();
+                if (!Array.isArray(spells)) throw new Error('Invalid payload');
+
+                spellsData = spells;
+                spellsReady = true;
+
+                if (activeTab === 'spells') {
+                    renderSpellsTab();
+                }
+            } catch (error) {
+                console.error('Wiki spell fetch error:', error);
+                spellsReady = false;
+                if (activeTab === 'spells' && content) {
+                    content.innerHTML = buildEmptyState('❌', 'Không thể tải dữ liệu Bổ trợ', 'Vui lòng kiểm tra kết nối server và thử tải lại trang.');
+                }
+            } finally {
+                spellsLoading = false;
+            }
+        }
+
+        function renderSpellGrid(spells) {
+            var grid = document.getElementById('spell-grid');
+            if (!grid) return;
+
+            grid.innerHTML = spells.map(function (spell) {
+                var iconHtml;
+                if (spell.iconUrl) {
+                    iconHtml = '<img src="' + escapeHtml(spell.iconUrl) + '" alt="' + escapeHtml(spell.name) + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
+                        '<span class="wiki-spell-fallback" style="display:none">' + escapeHtml((spell.name || '?').charAt(0)) + '</span>';
+                } else {
+                    iconHtml = '<span class="wiki-spell-fallback">' + escapeHtml((spell.name || '?').charAt(0)) + '</span>';
+                }
+
+                return '<div class="wiki-spell-card">' +
+                    '<div class="wiki-spell-icon-wrap">' + iconHtml + '</div>' +
+                    '<div class="wiki-spell-name">' + escapeHtml(spell.name || 'Unknown') + '</div>' +
+                '</div>';
+            }).join('');
+        }
+
         // ==================== PLACEHOLDER TAB ====================
 
         var placeholderConfig = {
@@ -343,12 +468,34 @@
             return '<div class="wiki-hero-count" id="wiki-hero-count">⚔️ ' + count + ' tướng</div>';
         }
 
+        function buildSpellIntro() {
+            return '<div class="wiki-category-intro">' +
+                '<div class="wiki-category-intro-icon">✨</div>' +
+                '<div>' +
+                    '<div class="wiki-category-intro-title">Bổ trợ</div>' +
+                    '<div class="wiki-category-intro-text">Danh sách 12 bổ trợ chuẩn hóa dùng chung cho Wiki và tạo giáo án.</div>' +
+                '</div>' +
+            '</div>';
+        }
+
+        function buildSpellCountBadge(count) {
+            return '<div class="wiki-spell-count">✨ ' + count + ' bổ trợ</div>';
+        }
+
         function buildSkeletonGrid() {
             var cards = '';
             for (var i = 0; i < 12; i++) {
                 cards += '<div class="wiki-hero-card"><div class="skeleton" style="width:72px;height:72px;border-radius:50%;margin:0 auto 10px"></div><div class="skeleton" style="height:14px;width:70%;margin:0 auto 6px"></div><div class="skeleton" style="height:10px;width:50%;margin:0 auto"></div></div>';
             }
             return '<div class="wiki-hero-grid">' + cards + '</div>';
+        }
+
+        function buildSpellSkeletonGrid() {
+            var cards = '';
+            for (var i = 0; i < 12; i++) {
+                cards += '<div class="wiki-spell-card"><div class="skeleton" style="width:64px;height:64px;border-radius:50%;margin:0 auto 12px"></div><div class="skeleton" style="height:14px;width:72%;margin:0 auto"></div></div>';
+            }
+            return buildSpellIntro() + '<div class="wiki-spell-grid">' + cards + '</div>';
         }
 
         function buildEmptyState(icon, title, text) {
@@ -482,8 +629,9 @@
         // ==================== INIT ====================
 
         function init() {
+            activeTab = getTabFromUrl();
             initTabs();
-            renderActiveTab();
+            setActiveTab(activeTab);
         }
 
         if (document.readyState === 'loading') {
@@ -494,6 +642,6 @@
     })();
     </script>
     <script src="/js/auth.js?v=20260424-account-profile"></script>
-    <script src="/js/header-loader.js?v=20260507-tierlist-route-cleanup"></script>
+    <script src="/js/header-loader.js?v=20260508-wiki-dropdown"></script>
 </body>
 </html>
