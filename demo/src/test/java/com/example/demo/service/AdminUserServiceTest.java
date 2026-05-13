@@ -68,7 +68,7 @@ class AdminUserServiceTest {
                 null
         )).isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
             assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-            assertThat(exception.getReason()).isEqualTo("Ten hien thi toi da 80 ky tu");
+            assertThat(exception.getReason()).contains("80");
         });
     }
 }

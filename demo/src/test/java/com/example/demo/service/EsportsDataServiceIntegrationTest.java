@@ -3,12 +3,12 @@ package com.example.demo.service;
 import com.example.demo.dto.esports.EsportsDashboardResponse;
 import com.example.demo.dto.esports.EsportsHeroBanStatResponse;
 import com.example.demo.dto.esports.EsportsHeroStatResponse;
-import com.example.demo.entity.BanPickActionType;
-import com.example.demo.entity.BanPickTeamSide;
+import com.example.demo.dto.esports.EsportsTournamentOptionResponse;
+import com.example.demo.entity.EsportsGameDraft;
+import com.example.demo.entity.EsportsFranchise;
 import com.example.demo.entity.EsportsMatch;
-import com.example.demo.entity.EsportsMatchDraftAction;
-import com.example.demo.entity.EsportsMatchGame;
 import com.example.demo.entity.EsportsTeam;
+import com.example.demo.entity.EsportsTournament;
 import com.example.demo.entity.Hero;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -38,8 +37,8 @@ class EsportsDataServiceIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        EsportsTeam blueTeam = persistTeam("FS", "RPL");
-        EsportsTeam redTeam = persistTeam("SGP", "AOG");
+        EsportsTeam fs = persistTeam("FS", "Flash Wolves");
+        EsportsTeam sgp = persistTeam("SGP", "Saigon Phantom");
 
         Hero heroA = persistHero("Hero A");
         Hero heroB = persistHero("Hero B");
@@ -48,51 +47,59 @@ class EsportsDataServiceIntegrationTest {
         Hero heroE = persistHero("Hero E");
         Hero heroF = persistHero("Hero F");
         Hero heroG = persistHero("Hero G");
-        Hero heroPickOnly = persistHero("Hero Pick Only");
-        Hero heroStatA = persistHero("Hero Stat A");
-        Hero heroStatB = persistHero("Hero Stat B");
-        Hero heroStatBanOnly = persistHero("Hero Stat Ban Only");
-        Hero heroStatBanSupport = persistHero("Hero Stat Ban Support");
+        Hero heroH = persistHero("Hero H");
+        Hero heroI = persistHero("Hero I");
+        Hero heroJ = persistHero("Hero J");
+        Hero heroK = persistHero("Hero K");
+        Hero heroL = persistHero("Hero L");
+        Hero heroM = persistHero("Hero M");
+        Hero heroN = persistHero("Hero N");
+        Hero heroO = persistHero("Hero O");
+        Hero heroP = persistHero("Hero P");
+        Hero heroQ = persistHero("Hero Q");
+        Hero heroR = persistHero("Hero R");
+        Hero heroS = persistHero("Hero S");
+        Hero heroT = persistHero("Hero T");
+        Hero heroU = persistHero("Hero U");
+        Hero heroV = persistHero("Hero V");
+        Hero heroW = persistHero("Hero W");
+        Hero heroX = persistHero("Hero X");
 
-        EsportsMatch proLeagueMatch = persistMatch("1", LocalDateTime.of(2026, 5, 1, 10, 0), blueTeam, redTeam);
-        seedGame(proLeagueMatch, 1, blueTeam, redTeam, heroB, heroA, heroPickOnly, heroD);
-        seedGame(proLeagueMatch, 2, blueTeam, redTeam, heroB, heroA, heroPickOnly, heroC);
-        seedGame(proLeagueMatch, 3, blueTeam, redTeam, heroB, heroA, heroPickOnly, heroF);
-        seedGame(proLeagueMatch, 4, blueTeam, redTeam, heroD, heroA, heroPickOnly, heroF);
-        seedGame(proLeagueMatch, 5, blueTeam, redTeam, heroE, heroC, heroPickOnly, heroD);
-        seedGame(proLeagueMatch, 6, blueTeam, redTeam, heroF, heroC, heroPickOnly, heroD);
-
-        EsportsMatch internationalMatch = persistMatch("0", LocalDateTime.of(2026, 5, 2, 10, 0), blueTeam, redTeam);
-        seedGame(internationalMatch, 1, blueTeam, redTeam, heroF, heroG, heroA, heroB);
-
-        EsportsMatch challengerMatch = persistMatch("2", LocalDateTime.of(2026, 5, 3, 10, 0), blueTeam, redTeam);
-        seedGame(challengerMatch, 1, blueTeam, redTeam, blueTeam, heroStatBanOnly, heroStatBanSupport, heroStatA, heroStatB);
-        seedGame(challengerMatch, 2, blueTeam, redTeam, redTeam, heroStatBanOnly, heroG, heroStatA, heroStatB);
-        seedGame(challengerMatch, 3, blueTeam, redTeam, blueTeam, heroStatBanOnly, heroF, heroStatB, heroStatA);
-
-        EsportsMatch dashboardMatch = persistMatch("DASHBOARD_FULL_2026", LocalDateTime.of(2026, 5, 4, 12, 0), blueTeam, redTeam);
-        seedFullDraftGame(
-                dashboardMatch,
+        EsportsMatch proLeagueMatch = persistMatch("1", LocalDateTime.of(2026, 5, 1, 10, 0), fs, sgp);
+        persistDraft(
+                proLeagueMatch,
                 1,
-                blueTeam,
-                redTeam,
-                blueTeam,
-                persistHero("Dashboard Ban Blue"),
-                persistHero("Dashboard Ban Red"),
-                List.of(
-                        persistHero("Dashboard Blue 1", 9.0),
-                        persistHero("Dashboard Blue 2", 8.5),
-                        persistHero("Dashboard Blue 3", 8.0),
-                        persistHero("Dashboard Blue 4", 7.5),
-                        persistHero("Dashboard Blue 5", 7.0)
-                ),
-                List.of(
-                        persistHero("Dashboard Red 1", 6.0),
-                        persistHero("Dashboard Red 2", 5.5),
-                        persistHero("Dashboard Red 3", 5.0),
-                        persistHero("Dashboard Red 4", 4.5),
-                        persistHero("Dashboard Red 5", 4.0)
-                )
+                fs,
+                sgp,
+                fs,
+                List.of(heroA, heroB, heroC, heroD, heroE),
+                List.of(heroF, heroG, heroH, heroI, heroJ),
+                List.of(heroK, heroL, heroM, heroN, heroO),
+                List.of(heroP, heroQ, heroR, heroS, heroT)
+        );
+        persistDraft(
+                proLeagueMatch,
+                2,
+                fs,
+                sgp,
+                sgp,
+                List.of(heroA, heroC, heroE, heroG, heroI),
+                List.of(heroF, heroH, heroJ, heroL, heroN),
+                List.of(heroK, heroL, heroM, heroN, heroO),
+                List.of(heroP, heroU, heroV, heroW, heroX)
+        );
+
+        EsportsMatch challengerMatch = persistMatch("2", LocalDateTime.of(2026, 5, 2, 10, 0), fs, sgp);
+        persistDraft(
+                challengerMatch,
+                1,
+                fs,
+                sgp,
+                fs,
+                List.of(heroB, heroD, heroF, heroH, heroJ),
+                List.of(heroA, heroC, heroE, heroG, heroI),
+                List.of(heroK, heroL, heroM, heroN, heroO),
+                List.of(heroP, heroQ, heroR, heroS, heroT)
         );
 
         entityManager.flush();
@@ -100,74 +107,28 @@ class EsportsDataServiceIntegrationTest {
     }
 
     @Test
-    void getTopBannedHeroesMatchesDeterministicDraftCounts() {
+    void getTopBannedHeroesReadsUnionedBanColumnsFromFlatTable() {
         List<EsportsHeroBanStatResponse> result = esportsDataService.getTopBannedHeroes("AER Pro League", 10);
 
         assertThat(result)
                 .extracting(EsportsHeroBanStatResponse::heroName, EsportsHeroBanStatResponse::banCount)
                 .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple("Hero A", 4L),
-                        org.assertj.core.groups.Tuple.tuple("Hero B", 3L),
+                        org.assertj.core.groups.Tuple.tuple("Hero A", 2L),
                         org.assertj.core.groups.Tuple.tuple("Hero C", 2L),
-                        org.assertj.core.groups.Tuple.tuple("Hero D", 1L),
-                        org.assertj.core.groups.Tuple.tuple("Hero E", 1L),
-                        org.assertj.core.groups.Tuple.tuple("Hero F", 1L)
+                        org.assertj.core.groups.Tuple.tuple("Hero E", 2L),
+                        org.assertj.core.groups.Tuple.tuple("Hero F", 2L),
+                        org.assertj.core.groups.Tuple.tuple("Hero G", 2L),
+                        org.assertj.core.groups.Tuple.tuple("Hero H", 2L),
+                        org.assertj.core.groups.Tuple.tuple("Hero I", 2L),
+                        org.assertj.core.groups.Tuple.tuple("Hero J", 2L),
+                        org.assertj.core.groups.Tuple.tuple("Hero B", 1L),
+                        org.assertj.core.groups.Tuple.tuple("Hero D", 1L)
                 );
-
-        assertThat(result)
-                .extracting(EsportsHeroBanStatResponse::heroName)
-                .doesNotContain("Hero Pick Only");
-        assertThat(result)
-                .extracting(EsportsHeroBanStatResponse::tournamentName)
-                .containsOnly("AER Pro League");
     }
 
     @Test
-    void getTopBlueBannedHeroesCountsOnlyBlueBanActions() {
-        List<EsportsHeroBanStatResponse> result = esportsDataService.getTopBlueBannedHeroes("AER Pro League", 10);
-
-        assertThat(result)
-                .extracting(EsportsHeroBanStatResponse::heroName, EsportsHeroBanStatResponse::banCount)
-                .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple("Hero B", 3L),
-                        org.assertj.core.groups.Tuple.tuple("Hero D", 1L),
-                        org.assertj.core.groups.Tuple.tuple("Hero E", 1L),
-                        org.assertj.core.groups.Tuple.tuple("Hero F", 1L)
-                );
-
-        assertThat(result)
-                .extracting(EsportsHeroBanStatResponse::heroName)
-                .doesNotContain("Hero A", "Hero C", "Hero G", "Hero Pick Only");
-    }
-
-    @Test
-    void getTopBannedHeroesHonorsLimitFive() {
-        List<EsportsHeroBanStatResponse> result = esportsDataService.getTopBannedHeroes("AER Pro League", 5);
-
-        assertThat(result).hasSize(5);
-        assertThat(result)
-                .extracting(EsportsHeroBanStatResponse::heroName)
-                .containsExactly("Hero A", "Hero B", "Hero C", "Hero D", "Hero E");
-    }
-
-    @Test
-    void getTopBannedHeroesFiltersByTournamentName() {
-        List<EsportsHeroBanStatResponse> result = esportsDataService.getTopBannedHeroes("AER International", 10);
-
-        assertThat(result)
-                .extracting(EsportsHeroBanStatResponse::heroName, EsportsHeroBanStatResponse::banCount)
-                .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple("Hero F", 1L),
-                        org.assertj.core.groups.Tuple.tuple("Hero G", 1L)
-                );
-        assertThat(result)
-                .extracting(EsportsHeroBanStatResponse::tournamentName)
-                .containsOnly("AER International");
-    }
-
-    @Test
-    void getHeroStatsUsesPickAndBanAggregatesWithoutDoubleCounting() {
-        List<EsportsHeroStatResponse> result = esportsDataService.getHeroStats("AER Challenger");
+    void getHeroStatsUsesLineupSlotsForPickWinsAndPresence() {
+        List<EsportsHeroStatResponse> result = esportsDataService.getHeroStats("AER Pro League");
 
         assertThat(result)
                 .extracting(
@@ -175,184 +136,146 @@ class EsportsDataServiceIntegrationTest {
                         EsportsHeroStatResponse::pickCount,
                         EsportsHeroStatResponse::pickWins,
                         EsportsHeroStatResponse::pickLosses,
-                        EsportsHeroStatResponse::bluePickCount,
-                        EsportsHeroStatResponse::blueWins,
-                        EsportsHeroStatResponse::blueLosses,
-                        EsportsHeroStatResponse::redPickCount,
-                        EsportsHeroStatResponse::redWins,
-                        EsportsHeroStatResponse::redLosses,
                         EsportsHeroStatResponse::banCount,
-                        EsportsHeroStatResponse::blueBanCount,
-                        EsportsHeroStatResponse::redBanCount,
                         EsportsHeroStatResponse::presenceCount
                 )
-                .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple("Hero Stat A", 3L, 1L, 2L, 2L, 1L, 1L, 1L, 0L, 1L, 0L, 0L, 0L, 3L),
-                        org.assertj.core.groups.Tuple.tuple("Hero Stat B", 3L, 2L, 1L, 1L, 1L, 0L, 2L, 1L, 1L, 0L, 0L, 0L, 3L),
-                        org.assertj.core.groups.Tuple.tuple("Hero Stat Ban Only", 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 3L, 3L, 0L, 3L),
-                        org.assertj.core.groups.Tuple.tuple("Hero F", 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 1L, 0L, 1L, 1L),
-                        org.assertj.core.groups.Tuple.tuple("Hero G", 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 1L, 0L, 1L, 1L),
-                        org.assertj.core.groups.Tuple.tuple("Hero Stat Ban Support", 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 1L, 0L, 1L, 1L)
+                .contains(
+                        org.assertj.core.groups.Tuple.tuple("Hero K", 2L, 1L, 1L, 0L, 2L),
+                        org.assertj.core.groups.Tuple.tuple("Hero P", 2L, 1L, 1L, 0L, 2L),
+                        org.assertj.core.groups.Tuple.tuple("Hero A", 0L, 0L, 0L, 2L, 2L),
+                        org.assertj.core.groups.Tuple.tuple("Hero U", 1L, 1L, 0L, 0L, 1L)
                 );
-
-        assertThat(result)
-                .extracting(EsportsHeroStatResponse::pickWinRate)
-                .containsExactly(33.333333333333336D, 66.66666666666667D, 0D, 0D, 0D, 0D);
-        assertThat(result)
-                .extracting(EsportsHeroStatResponse::blueWinRate)
-                .containsExactly(50.0D, 100.0D, 0D, 0D, 0D, 0D);
-        assertThat(result)
-                .extracting(EsportsHeroStatResponse::redWinRate)
-                .containsExactly(0D, 50.0D, 0D, 0D, 0D, 0D);
-
-        assertThat(result).allSatisfy(item ->
-                assertThat(item.banCount()).isEqualTo(item.blueBanCount() + item.redBanCount()));
     }
 
     @Test
-    void getDashboardBuildsOverviewAndInsightsFromFilteredGames() {
-        EsportsDashboardResponse dashboard = esportsDataService.getDashboard("AER Challenger", null, null, null);
+    void getDashboardBuildsSummaryAndBlueSideBanLeaderFromGameDrafts() {
+        EsportsDashboardResponse dashboard = esportsDataService.getDashboard("AER Pro League", null, null, null);
 
         assertThat(dashboard.summary().totalMatches()).isEqualTo(1L);
-        assertThat(dashboard.summary().totalGames()).isEqualTo(3L);
-        assertThat(dashboard.summary().metaChampions()).isEqualTo(6L);
-        assertThat(dashboard.summary().completedGames()).isEqualTo(3L);
-        assertThat(dashboard.summary().blueSideWinRate()).isEqualTo(66.66666666666667D);
+        assertThat(dashboard.summary().totalGames()).isEqualTo(2L);
+        assertThat(dashboard.summary().completedGames()).isEqualTo(2L);
+        assertThat(dashboard.summary().blueSideWinRate()).isEqualTo(50.0D);
         assertThat(dashboard.summary().draftAccuracy()).isNull();
-        assertThat(dashboard.summary().draftAccuracySampleSize()).isEqualTo(0L);
-
-        assertThat(dashboard.matchActivity()).containsExactly(
-                new EsportsDashboardResponse.ActivityPoint(
-                        java.time.LocalDate.of(2026, 5, 3),
-                        1L,
-                        3L
-                )
-        );
-
-        assertThat(dashboard.sideAdvantage()).isEqualTo(
-                new EsportsDashboardResponse.SideAdvantage(
-                        2L,
-                        1L,
-                        3L,
-                        66.66666666666667D,
-                        33.333333333333336D
-                )
-        );
-
-        assertThat(dashboard.powerPicks())
-                .extracting(EsportsDashboardResponse.HeroInsight::heroName)
-                .containsExactly("Hero Stat B", "Hero Stat A");
-        assertThat(dashboard.trapPicks())
-                .extracting(EsportsDashboardResponse.HeroInsight::heroName)
-                .containsExactly("Hero Stat A", "Hero Stat B");
-        assertThat(dashboard.topTeams())
-                .extracting(EsportsDashboardResponse.TeamInsight::teamCode, EsportsDashboardResponse.TeamInsight::winRate)
-                .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple("FS", 66.66666666666667D),
-                        org.assertj.core.groups.Tuple.tuple("SGP", 33.333333333333336D)
-                );
-        assertThat(dashboard.topBannedHeroes().get(0).heroName()).isEqualTo("Hero Stat Ban Only");
-        assertThat(dashboard.topBlueBannedHero().heroName()).isEqualTo("Hero Stat Ban Only");
+        assertThat(dashboard.sideAdvantage().blueWins()).isEqualTo(1L);
+        assertThat(dashboard.sideAdvantage().redWins()).isEqualTo(1L);
+        assertThat(dashboard.topBannedHeroes().get(0).heroName()).isEqualTo("Hero A");
+        assertThat(dashboard.topBlueBannedHero().heroName()).isEqualTo("Hero A");
         assertThat(dashboard.teamOptions())
                 .extracting(EsportsDashboardResponse.TeamOption::teamCode)
                 .containsExactly("FS", "SGP");
     }
 
     @Test
-    void getDashboardCalculatesDraftAccuracyWhenFullPickScoresExist() {
-        EsportsDashboardResponse dashboard = esportsDataService.getDashboard("DASHBOARD_FULL_2026", null, null, null);
+    void getAvailableTournamentsIncludesOfficialTournamentAerTier() {
+        EsportsTeam fs = persistTeam("ONE", "One Team");
+        EsportsTeam sgp = persistTeam("BRO", "Bro Team");
+        Hero heroA = persistHero("Hero Official A");
+        Hero heroB = persistHero("Hero Official B");
+        Hero heroC = persistHero("Hero Official C");
+        Hero heroD = persistHero("Hero Official D");
+        Hero heroE = persistHero("Hero Official E");
+        Hero heroF = persistHero("Hero Official F");
+        Hero heroG = persistHero("Hero Official G");
+        Hero heroH = persistHero("Hero Official H");
+        Hero heroI = persistHero("Hero Official I");
+        Hero heroJ = persistHero("Hero Official J");
+        Hero heroK = persistHero("Hero Official K");
+        Hero heroL = persistHero("Hero Official L");
+        Hero heroM = persistHero("Hero Official M");
+        Hero heroN = persistHero("Hero Official N");
+        Hero heroO = persistHero("Hero Official O");
+        Hero heroP = persistHero("Hero Official P");
+        Hero heroQ = persistHero("Hero Official Q");
+        Hero heroR = persistHero("Hero Official R");
+        Hero heroS = persistHero("Hero Official S");
+        Hero heroT = persistHero("Hero Official T");
 
-        assertThat(dashboard.summary().totalMatches()).isEqualTo(1L);
-        assertThat(dashboard.summary().totalGames()).isEqualTo(1L);
-        assertThat(dashboard.summary().draftAccuracy()).isEqualTo(100.0D);
-        assertThat(dashboard.summary().draftAccuracySampleSize()).isEqualTo(1L);
-        assertThat(dashboard.sideAdvantage().blueWins()).isEqualTo(1L);
-        assertThat(dashboard.sideAdvantage().redWins()).isEqualTo(0L);
+        EsportsFranchise franchise = persistFranchise("AOG", "Arena Of Glory", "T1", 20);
+        EsportsTournament tournament = persistTournament(franchise, "AOG Spring 2026", "aog-spring-2026", "T1", 2);
+        EsportsMatch officialMatch = persistMatch("1", LocalDateTime.of(2026, 5, 3, 10, 0), fs, sgp, tournament);
+        persistDraft(
+                officialMatch,
+                1,
+                fs,
+                sgp,
+                fs,
+                List.of(heroA, heroB, heroC, heroD, heroE),
+                List.of(heroF, heroG, heroH, heroI, heroJ),
+                List.of(heroK, heroL, heroM, heroN, heroO),
+                List.of(heroP, heroQ, heroR, heroS, heroT)
+        );
+
+        entityManager.flush();
+        entityManager.clear();
+
+        List<EsportsTournamentOptionResponse> options = esportsDataService.getAvailableTournaments();
+
+        assertThat(options)
+                .anySatisfy(option -> {
+                    assertThat(option.tournamentId()).isEqualTo(tournament.getId());
+                    assertThat(option.tournamentName()).isEqualTo("AOG Spring 2026");
+                    assertThat(option.tournamentTier()).isEqualTo("2");
+                    assertThat(option.franchiseCode()).isEqualTo("AOG");
+                    assertThat(option.legacyScope()).isFalse();
+                });
     }
 
-    private void seedGame(EsportsMatch match,
-                          int gameNumber,
-                          EsportsTeam blueTeam,
-                          EsportsTeam redTeam,
-                          Hero blueBanHero,
-                          Hero redBanHero,
-                          Hero bluePickHero,
-                          Hero redPickHero) {
-        seedGame(match, gameNumber, blueTeam, redTeam, null, blueBanHero, redBanHero, bluePickHero, redPickHero);
-    }
+    private void persistDraft(EsportsMatch match,
+                              int gameNumber,
+                              EsportsTeam blueTeam,
+                              EsportsTeam redTeam,
+                              EsportsTeam winnerTeam,
+                              List<Hero> blueBans,
+                              List<Hero> redBans,
+                              List<Hero> blueLineup,
+                              List<Hero> redLineup) {
+        EsportsGameDraft draft = new EsportsGameDraft();
+        draft.setMatch(match);
+        draft.setGameNumber(gameNumber);
+        draft.setBlueTeam(blueTeam);
+        draft.setRedTeam(redTeam);
+        draft.setWinnerTeam(winnerTeam);
+        draft.setDurationSeconds(1200 + gameNumber);
+        draft.setDraftFormatCode("AOV_STANDARD_18");
+        draft.setSource("integration-test");
 
-    private void seedGame(EsportsMatch match,
-                          int gameNumber,
-                          EsportsTeam blueTeam,
-                          EsportsTeam redTeam,
-                          EsportsTeam winnerTeam,
-                          Hero blueBanHero,
-                          Hero redBanHero,
-                          Hero bluePickHero,
-                          Hero redPickHero) {
-        EsportsMatchGame game = new EsportsMatchGame();
-        game.setMatch(match);
-        game.setGameNumber(gameNumber);
-        game.setBlueTeam(blueTeam);
-        game.setRedTeam(redTeam);
-        game.setWinnerTeam(winnerTeam);
-        entityManager.persist(game);
+        draft.setBlueBan1HeroId(blueBans.get(0).getId());
+        draft.setBlueBan2HeroId(blueBans.get(1).getId());
+        draft.setBlueBan3HeroId(blueBans.get(2).getId());
+        draft.setBlueBan4HeroId(blueBans.get(3).getId());
+        draft.setBlueBan5HeroId(blueBans.get(4).getId());
+        draft.setRedBan1HeroId(redBans.get(0).getId());
+        draft.setRedBan2HeroId(redBans.get(1).getId());
+        draft.setRedBan3HeroId(redBans.get(2).getId());
+        draft.setRedBan4HeroId(redBans.get(3).getId());
+        draft.setRedBan5HeroId(redBans.get(4).getId());
 
-        persistDraftAction(game, blueTeam, blueBanHero, BanPickActionType.BAN, 1, BanPickTeamSide.BLUE);
-        persistDraftAction(game, redTeam, redBanHero, BanPickActionType.BAN, 2, BanPickTeamSide.RED);
-        persistDraftAction(game, blueTeam, bluePickHero, BanPickActionType.PICK, 3, BanPickTeamSide.BLUE);
-        persistDraftAction(game, redTeam, redPickHero, BanPickActionType.PICK, 4, BanPickTeamSide.RED);
-    }
+        draft.setBlueDslHeroId(blueLineup.get(0).getId());
+        draft.setBlueJglHeroId(blueLineup.get(1).getId());
+        draft.setBlueMidHeroId(blueLineup.get(2).getId());
+        draft.setBlueAdlHeroId(blueLineup.get(3).getId());
+        draft.setBlueSupHeroId(blueLineup.get(4).getId());
+        draft.setRedDslHeroId(redLineup.get(0).getId());
+        draft.setRedJglHeroId(redLineup.get(1).getId());
+        draft.setRedMidHeroId(redLineup.get(2).getId());
+        draft.setRedAdlHeroId(redLineup.get(3).getId());
+        draft.setRedSupHeroId(redLineup.get(4).getId());
 
-    private void persistDraftAction(EsportsMatchGame game,
-                                    EsportsTeam team,
-                                    Hero hero,
-                                    BanPickActionType actionType,
-                                    int stepNumber,
-                                    BanPickTeamSide teamSide) {
-        EsportsMatchDraftAction action = new EsportsMatchDraftAction();
-        action.setGame(game);
-        action.setTeam(team);
-        action.setHero(hero);
-        action.setActionType(actionType);
-        action.setStepNumber(stepNumber);
-        action.setTeamSide(teamSide);
-        entityManager.persist(action);
-    }
-
-    private void seedFullDraftGame(EsportsMatch match,
-                                   int gameNumber,
-                                   EsportsTeam blueTeam,
-                                   EsportsTeam redTeam,
-                                   EsportsTeam winnerTeam,
-                                   Hero blueBanHero,
-                                   Hero redBanHero,
-                                   List<Hero> bluePickHeroes,
-                                   List<Hero> redPickHeroes) {
-        EsportsMatchGame game = new EsportsMatchGame();
-        game.setMatch(match);
-        game.setGameNumber(gameNumber);
-        game.setBlueTeam(blueTeam);
-        game.setRedTeam(redTeam);
-        game.setWinnerTeam(winnerTeam);
-        entityManager.persist(game);
-
-        int stepNumber = 1;
-        persistDraftAction(game, blueTeam, blueBanHero, BanPickActionType.BAN, stepNumber++, BanPickTeamSide.BLUE);
-        persistDraftAction(game, redTeam, redBanHero, BanPickActionType.BAN, stepNumber++, BanPickTeamSide.RED);
-
-        for (Hero hero : bluePickHeroes) {
-            persistDraftAction(game, blueTeam, hero, BanPickActionType.PICK, stepNumber++, BanPickTeamSide.BLUE);
-        }
-        for (Hero hero : redPickHeroes) {
-            persistDraftAction(game, redTeam, hero, BanPickActionType.PICK, stepNumber++, BanPickTeamSide.RED);
-        }
+        entityManager.persist(draft);
     }
 
     private EsportsMatch persistMatch(String tier,
                                       LocalDateTime matchDate,
                                       EsportsTeam team1,
                                       EsportsTeam team2) {
+        return persistMatch(tier, matchDate, team1, team2, null);
+    }
+
+    private EsportsMatch persistMatch(String tier,
+                                      LocalDateTime matchDate,
+                                      EsportsTeam team1,
+                                      EsportsTeam team2,
+                                      EsportsTournament tournament) {
         EsportsMatch match = new EsportsMatch();
         match.setMatchDate(matchDate);
         match.setTeam1Code(team1.getTeamCode());
@@ -361,16 +284,46 @@ class EsportsDataServiceIntegrationTest {
         match.setScore2(2);
         match.setTier(tier);
         match.setStage("bang");
+        match.setTournament(tournament);
         entityManager.persist(match);
         return match;
     }
 
-    private EsportsTeam persistTeam(String teamCode, String region) {
+    private EsportsFranchise persistFranchise(String code, String name, String tierLevel, int displayOrder) {
+        EsportsFranchise franchise = new EsportsFranchise();
+        franchise.setCode(code);
+        franchise.setName(name);
+        franchise.setTierLevel(tierLevel);
+        franchise.setDisplayOrder(displayOrder);
+        franchise.setActive(Boolean.TRUE);
+        entityManager.persist(franchise);
+        return franchise;
+    }
+
+    private EsportsTournament persistTournament(EsportsFranchise franchise,
+                                                String name,
+                                                String slug,
+                                                String tierLevel,
+                                                int aerTier) {
+        EsportsTournament tournament = new EsportsTournament();
+        tournament.setFranchise(franchise);
+        tournament.setName(name);
+        tournament.setSlug(slug);
+        tournament.setTierLevel(tierLevel);
+        tournament.setAerTier(aerTier);
+        tournament.setSeasonYear(2026);
+        tournament.setSplitName("Spring");
+        tournament.setStatus("ONGOING");
+        entityManager.persist(tournament);
+        return tournament;
+    }
+
+    private EsportsTeam persistTeam(String teamCode, String teamName) {
         EsportsTeam team = new EsportsTeam();
         team.setTeamCode(teamCode);
-        team.setTeamName(teamCode + " Team");
+        team.setTeamName(teamName);
         team.setLogoUrl("/images/teams/" + teamCode + ".png");
-        team.setRegion(region);
+        team.setRegion("AOV");
         team.setScore(1200.0);
         team.setGameWins(0);
         team.setGameLosses(0);
@@ -385,12 +338,6 @@ class EsportsDataServiceIntegrationTest {
         hero.setName(name);
         hero.setAvatarUrl("/images/heroes/" + name.replace(' ', '-') + ".jpg");
         entityManager.persist(hero);
-        return hero;
-    }
-
-    private Hero persistHero(String name, double banPickScore) {
-        Hero hero = persistHero(name);
-        hero.setBanPickScore(BigDecimal.valueOf(banPickScore));
         return hero;
     }
 }

@@ -503,6 +503,7 @@
             overflow: hidden;
             -webkit-box-orient: vertical;
             -webkit-line-clamp: 2;
+            line-clamp: 2;
         }
 
         .home-banner-loading {
@@ -1926,7 +1927,7 @@
                             '<span class="text-xs text-slate-500">' + escapeHomeHtml(createdAt) + '</span>' +
                         '</div>' +
                         '<h3 class="font-bold text-lg text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">' + escapeHomeHtml(item.title || 'Tier List') + '</h3>' +
-                        '<p class="text-sm text-slate-500 leading-relaxed" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">Tạo bởi ' + escapeHomeHtml(item.author || 'ATG Member') + '</p>' +
+                        '<p class="text-sm text-slate-500 leading-relaxed" style="display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">Tạo bởi ' + escapeHomeHtml(item.author || 'ATG Member') + '</p>' +
                         '<div class="mt-auto pt-4 flex items-center justify-between text-xs text-slate-500 gap-3">' +
                             '<span class="font-semibold text-amber-600">' + escapeHomeHtml(rating) + ' ★</span>' +
                             '<span>' + ratingCount + ' lượt đánh giá</span>' +
@@ -1949,7 +1950,7 @@
                             '<span class="text-xs text-slate-500">' + readTime + ' phút đọc</span>' +
                         '</div>' +
                         '<h3 class="font-bold text-lg text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">' + escapeHomeHtml(item.title || 'Giáo án') + '</h3>' +
-                        '<p class="text-sm text-slate-500 leading-relaxed" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">' + escapeHomeHtml(item.description || 'Giáo án cộng đồng với các ghi chú chiến thuật và cách vận hành trong trận.') + '</p>' +
+                        '<p class="text-sm text-slate-500 leading-relaxed" style="display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">' + escapeHomeHtml(item.description || 'Giáo án cộng đồng với các ghi chú chiến thuật và cách vận hành trong trận.') + '</p>' +
                         '<div class="mt-auto pt-4 text-xs text-slate-500">' + escapeHomeHtml(createdAt) + '</div>' +
                     '</div>' +
                 '</a>';

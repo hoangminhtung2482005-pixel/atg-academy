@@ -24,7 +24,7 @@ public final class EsportsTournamentCatalog {
         String normalizedTier = StringUtils.hasText(tournamentTier)
                 ? tournamentTier.trim()
                 : DEFAULT_TOURNAMENT_TIER;
-        return TOURNAMENT_NAMES.getOrDefault(normalizedTier, TOURNAMENT_NAMES.get(DEFAULT_TOURNAMENT_TIER));
+        return TOURNAMENT_NAMES.getOrDefault(normalizedTier, normalizedTier);
     }
 
     public static String resolveTournamentTier(String tournamentName) {

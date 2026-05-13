@@ -58,7 +58,28 @@
                 <a href="/html/giao-an.html" data-page="giao-an" class="text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent">Tactics & Guides</a>
                 <a href="/html/esports.html" data-page="esports" class="text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent">Esports</a>
                 <a href="/esports/data" data-page="esports-data" class="text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent">Esports Data</a>
-                <a href="/html/wiki.html" data-page="wiki" class="text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent">Wiki</a>
+                <div class="nav-dropdown">
+                    <button type="button" data-page="wiki" class="nav-dropdown-trigger text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent" aria-haspopup="true" aria-expanded="false">
+                        <span>Wiki</span>
+                        <svg class="nav-dropdown-caret" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 011.08 1.04l-4.25 4.51a.75.75 0 01-1.08 0l-4.25-4.51a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <div class="nav-dropdown-menu" role="menu" aria-label="Wiki pages">
+                        <a href="/html/wiki.html" data-page="wiki-home" class="nav-dropdown-item" role="menuitem">
+                            <strong>Tướng</strong>
+                            <small>Tra cứu danh sách tướng, class và vị trí đi đường.</small>
+                        </a>
+                        <a href="/html/wiki.html?tab=spells" data-page="wiki-spells" class="nav-dropdown-item" role="menuitem">
+                            <strong>Bổ trợ</strong>
+                            <small>Xem danh sách phép bổ trợ đang dùng chung với module tạo guide.</small>
+                        </a>
+                        <a href="/html/wiki.html?tab=enchantments" data-page="wiki-enchantments" class="nav-dropdown-item" role="menuitem">
+                            <strong>Phù hiệu</strong>
+                            <small>Mở nhanh Wiki Phù hiệu theo 4 nhánh bằng dữ liệu thật từ asset mới.</small>
+                        </a>
+                    </div>
+                </div>
             </div>
             
             <!-- Right: Search & Login -->

@@ -2,8 +2,10 @@ package com.example.demo.service;
 
 import com.example.demo.entity.EsportsMatch;
 import com.example.demo.entity.EsportsTeam;
+import com.example.demo.entity.EsportsTournament;
 import com.example.demo.repository.EsportsMatchRepository;
 import com.example.demo.repository.EsportsTeamRepository;
+import com.example.demo.repository.EsportsTournamentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -27,13 +29,16 @@ public class EsportsAdminService {
 
     private final EsportsTeamRepository esportsTeamRepository;
     private final EsportsMatchRepository esportsMatchRepository;
+    private final EsportsTournamentRepository esportsTournamentRepository;
     private final EloCalculationService eloCalculationService;
 
     public EsportsAdminService(EsportsTeamRepository esportsTeamRepository,
                                EsportsMatchRepository esportsMatchRepository,
+                               EsportsTournamentRepository esportsTournamentRepository,
                                EloCalculationService eloCalculationService) {
         this.esportsTeamRepository = esportsTeamRepository;
         this.esportsMatchRepository = esportsMatchRepository;
+        this.esportsTournamentRepository = esportsTournamentRepository;
         this.eloCalculationService = eloCalculationService;
     }
 
@@ -109,9 +114,15 @@ public class EsportsAdminService {
 
     @Transactional
     public EsportsMatch addMatch(EsportsMatch match) {
-        if (match.getTier() == null) match.setTier("1");
+        EsportsTournament tournament = resolveTournament(match.getTournamentId());
+        if (tournament != null) {
+            match.setTier(resolveMatchTier(tournament));
+        } else if (match.getTier() == null) {
+            match.setTier("1");
+        }
         if (match.getStage() == null) match.setStage("bang");
         if (match.getMatchDate() == null) match.setMatchDate(LocalDateTime.now());
+        match.setTournament(tournament);
 
         EsportsMatch saved = esportsMatchRepository.save(match);
         log.info(">> [Admin] Đã thêm trận đấu mới: {} vs {} ({}-{}) | ID={}",
@@ -131,9 +142,15 @@ public class EsportsAdminService {
         if (updatedData.getTeam2Code() != null) existing.setTeam2Code(updatedData.getTeam2Code());
         if (updatedData.getScore1() != null) existing.setScore1(updatedData.getScore1());
         if (updatedData.getScore2() != null) existing.setScore2(updatedData.getScore2());
-        if (updatedData.getTier() != null) existing.setTier(updatedData.getTier());
         if (updatedData.getStage() != null) existing.setStage(updatedData.getStage());
         if (updatedData.getMatchDate() != null) existing.setMatchDate(updatedData.getMatchDate());
+        EsportsTournament tournament = resolveTournament(updatedData.getTournamentId());
+        if (tournament != null) {
+            existing.setTier(resolveMatchTier(tournament));
+        } else if (updatedData.getTier() != null) {
+            existing.setTier(updatedData.getTier());
+        }
+        existing.setTournament(tournament);
 
         EsportsMatch saved = esportsMatchRepository.save(existing);
         log.info(">> [Admin] Đã cập nhật trận đấu ID={}: {} vs {} ({}-{})",
@@ -248,5 +265,23 @@ public class EsportsAdminService {
             esportsTeamRepository.deleteAllInBatch(staleTeams);
             log.info(">> [Admin] Đã xóa {} team không còn trong dataset hiện tại.", staleTeams.size());
         }
+    }
+    private EsportsTournament resolveTournament(Long tournamentId) {
+        if (tournamentId == null) {
+            return null;
+        }
+        return esportsTournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new RuntimeException("Khong tim thay tournament voi ID: " + tournamentId));
+    }
+
+    private String resolveMatchTier(EsportsTournament tournament) {
+        if (tournament == null) {
+            return "1";
+        }
+        Integer aerTier = tournament.getAerTier();
+        if (aerTier != null && aerTier > 0) {
+            return String.valueOf(aerTier);
+        }
+        return "1";
     }
 }

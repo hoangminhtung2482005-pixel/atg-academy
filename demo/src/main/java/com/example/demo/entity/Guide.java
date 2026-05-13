@@ -3,12 +3,8 @@ package com.example.demo.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import lombok.ToString;
 
-import java.util.HashSet;
-import java.util.Set;
 import java.time.LocalDateTime;
 
 @Entity
@@ -57,21 +53,6 @@ public class Guide {
     /** Lưu toàn bộ nội dung giáo án dưới dạng JSON string */
     @Column(columnDefinition = "TEXT")
     private String contentData;
-
-    @OneToMany(mappedBy = "huongDan", cascade = CascadeType.ALL, orphanRemoval = true)
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
-    private Set<GuideItem> vatPhams = new HashSet<>();
-
-    @OneToMany(mappedBy = "huongDan", cascade = CascadeType.ALL, orphanRemoval = true)
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
-    private Set<GuideArcana> bangNgocs = new HashSet<>();
-
-    @OneToMany(mappedBy = "huongDan", cascade = CascadeType.ALL, orphanRemoval = true)
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
-    private Set<GuideEnchantment> phuHieus = new HashSet<>();
 
     @Column(updatable = false)
     private LocalDateTime createdAt;

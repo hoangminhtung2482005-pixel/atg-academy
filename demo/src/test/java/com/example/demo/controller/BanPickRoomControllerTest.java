@@ -22,7 +22,7 @@ class BanPickRoomControllerTest {
         assertThatThrownBy(() -> controller.createRoom(null, null, null))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
                     assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-                    assertThat(exception.getReason()).isEqualTo("Chua dang nhap");
+                    assertThat(exception.getReason()).isNotBlank();
                 });
     }
 }

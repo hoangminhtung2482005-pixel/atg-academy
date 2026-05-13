@@ -40,6 +40,12 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", message));
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalState(IllegalStateException exception) {
+        String message = exception.getMessage() != null ? exception.getMessage() : "Internal server error";
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", message));
+    }
+
     private String rootMessage(Throwable throwable) {
         Throwable current = throwable;
         while (current.getCause() != null) {

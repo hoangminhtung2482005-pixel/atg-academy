@@ -1,23 +1,19 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.esports.EsportsDashboardResponse;
-import com.example.demo.dto.esports.EsportsDraftTournamentAggregate;
-import com.example.demo.dto.esports.EsportsHeroBanBreakdownAggregate;
-import com.example.demo.dto.esports.EsportsHeroBanStatAggregate;
+import com.example.demo.dto.esports.EsportsDraftTournamentScopeAggregate;
 import com.example.demo.dto.esports.EsportsHeroBanStatResponse;
-import com.example.demo.dto.esports.EsportsHeroPickStatAggregate;
 import com.example.demo.dto.esports.EsportsHeroStatResponse;
 import com.example.demo.dto.esports.EsportsTournamentOptionResponse;
-import com.example.demo.entity.BanPickActionType;
 import com.example.demo.entity.BanPickTeamSide;
-import com.example.demo.entity.EsportsMatchDraftAction;
-import com.example.demo.entity.EsportsMatchGame;
+import com.example.demo.entity.EsportsGameDraft;
 import com.example.demo.entity.EsportsTeam;
+import com.example.demo.entity.EsportsTournament;
 import com.example.demo.entity.Hero;
-import com.example.demo.repository.EsportsMatchDraftActionRepository;
-import com.example.demo.repository.EsportsMatchGameRepository;
+import com.example.demo.repository.EsportsGameDraftRepository;
+import com.example.demo.repository.EsportsTournamentRepository;
+import com.example.demo.repository.HeroRepository;
 import com.example.demo.util.EsportsTournamentCatalog;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -27,11 +23,16 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -48,25 +49,44 @@ public class EsportsDataService {
     private static final int MIN_TEAM_SAMPLE = 2;
     private static final int REQUIRED_PICKS_PER_SIDE = 5;
 
-    private final EsportsMatchDraftActionRepository esportsMatchDraftActionRepository;
-    private final EsportsMatchGameRepository esportsMatchGameRepository;
+    private final EsportsGameDraftRepository esportsGameDraftRepository;
+    private final EsportsTournamentRepository esportsTournamentRepository;
+    private final HeroRepository heroRepository;
 
-    public EsportsDataService(EsportsMatchDraftActionRepository esportsMatchDraftActionRepository,
-                              EsportsMatchGameRepository esportsMatchGameRepository) {
-        this.esportsMatchDraftActionRepository = esportsMatchDraftActionRepository;
-        this.esportsMatchGameRepository = esportsMatchGameRepository;
+    public EsportsDataService(EsportsGameDraftRepository esportsGameDraftRepository,
+                              EsportsTournamentRepository esportsTournamentRepository,
+                              HeroRepository heroRepository) {
+        this.esportsGameDraftRepository = esportsGameDraftRepository;
+        this.esportsTournamentRepository = esportsTournamentRepository;
+        this.heroRepository = heroRepository;
     }
 
     public List<EsportsTournamentOptionResponse> getAvailableTournaments() {
         Map<String, EsportsTournamentOptionResponse> uniqueTournaments = new LinkedHashMap<>();
 
-        esportsMatchDraftActionRepository.findDraftTournamentsOrderByLatestMatchDesc()
+        esportsGameDraftRepository.findDraftTournamentScopesOrderByLatestMatchDesc()
                 .forEach(tournament -> {
-                    String tournamentTier = tournament.tournamentTier();
-                    String tournamentName = EsportsTournamentCatalog.resolveTournamentName(tournamentTier);
+                    String optionKey;
+                    String tournamentName;
+                    boolean legacyScope = tournament.tournamentId() == null;
+                    if (legacyScope) {
+                        optionKey = "legacy:" + safeText(tournament.tournamentTier()).trim().toUpperCase(Locale.ROOT);
+                        tournamentName = resolveLegacyTournamentLabel(tournament.tournamentTier());
+                    } else {
+                        optionKey = "official:" + tournament.tournamentId();
+                        tournamentName = StringUtils.hasText(tournament.tournamentName())
+                                ? tournament.tournamentName().trim()
+                                : resolveLegacyTournamentLabel(tournament.tournamentTier());
+                    }
                     uniqueTournaments.putIfAbsent(
-                            tournamentTier,
-                            new EsportsTournamentOptionResponse(tournamentName, tournamentTier)
+                            optionKey,
+                            new EsportsTournamentOptionResponse(
+                                    tournament.tournamentId(),
+                                    tournamentName,
+                                    tournament.tournamentTier(),
+                                    tournament.franchiseCode(),
+                                    legacyScope
+                            )
                     );
                 });
 
@@ -74,66 +94,74 @@ public class EsportsDataService {
     }
 
     public List<EsportsHeroBanStatResponse> getTopBannedHeroes(String tournamentName, Integer limit) {
-        return getTopHeroBanStats(tournamentName, limit, null);
+        return getTopBannedHeroes(null, tournamentName, limit);
+    }
+
+    public List<EsportsHeroBanStatResponse> getTopBannedHeroes(Long tournamentId, String tournamentName, Integer limit) {
+        return getTopHeroBanStats(tournamentId, tournamentName, limit, null);
     }
 
     public List<EsportsHeroBanStatResponse> getTopBlueBannedHeroes(String tournamentName, Integer limit) {
-        return getTopHeroBanStats(tournamentName, limit, BanPickTeamSide.BLUE);
+        return getTopBlueBannedHeroes(null, tournamentName, limit);
+    }
+
+    public List<EsportsHeroBanStatResponse> getTopBlueBannedHeroes(Long tournamentId, String tournamentName, Integer limit) {
+        return getTopHeroBanStats(tournamentId, tournamentName, limit, BanPickTeamSide.BLUE);
     }
 
     public List<EsportsHeroStatResponse> getHeroStats(String tournamentName) {
-        String tournamentTier = resolveTournamentTier(tournamentName);
+        return getHeroStats(null, tournamentName);
+    }
 
-        Map<Long, AggregateHeroStatAccumulator> statsByHeroId = new LinkedHashMap<>();
-
-        esportsMatchDraftActionRepository.findHeroPickStats(tournamentTier)
-                .forEach(item -> statsByHeroId
-                        .computeIfAbsent(item.heroId(), ignored -> new AggregateHeroStatAccumulator(item.heroId()))
-                        .applyPickStats(item));
-
-        esportsMatchDraftActionRepository.findHeroBanStats(tournamentTier)
-                .forEach(item -> statsByHeroId
-                        .computeIfAbsent(item.heroId(), ignored -> new AggregateHeroStatAccumulator(item.heroId()))
-                        .applyBanStats(item));
-
-        return statsByHeroId.values().stream()
-                .map(AggregateHeroStatAccumulator::toResponse)
-                .sorted(heroStatComparator())
-                .toList();
+    public List<EsportsHeroStatResponse> getHeroStats(Long tournamentId, String tournamentName) {
+        TournamentScope tournamentScope = resolveTournamentScope(tournamentId, tournamentName);
+        List<EsportsGameDraft> drafts = esportsGameDraftRepository.findAllForAnalyticsScope(
+                tournamentScope.tournamentId(),
+                tournamentScope.tournamentTier(),
+                null,
+                null,
+                null
+        );
+        Map<Long, Hero> heroesById = loadHeroesForDrafts(drafts);
+        return buildHeroStats(drafts, heroesById);
     }
 
     public EsportsDashboardResponse getDashboard(String tournamentName,
                                                  String teamCode,
                                                  LocalDate dateFrom,
                                                  LocalDate dateTo) {
-        AnalyticsFilter filter = resolveAnalyticsFilter(tournamentName, teamCode, dateFrom, dateTo);
-        List<EsportsMatchGame> filteredGames = esportsMatchGameRepository.findAllForAnalytics(
-                filter.tournamentTier(),
-                filter.teamCode(),
-                filter.dateFrom(),
-                filter.dateTo()
-        );
-        List<EsportsMatchDraftAction> filteredActions = esportsMatchDraftActionRepository.findAllForAnalytics(
-                filter.tournamentTier(),
-                filter.teamCode(),
-                filter.dateFrom(),
-                filter.dateTo()
-        );
+        return getDashboard(null, tournamentName, teamCode, dateFrom, dateTo);
+    }
 
-        List<EsportsHeroStatResponse> heroStats = buildDashboardHeroStats(filteredActions);
-        EsportsDashboardResponse.SideAdvantage sideAdvantage = buildSideAdvantage(filteredGames);
-        DraftAccuracySnapshot draftAccuracy = buildDraftAccuracy(filteredGames, filteredActions);
+    public EsportsDashboardResponse getDashboard(Long tournamentId,
+                                                 String tournamentName,
+                                                 String teamCode,
+                                                 LocalDate dateFrom,
+                                                 LocalDate dateTo) {
+        AnalyticsFilter filter = resolveAnalyticsFilter(tournamentId, tournamentName, teamCode, dateFrom, dateTo);
+        List<EsportsGameDraft> filteredDrafts = esportsGameDraftRepository.findAllForAnalyticsScope(
+                filter.tournamentId(),
+                filter.tournamentTier(),
+                filter.teamCode(),
+                filter.dateFrom(),
+                filter.dateTo()
+        );
+        Map<Long, Hero> heroesById = loadHeroesForDrafts(filteredDrafts);
+
+        List<EsportsHeroStatResponse> heroStats = buildHeroStats(filteredDrafts, heroesById);
+        EsportsDashboardResponse.SideAdvantage sideAdvantage = buildSideAdvantage(filteredDrafts);
+        DraftAccuracySnapshot draftAccuracy = buildDraftAccuracy(filteredDrafts, heroesById);
 
         return new EsportsDashboardResponse(
-                buildSummary(filteredGames, heroStats, sideAdvantage, draftAccuracy),
-                buildMatchActivity(filteredGames),
+                buildSummary(filteredDrafts, heroStats, sideAdvantage, draftAccuracy),
+                buildMatchActivity(filteredDrafts),
                 sideAdvantage,
                 buildHeroInsights(heroStats, true),
                 buildHeroInsights(heroStats, false),
-                buildTopTeams(filteredGames),
+                buildTopTeams(filteredDrafts),
                 heroStats,
-                buildTopBannedHeroStats(filteredActions, filter.resolvedTournamentName(), DASHBOARD_BAN_LIMIT, null),
-                buildTopBannedHeroStats(filteredActions, filter.resolvedTournamentName(), 1, BanPickTeamSide.BLUE)
+                buildTopBannedHeroStats(filteredDrafts, heroesById, filter.resolvedTournamentName(), DASHBOARD_BAN_LIMIT, null),
+                buildTopBannedHeroStats(filteredDrafts, heroesById, filter.resolvedTournamentName(), 1, BanPickTeamSide.BLUE)
                         .stream()
                         .findFirst()
                         .orElse(null),
@@ -141,30 +169,24 @@ public class EsportsDataService {
         );
     }
 
-    private List<EsportsHeroBanStatResponse> getTopHeroBanStats(String tournamentName,
+    private List<EsportsHeroBanStatResponse> getTopHeroBanStats(Long tournamentId,
+                                                                String tournamentName,
                                                                 Integer limit,
                                                                 BanPickTeamSide teamSide) {
-        String tournamentTier = resolveTournamentTier(tournamentName);
-        String resolvedTournamentName = tournamentTier != null
-                ? EsportsTournamentCatalog.resolveTournamentName(tournamentTier)
-                : null;
-
-        return esportsMatchDraftActionRepository.findTopHeroBanStats(
-                        tournamentTier,
-                        teamSide,
-                        PageRequest.of(0, sanitizeLimit(limit))
-                ).stream()
-                .map(item -> new EsportsHeroBanStatResponse(
-                        item.heroId(),
-                        item.heroName(),
-                        item.heroAvatarUrl(),
-                        item.banCount(),
-                        resolvedTournamentName
-                ))
-                .toList();
+        TournamentScope tournamentScope = resolveTournamentScope(tournamentId, tournamentName);
+        List<EsportsGameDraft> drafts = esportsGameDraftRepository.findAllForAnalyticsScope(
+                tournamentScope.tournamentId(),
+                tournamentScope.tournamentTier(),
+                null,
+                null,
+                null
+        );
+        Map<Long, Hero> heroesById = loadHeroesForDrafts(drafts);
+        return buildTopBannedHeroStats(drafts, heroesById, tournamentScope.resolvedTournamentName(), sanitizeLimit(limit), teamSide);
     }
 
-    private AnalyticsFilter resolveAnalyticsFilter(String tournamentName,
+    private AnalyticsFilter resolveAnalyticsFilter(Long tournamentId,
+                                                   String tournamentName,
                                                    String teamCode,
                                                    LocalDate dateFrom,
                                                    LocalDate dateTo) {
@@ -172,96 +194,153 @@ public class EsportsDataService {
             throw new IllegalArgumentException("date range khong hop le.");
         }
 
-        String tournamentTier = resolveTournamentTier(tournamentName);
-        String resolvedTournamentName = tournamentTier != null
-                ? EsportsTournamentCatalog.resolveTournamentName(tournamentTier)
-                : null;
+        TournamentScope tournamentScope = resolveTournamentScope(tournamentId, tournamentName);
 
         return new AnalyticsFilter(
-                tournamentTier,
+                tournamentScope.tournamentId(),
+                tournamentScope.tournamentTier(),
                 normalizeTeamCode(teamCode),
                 dateFrom != null ? dateFrom.atStartOfDay() : null,
                 dateTo != null ? LocalDateTime.of(dateTo, LocalTime.MAX) : null,
-                resolvedTournamentName
+                tournamentScope.resolvedTournamentName()
         );
     }
 
-    private List<EsportsHeroStatResponse> buildDashboardHeroStats(List<EsportsMatchDraftAction> actions) {
-        Map<Long, ActionHeroStatAccumulator> statsByHeroId = new LinkedHashMap<>();
+    private List<EsportsHeroStatResponse> buildHeroStats(List<EsportsGameDraft> drafts, Map<Long, Hero> heroesById) {
+        Map<Long, HeroStatAccumulator> statsByHeroId = new LinkedHashMap<>();
 
-        for (EsportsMatchDraftAction action : actions) {
-            Hero hero = action.getHero();
-            Long heroId = hero != null ? hero.getId() : null;
-            if (heroId == null) {
-                continue;
-            }
+        for (EsportsGameDraft draft : drafts) {
+            boolean blueWon = didSideWin(draft, BanPickTeamSide.BLUE);
+            boolean redWon = didSideWin(draft, BanPickTeamSide.RED);
 
-            ActionHeroStatAccumulator accumulator = statsByHeroId.computeIfAbsent(
-                    heroId,
-                    ignored -> new ActionHeroStatAccumulator(heroId)
-            );
-            accumulator.apply(action);
+            accumulateBan(statsByHeroId, heroesById, draft.getBlueBan1HeroId(), BanPickTeamSide.BLUE);
+            accumulateBan(statsByHeroId, heroesById, draft.getBlueBan2HeroId(), BanPickTeamSide.BLUE);
+            accumulateBan(statsByHeroId, heroesById, draft.getBlueBan3HeroId(), BanPickTeamSide.BLUE);
+            accumulateBan(statsByHeroId, heroesById, draft.getBlueBan4HeroId(), BanPickTeamSide.BLUE);
+            accumulateBan(statsByHeroId, heroesById, draft.getBlueBan5HeroId(), BanPickTeamSide.BLUE);
+
+            accumulateBan(statsByHeroId, heroesById, draft.getRedBan1HeroId(), BanPickTeamSide.RED);
+            accumulateBan(statsByHeroId, heroesById, draft.getRedBan2HeroId(), BanPickTeamSide.RED);
+            accumulateBan(statsByHeroId, heroesById, draft.getRedBan3HeroId(), BanPickTeamSide.RED);
+            accumulateBan(statsByHeroId, heroesById, draft.getRedBan4HeroId(), BanPickTeamSide.RED);
+            accumulateBan(statsByHeroId, heroesById, draft.getRedBan5HeroId(), BanPickTeamSide.RED);
+
+            accumulatePick(statsByHeroId, heroesById, draft.getBlueDslHeroId(), BanPickTeamSide.BLUE, blueWon);
+            accumulatePick(statsByHeroId, heroesById, draft.getBlueJglHeroId(), BanPickTeamSide.BLUE, blueWon);
+            accumulatePick(statsByHeroId, heroesById, draft.getBlueMidHeroId(), BanPickTeamSide.BLUE, blueWon);
+            accumulatePick(statsByHeroId, heroesById, draft.getBlueAdlHeroId(), BanPickTeamSide.BLUE, blueWon);
+            accumulatePick(statsByHeroId, heroesById, draft.getBlueSupHeroId(), BanPickTeamSide.BLUE, blueWon);
+
+            accumulatePick(statsByHeroId, heroesById, draft.getRedDslHeroId(), BanPickTeamSide.RED, redWon);
+            accumulatePick(statsByHeroId, heroesById, draft.getRedJglHeroId(), BanPickTeamSide.RED, redWon);
+            accumulatePick(statsByHeroId, heroesById, draft.getRedMidHeroId(), BanPickTeamSide.RED, redWon);
+            accumulatePick(statsByHeroId, heroesById, draft.getRedAdlHeroId(), BanPickTeamSide.RED, redWon);
+            accumulatePick(statsByHeroId, heroesById, draft.getRedSupHeroId(), BanPickTeamSide.RED, redWon);
         }
 
         return statsByHeroId.values().stream()
-                .map(ActionHeroStatAccumulator::toResponse)
+                .map(HeroStatAccumulator::toResponse)
                 .sorted(heroStatComparator())
                 .toList();
     }
 
-    private List<EsportsHeroBanStatResponse> buildTopBannedHeroStats(List<EsportsMatchDraftAction> actions,
+    private void accumulateBan(Map<Long, HeroStatAccumulator> statsByHeroId,
+                               Map<Long, Hero> heroesById,
+                               Long heroId,
+                               BanPickTeamSide teamSide) {
+        if (heroId == null) {
+            return;
+        }
+        Hero hero = heroesById.get(heroId);
+        if (hero == null) {
+            return;
+        }
+        statsByHeroId.computeIfAbsent(heroId, ignored -> new HeroStatAccumulator(hero))
+                .applyBan(teamSide);
+    }
+
+    private void accumulatePick(Map<Long, HeroStatAccumulator> statsByHeroId,
+                                Map<Long, Hero> heroesById,
+                                Long heroId,
+                                BanPickTeamSide teamSide,
+                                boolean teamWon) {
+        if (heroId == null) {
+            return;
+        }
+        Hero hero = heroesById.get(heroId);
+        if (hero == null) {
+            return;
+        }
+        statsByHeroId.computeIfAbsent(heroId, ignored -> new HeroStatAccumulator(hero))
+                .applyPick(teamSide, teamWon);
+    }
+
+    private List<EsportsHeroBanStatResponse> buildTopBannedHeroStats(List<EsportsGameDraft> drafts,
+                                                                     Map<Long, Hero> heroesById,
                                                                      String tournamentName,
                                                                      int limit,
                                                                      BanPickTeamSide teamSide) {
-        Map<Long, HeroBanAccumulator> bansByHeroId = new LinkedHashMap<>();
+        Map<Long, Long> countsByHeroId = new HashMap<>();
 
-        for (EsportsMatchDraftAction action : actions) {
-            if (action.getActionType() != BanPickActionType.BAN) {
-                continue;
+        for (EsportsGameDraft draft : drafts) {
+            if (teamSide == null || teamSide == BanPickTeamSide.BLUE) {
+                incrementBanCount(countsByHeroId, draft.getBlueBan1HeroId(), teamSide);
+                incrementBanCount(countsByHeroId, draft.getBlueBan2HeroId(), teamSide);
+                incrementBanCount(countsByHeroId, draft.getBlueBan3HeroId(), teamSide);
+                incrementBanCount(countsByHeroId, draft.getBlueBan4HeroId(), teamSide);
+                incrementBanCount(countsByHeroId, draft.getBlueBan5HeroId(), teamSide);
             }
-            if (teamSide != null && action.getTeamSide() != teamSide) {
-                continue;
+            if (teamSide == null || teamSide == BanPickTeamSide.RED) {
+                incrementBanCount(countsByHeroId, draft.getRedBan1HeroId(), teamSide == null ? null : BanPickTeamSide.RED);
+                incrementBanCount(countsByHeroId, draft.getRedBan2HeroId(), teamSide == null ? null : BanPickTeamSide.RED);
+                incrementBanCount(countsByHeroId, draft.getRedBan3HeroId(), teamSide == null ? null : BanPickTeamSide.RED);
+                incrementBanCount(countsByHeroId, draft.getRedBan4HeroId(), teamSide == null ? null : BanPickTeamSide.RED);
+                incrementBanCount(countsByHeroId, draft.getRedBan5HeroId(), teamSide == null ? null : BanPickTeamSide.RED);
             }
-
-            Hero hero = action.getHero();
-            Long heroId = hero != null ? hero.getId() : null;
-            if (heroId == null) {
-                continue;
-            }
-
-            bansByHeroId.computeIfAbsent(heroId, ignored -> new HeroBanAccumulator(heroId))
-                    .apply(action);
         }
 
-        return bansByHeroId.values().stream()
-                .map(item -> new EsportsHeroBanStatResponse(
-                        item.heroId,
-                        item.heroName,
-                        item.heroAvatarUrl,
-                        item.banCount,
-                        tournamentName
-                ))
+        return countsByHeroId.entrySet().stream()
+                .filter(entry -> heroesById.containsKey(entry.getKey()))
                 .sorted(Comparator
-                        .comparing(EsportsHeroBanStatResponse::banCount, Comparator.reverseOrder())
-                        .thenComparing(response -> safeText(response.heroName())))
+                        .comparing(Map.Entry<Long, Long>::getValue, Comparator.reverseOrder())
+                        .thenComparing(entry -> safeText(heroesById.get(entry.getKey()).getName())))
                 .limit(limit)
+                .map(entry -> {
+                    Hero hero = heroesById.get(entry.getKey());
+                    return new EsportsHeroBanStatResponse(
+                            hero.getId(),
+                            hero.getName(),
+                            hero.getAvatarUrl(),
+                            entry.getValue(),
+                            tournamentName
+                    );
+                })
                 .toList();
     }
 
-    private EsportsDashboardResponse.Summary buildSummary(List<EsportsMatchGame> games,
+    private void incrementBanCount(Map<Long, Long> countsByHeroId, Long heroId, BanPickTeamSide sourceSide) {
+        if (heroId == null) {
+            return;
+        }
+        if (sourceSide == null || sourceSide == BanPickTeamSide.BLUE || sourceSide == BanPickTeamSide.RED) {
+            countsByHeroId.merge(heroId, 1L, Long::sum);
+        }
+    }
+
+    private EsportsDashboardResponse.Summary buildSummary(List<EsportsGameDraft> drafts,
                                                           List<EsportsHeroStatResponse> heroStats,
                                                           EsportsDashboardResponse.SideAdvantage sideAdvantage,
                                                           DraftAccuracySnapshot draftAccuracy) {
         Set<Long> distinctMatchIds = new HashSet<>();
-        for (EsportsMatchGame game : games) {
-            if (game.getMatch() != null && game.getMatch().getId() != null) {
-                distinctMatchIds.add(game.getMatch().getId());
+        for (EsportsGameDraft draft : drafts) {
+            if (draft.getMatch() != null && draft.getMatch().getId() != null) {
+                distinctMatchIds.add(draft.getMatch().getId());
             }
         }
 
         return new EsportsDashboardResponse.Summary(
                 (long) distinctMatchIds.size(),
-                (long) games.size(),
+                (long) drafts.size(),
                 (long) heroStats.size(),
                 sideAdvantage.blueWinRate(),
                 draftAccuracy.accuracy(),
@@ -270,17 +349,17 @@ public class EsportsDataService {
         );
     }
 
-    private List<EsportsDashboardResponse.ActivityPoint> buildMatchActivity(List<EsportsMatchGame> games) {
+    private List<EsportsDashboardResponse.ActivityPoint> buildMatchActivity(List<EsportsGameDraft> drafts) {
         Map<LocalDate, ActivityAccumulator> activityByDate = new TreeMap<>();
 
-        for (EsportsMatchGame game : games) {
-            if (game.getMatch() == null || game.getMatch().getMatchDate() == null) {
+        for (EsportsGameDraft draft : drafts) {
+            if (draft.getMatch() == null || draft.getMatch().getMatchDate() == null) {
                 continue;
             }
 
-            LocalDate activityDate = game.getMatch().getMatchDate().toLocalDate();
+            LocalDate activityDate = draft.getMatch().getMatchDate().toLocalDate();
             activityByDate.computeIfAbsent(activityDate, ignored -> new ActivityAccumulator())
-                    .apply(game);
+                    .apply(draft);
         }
 
         List<EsportsDashboardResponse.ActivityPoint> points = new ArrayList<>();
@@ -294,21 +373,14 @@ public class EsportsDataService {
         return points;
     }
 
-    private EsportsDashboardResponse.SideAdvantage buildSideAdvantage(List<EsportsMatchGame> games) {
+    private EsportsDashboardResponse.SideAdvantage buildSideAdvantage(List<EsportsGameDraft> drafts) {
         long blueWins = 0L;
         long redWins = 0L;
 
-        for (EsportsMatchGame game : games) {
-            Long winnerTeamId = safeEntityId(game.getWinnerTeam());
-            if (winnerTeamId == null) {
-                continue;
-            }
-
-            Long blueTeamId = safeEntityId(game.getBlueTeam());
-            Long redTeamId = safeEntityId(game.getRedTeam());
-            if (winnerTeamId.equals(blueTeamId)) {
+        for (EsportsGameDraft draft : drafts) {
+            if (didSideWin(draft, BanPickTeamSide.BLUE)) {
                 blueWins++;
-            } else if (winnerTeamId.equals(redTeamId)) {
+            } else if (didSideWin(draft, BanPickTeamSide.RED)) {
                 redWins++;
             }
         }
@@ -323,69 +395,77 @@ public class EsportsDataService {
         );
     }
 
-    private DraftAccuracySnapshot buildDraftAccuracy(List<EsportsMatchGame> games,
-                                                     List<EsportsMatchDraftAction> actions) {
-        Map<Long, List<EsportsMatchDraftAction>> actionsByGameId = new LinkedHashMap<>();
-        for (EsportsMatchDraftAction action : actions) {
-            Long gameId = action.getGame() != null ? action.getGame().getId() : null;
-            if (gameId == null) {
-                continue;
-            }
-            actionsByGameId.computeIfAbsent(gameId, ignored -> new ArrayList<>()).add(action);
-        }
-
+    private DraftAccuracySnapshot buildDraftAccuracy(List<EsportsGameDraft> drafts,
+                                                     Map<Long, Hero> heroesById) {
         long sampleSize = 0L;
         long correctPredictions = 0L;
 
-        for (EsportsMatchGame game : games) {
-            Long winnerTeamId = safeEntityId(game.getWinnerTeam());
-            if (winnerTeamId == null) {
+        for (EsportsGameDraft draft : drafts) {
+            if (draft.getWinnerTeam() == null) {
                 continue;
             }
 
-            List<EsportsMatchDraftAction> gameActions = actionsByGameId.getOrDefault(game.getId(), List.of());
-            double blueScore = 0D;
-            double redScore = 0D;
-            int bluePickCount = 0;
-            int redPickCount = 0;
-            boolean missingHeroScore = false;
+            List<Long> blueLineupHeroIds = java.util.Arrays.asList(
+                    draft.getBlueDslHeroId(),
+                    draft.getBlueJglHeroId(),
+                    draft.getBlueMidHeroId(),
+                    draft.getBlueAdlHeroId(),
+                    draft.getBlueSupHeroId()
+            );
+            List<Long> redLineupHeroIds = java.util.Arrays.asList(
+                    draft.getRedDslHeroId(),
+                    draft.getRedJglHeroId(),
+                    draft.getRedMidHeroId(),
+                    draft.getRedAdlHeroId(),
+                    draft.getRedSupHeroId()
+            );
 
-            for (EsportsMatchDraftAction action : gameActions) {
-                if (action.getActionType() != BanPickActionType.PICK) {
-                    continue;
-                }
-
-                Double heroScore = readHeroScore(action.getHero());
-                if (heroScore == null) {
-                    missingHeroScore = true;
-                    continue;
-                }
-
-                if (action.getTeamSide() == BanPickTeamSide.BLUE) {
-                    blueScore += heroScore;
-                    bluePickCount++;
-                } else if (action.getTeamSide() == BanPickTeamSide.RED) {
-                    redScore += heroScore;
-                    redPickCount++;
-                }
+            if (countNonNull(blueLineupHeroIds) < REQUIRED_PICKS_PER_SIDE
+                    || countNonNull(redLineupHeroIds) < REQUIRED_PICKS_PER_SIDE) {
+                continue;
             }
 
-            if (missingHeroScore
-                    || bluePickCount < REQUIRED_PICKS_PER_SIDE
-                    || redPickCount < REQUIRED_PICKS_PER_SIDE
-                    || Double.compare(blueScore, redScore) == 0) {
+            double blueScore = 0D;
+            double redScore = 0D;
+            boolean missingScore = false;
+
+            for (Long heroId : blueLineupHeroIds) {
+                Hero hero = heroesById.get(heroId);
+                Double score = readHeroScore(hero);
+                if (score == null) {
+                    missingScore = true;
+                    break;
+                }
+                blueScore += score;
+            }
+            if (missingScore) {
+                continue;
+            }
+
+            for (Long heroId : redLineupHeroIds) {
+                Hero hero = heroesById.get(heroId);
+                Double score = readHeroScore(hero);
+                if (score == null) {
+                    missingScore = true;
+                    break;
+                }
+                redScore += score;
+            }
+
+            if (missingScore || Double.compare(blueScore, redScore) == 0) {
                 continue;
             }
 
             Long predictedWinnerId = blueScore > redScore
-                    ? safeEntityId(game.getBlueTeam())
-                    : safeEntityId(game.getRedTeam());
-            if (predictedWinnerId == null) {
+                    ? safeEntityId(draft.getBlueTeam())
+                    : safeEntityId(draft.getRedTeam());
+            Long actualWinnerId = safeEntityId(draft.getWinnerTeam());
+            if (predictedWinnerId == null || actualWinnerId == null) {
                 continue;
             }
 
             sampleSize++;
-            if (predictedWinnerId.equals(winnerTeamId)) {
+            if (predictedWinnerId.equals(actualWinnerId)) {
                 correctPredictions++;
             }
         }
@@ -424,17 +504,17 @@ public class EsportsDataService {
                 .toList();
     }
 
-    private List<EsportsDashboardResponse.TeamInsight> buildTopTeams(List<EsportsMatchGame> games) {
+    private List<EsportsDashboardResponse.TeamInsight> buildTopTeams(List<EsportsGameDraft> drafts) {
         Map<Long, TeamInsightAccumulator> teamsById = new LinkedHashMap<>();
 
-        for (EsportsMatchGame game : games) {
-            Long winnerTeamId = safeEntityId(game.getWinnerTeam());
+        for (EsportsGameDraft draft : drafts) {
+            Long winnerTeamId = safeEntityId(draft.getWinnerTeam());
             if (winnerTeamId == null) {
                 continue;
             }
 
-            applyTeamResult(teamsById, game.getBlueTeam(), winnerTeamId.equals(safeEntityId(game.getBlueTeam())));
-            applyTeamResult(teamsById, game.getRedTeam(), winnerTeamId.equals(safeEntityId(game.getRedTeam())));
+            applyTeamResult(teamsById, draft.getBlueTeam(), winnerTeamId.equals(safeEntityId(draft.getBlueTeam())));
+            applyTeamResult(teamsById, draft.getRedTeam(), winnerTeamId.equals(safeEntityId(draft.getRedTeam())));
         }
 
         return teamsById.values().stream()
@@ -465,7 +545,8 @@ public class EsportsDataService {
     }
 
     private List<EsportsDashboardResponse.TeamOption> buildTeamOptions(AnalyticsFilter filter) {
-        List<EsportsMatchGame> scopeGames = esportsMatchGameRepository.findAllForAnalytics(
+        List<EsportsGameDraft> scopeDrafts = esportsGameDraftRepository.findAllForAnalyticsScope(
+                filter.tournamentId(),
                 filter.tournamentTier(),
                 null,
                 filter.dateFrom(),
@@ -473,9 +554,9 @@ public class EsportsDataService {
         );
         Map<String, EsportsDashboardResponse.TeamOption> teamsByCode = new LinkedHashMap<>();
 
-        for (EsportsMatchGame game : scopeGames) {
-            applyTeamOption(teamsByCode, game.getBlueTeam());
-            applyTeamOption(teamsByCode, game.getRedTeam());
+        for (EsportsGameDraft draft : scopeDrafts) {
+            applyTeamOption(teamsByCode, draft.getBlueTeam());
+            applyTeamOption(teamsByCode, draft.getRedTeam());
         }
 
         return teamsByCode.values().stream()
@@ -501,26 +582,104 @@ public class EsportsDataService {
         );
     }
 
-    private String resolveTournamentTier(String tournamentName) {
+    private TournamentScope resolveTournamentScope(Long tournamentId, String tournamentName) {
+        if (tournamentId != null) {
+            EsportsTournament tournament = esportsTournamentRepository.findById(tournamentId)
+                    .orElseThrow(() -> new IllegalArgumentException("tournamentId khong hop le."));
+            return new TournamentScope(tournament.getId(), null, tournament.getName());
+        }
+
         if (!StringUtils.hasText(tournamentName)) {
-            return null;
+            return new TournamentScope(null, null, null);
         }
 
         String normalizedTournamentName = tournamentName.trim();
-        String resolvedTier = EsportsTournamentCatalog.resolveTournamentTier(normalizedTournamentName);
-        if (resolvedTier != null) {
-            return resolvedTier;
+        Optional<EsportsTournament> officialTournament = esportsTournamentRepository.findByNameIgnoreCase(normalizedTournamentName)
+                .or(() -> esportsTournamentRepository.findBySlugIgnoreCase(normalizedTournamentName));
+        if (officialTournament.isPresent()) {
+            EsportsTournament tournament = officialTournament.get();
+            return new TournamentScope(tournament.getId(), null, tournament.getName());
         }
 
-        boolean isExistingDraftTier = esportsMatchDraftActionRepository.findDraftTournamentsOrderByLatestMatchDesc()
-                .stream()
-                .map(tournament -> tournament.tournamentTier() == null ? "" : tournament.tournamentTier().trim())
-                .anyMatch(tournamentTier -> tournamentTier.equalsIgnoreCase(normalizedTournamentName));
-        if (isExistingDraftTier) {
-            return normalizedTournamentName;
+        String resolvedTier = EsportsTournamentCatalog.resolveTournamentTier(normalizedTournamentName);
+        if (resolvedTier != null) {
+            return new TournamentScope(null, resolvedTier, resolveLegacyTournamentLabel(resolvedTier));
+        }
+
+        for (EsportsDraftTournamentScopeAggregate aggregate : esportsGameDraftRepository.findDraftTournamentScopesOrderByLatestMatchDesc()) {
+            if (aggregate.tournamentId() != null) {
+                continue;
+            }
+            String legacyTier = safeText(aggregate.tournamentTier()).trim();
+            String legacyLabel = resolveLegacyTournamentLabel(aggregate.tournamentTier());
+            if (legacyTier.equalsIgnoreCase(normalizedTournamentName)
+                    || legacyLabel.equalsIgnoreCase(normalizedTournamentName)) {
+                return new TournamentScope(null, legacyTier, legacyLabel);
+            }
         }
 
         throw new IllegalArgumentException("tournamentName khong hop le.");
+    }
+
+    private String resolveLegacyTournamentLabel(String tournamentTier) {
+        if (!StringUtils.hasText(tournamentTier)) {
+            return null;
+        }
+        return EsportsTournamentCatalog.resolveTournamentName(tournamentTier.trim());
+    }
+
+    private Map<Long, Hero> loadHeroesForDrafts(List<EsportsGameDraft> drafts) {
+        Set<Long> heroIds = new LinkedHashSet<>();
+        for (EsportsGameDraft draft : drafts) {
+            collectHeroIds(heroIds, java.util.Arrays.asList(
+                    draft.getBlueBan1HeroId(),
+                    draft.getBlueBan2HeroId(),
+                    draft.getBlueBan3HeroId(),
+                    draft.getBlueBan4HeroId(),
+                    draft.getBlueBan5HeroId(),
+                    draft.getRedBan1HeroId(),
+                    draft.getRedBan2HeroId(),
+                    draft.getRedBan3HeroId(),
+                    draft.getRedBan4HeroId(),
+                    draft.getRedBan5HeroId(),
+                    draft.getBlueDslHeroId(),
+                    draft.getBlueJglHeroId(),
+                    draft.getBlueMidHeroId(),
+                    draft.getBlueAdlHeroId(),
+                    draft.getBlueSupHeroId(),
+                    draft.getRedDslHeroId(),
+                    draft.getRedJglHeroId(),
+                    draft.getRedMidHeroId(),
+                    draft.getRedAdlHeroId(),
+                    draft.getRedSupHeroId()
+            ));
+        }
+
+        if (heroIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, Hero> heroesById = new LinkedHashMap<>();
+        heroRepository.findAllById(heroIds)
+                .forEach(hero -> heroesById.put(hero.getId(), hero));
+        return heroesById;
+    }
+
+    private void collectHeroIds(Set<Long> destination, Collection<Long> heroIds) {
+        heroIds.stream()
+                .filter(id -> id != null && id > 0)
+                .forEach(destination::add);
+    }
+
+    private boolean didSideWin(EsportsGameDraft draft, BanPickTeamSide side) {
+        Long winnerId = safeEntityId(draft.getWinnerTeam());
+        if (winnerId == null) {
+            return false;
+        }
+        Long sideTeamId = side == BanPickTeamSide.BLUE
+                ? safeEntityId(draft.getBlueTeam())
+                : safeEntityId(draft.getRedTeam());
+        return winnerId.equals(sideTeamId);
     }
 
     private int sanitizeLimit(Integer limit) {
@@ -563,7 +722,7 @@ public class EsportsDataService {
     }
 
     private static String normalizeTeamCode(String teamCode) {
-        return StringUtils.hasText(teamCode) ? teamCode.trim().toUpperCase() : null;
+        return StringUtils.hasText(teamCode) ? teamCode.trim().toUpperCase(Locale.ROOT) : null;
     }
 
     private static String displayTeamName(EsportsTeam team) {
@@ -584,7 +743,12 @@ public class EsportsDataService {
         return score == null ? null : score.doubleValue();
     }
 
+    private static int countNonNull(Collection<Long> values) {
+        return (int) values.stream().filter(value -> value != null && value > 0).count();
+    }
+
     private record AnalyticsFilter(
+            Long tournamentId,
             String tournamentTier,
             String teamCode,
             LocalDateTime dateFrom,
@@ -592,18 +756,25 @@ public class EsportsDataService {
             String resolvedTournamentName
     ) {
         private AnalyticsFilter withoutTeamCode() {
-            return new AnalyticsFilter(tournamentTier, null, dateFrom, dateTo, resolvedTournamentName);
+            return new AnalyticsFilter(tournamentId, tournamentTier, null, dateFrom, dateTo, resolvedTournamentName);
         }
+    }
+
+    private record TournamentScope(
+            Long tournamentId,
+            String tournamentTier,
+            String resolvedTournamentName
+    ) {
     }
 
     private record DraftAccuracySnapshot(Double accuracy, Long sampleSize) {
     }
 
-    private static final class AggregateHeroStatAccumulator {
+    private static final class HeroStatAccumulator {
 
         private final Long heroId;
-        private String heroName;
-        private String heroAvatarUrl;
+        private final String heroName;
+        private final String heroAvatarUrl;
         private long pickCount;
         private long pickWins;
         private long bluePickCount;
@@ -614,126 +785,38 @@ public class EsportsDataService {
         private long blueBanCount;
         private long redBanCount;
 
-        private AggregateHeroStatAccumulator(Long heroId) {
-            this.heroId = heroId;
+        private HeroStatAccumulator(Hero hero) {
+            this.heroId = hero.getId();
+            this.heroName = hero.getName();
+            this.heroAvatarUrl = hero.getAvatarUrl();
         }
 
-        private void applyPickStats(EsportsHeroPickStatAggregate item) {
-            updateHeroMeta(item.heroName(), item.heroAvatarUrl());
-            pickCount = safeLong(item.pickCount());
-            pickWins = safeLong(item.pickWins());
-            bluePickCount = safeLong(item.bluePickCount());
-            blueWins = safeLong(item.blueWins());
-            redPickCount = safeLong(item.redPickCount());
-            redWins = safeLong(item.redWins());
-        }
-
-        private void applyBanStats(EsportsHeroBanBreakdownAggregate item) {
-            updateHeroMeta(item.heroName(), item.heroAvatarUrl());
-            banCount = safeLong(item.banCount());
-            blueBanCount = safeLong(item.blueBanCount());
-            redBanCount = safeLong(item.redBanCount());
-        }
-
-        private void updateHeroMeta(String nextHeroName, String nextHeroAvatarUrl) {
-            if (!StringUtils.hasText(heroName) && StringUtils.hasText(nextHeroName)) {
-                heroName = nextHeroName;
-            }
-            if (!StringUtils.hasText(heroAvatarUrl) && StringUtils.hasText(nextHeroAvatarUrl)) {
-                heroAvatarUrl = nextHeroAvatarUrl;
+        private void applyBan(BanPickTeamSide side) {
+            banCount++;
+            if (side == BanPickTeamSide.BLUE) {
+                blueBanCount++;
+            } else if (side == BanPickTeamSide.RED) {
+                redBanCount++;
             }
         }
 
-        private EsportsHeroStatResponse toResponse() {
-            long pickLosses = Math.max(0L, pickCount - pickWins);
-            long blueLosses = Math.max(0L, bluePickCount - blueWins);
-            long redLosses = Math.max(0L, redPickCount - redWins);
-
-            return new EsportsHeroStatResponse(
-                    heroId,
-                    heroName,
-                    heroAvatarUrl,
-                    pickCount,
-                    pickWins,
-                    pickLosses,
-                    calculateWinRate(pickWins, pickCount),
-                    bluePickCount,
-                    blueWins,
-                    blueLosses,
-                    calculateWinRate(blueWins, bluePickCount),
-                    redPickCount,
-                    redWins,
-                    redLosses,
-                    calculateWinRate(redWins, redPickCount),
-                    banCount,
-                    blueBanCount,
-                    redBanCount,
-                    pickCount + banCount
-            );
-        }
-    }
-
-    private static final class ActionHeroStatAccumulator {
-
-        private final Long heroId;
-        private String heroName;
-        private String heroAvatarUrl;
-        private long pickCount;
-        private long pickWins;
-        private long bluePickCount;
-        private long blueWins;
-        private long redPickCount;
-        private long redWins;
-        private long banCount;
-        private long blueBanCount;
-        private long redBanCount;
-
-        private ActionHeroStatAccumulator(Long heroId) {
-            this.heroId = heroId;
-        }
-
-        private void apply(EsportsMatchDraftAction action) {
-            Hero hero = action.getHero();
-            if (hero != null) {
-                if (!StringUtils.hasText(heroName) && StringUtils.hasText(hero.getName())) {
-                    heroName = hero.getName();
-                }
-                if (!StringUtils.hasText(heroAvatarUrl) && StringUtils.hasText(hero.getAvatarUrl())) {
-                    heroAvatarUrl = hero.getAvatarUrl();
-                }
-            }
-
-            if (action.getActionType() == BanPickActionType.BAN) {
-                banCount++;
-                if (action.getTeamSide() == BanPickTeamSide.BLUE) {
-                    blueBanCount++;
-                } else if (action.getTeamSide() == BanPickTeamSide.RED) {
-                    redBanCount++;
-                }
-                return;
-            }
-
-            if (action.getActionType() != BanPickActionType.PICK) {
-                return;
-            }
-
+        private void applyPick(BanPickTeamSide side, boolean won) {
             pickCount++;
-            if (action.getTeamSide() == BanPickTeamSide.BLUE) {
+            if (side == BanPickTeamSide.BLUE) {
                 bluePickCount++;
-            } else if (action.getTeamSide() == BanPickTeamSide.RED) {
-                redPickCount++;
-            }
-
-            Long winnerTeamId = action.getGame() != null ? safeEntityId(action.getGame().getWinnerTeam()) : null;
-            Long actionTeamId = safeEntityId(action.getTeam());
-            if (winnerTeamId != null && winnerTeamId.equals(actionTeamId)) {
-                pickWins++;
-                if (action.getTeamSide() == BanPickTeamSide.BLUE) {
+                if (won) {
                     blueWins++;
-                } else if (action.getTeamSide() == BanPickTeamSide.RED) {
+                }
+            } else if (side == BanPickTeamSide.RED) {
+                redPickCount++;
+                if (won) {
                     redWins++;
                 }
             }
+
+            if (won) {
+                pickWins++;
+            }
         }
 
         private EsportsHeroStatResponse toResponse() {
@@ -762,31 +845,6 @@ public class EsportsDataService {
                     redBanCount,
                     pickCount + banCount
             );
-        }
-    }
-
-    private static final class HeroBanAccumulator {
-
-        private final Long heroId;
-        private String heroName;
-        private String heroAvatarUrl;
-        private long banCount;
-
-        private HeroBanAccumulator(Long heroId) {
-            this.heroId = heroId;
-        }
-
-        private void apply(EsportsMatchDraftAction action) {
-            Hero hero = action.getHero();
-            if (hero != null) {
-                if (!StringUtils.hasText(heroName) && StringUtils.hasText(hero.getName())) {
-                    heroName = hero.getName();
-                }
-                if (!StringUtils.hasText(heroAvatarUrl) && StringUtils.hasText(hero.getAvatarUrl())) {
-                    heroAvatarUrl = hero.getAvatarUrl();
-                }
-            }
-            banCount++;
         }
     }
 
@@ -795,9 +853,9 @@ public class EsportsDataService {
         private final Set<Long> matchIds = new HashSet<>();
         private long gameCount;
 
-        private void apply(EsportsMatchGame game) {
-            if (game.getMatch() != null && game.getMatch().getId() != null) {
-                matchIds.add(game.getMatch().getId());
+        private void apply(EsportsGameDraft draft) {
+            if (draft.getMatch() != null && draft.getMatch().getId() != null) {
+                matchIds.add(draft.getMatch().getId());
             }
             gameCount++;
         }

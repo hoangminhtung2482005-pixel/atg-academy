@@ -150,6 +150,158 @@ body {
         .wiki-spell-fallback { color: #94a3b8; font-size: 1.5rem; font-weight: 800; }
         .wiki-spell-name { color: #0f172a; font-size: 0.88rem; font-weight: 750; line-height: 1.35; }
 
+        .wiki-enchantment-sections {
+            display: grid;
+            gap: 20px;
+        }
+        .wiki-enchantment-section {
+            background: #fff;
+            border: 1px solid #dbe4f0;
+            border-radius: 22px;
+            padding: 18px;
+        }
+        .wiki-enchantment-section-head {
+            align-items: center;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        .wiki-enchantment-branch {
+            align-items: center;
+            display: flex;
+            gap: 12px;
+        }
+        .wiki-enchantment-branch-icon {
+            align-items: center;
+            background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+            border: 1px solid #bfdbfe;
+            border-radius: 16px;
+            display: flex;
+            flex-shrink: 0;
+            height: 56px;
+            justify-content: center;
+            overflow: hidden;
+            width: 56px;
+        }
+        .wiki-enchantment-branch-icon img {
+            height: 72%;
+            object-fit: contain;
+            width: 72%;
+        }
+        .wiki-enchantment-branch-fallback {
+            align-items: center;
+            color: #2563eb;
+            display: flex;
+            font-size: 0.92rem;
+            font-weight: 800;
+            justify-content: center;
+        }
+        .wiki-enchantment-branch-title {
+            color: #0f172a;
+            font-size: 1rem;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+        .wiki-enchantment-branch-text {
+            color: #64748b;
+            font-size: 0.76rem;
+            line-height: 1.45;
+            margin-top: 3px;
+        }
+        .wiki-enchantment-branch-count {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 999px;
+            color: #1d4ed8;
+            font-size: 0.76rem;
+            font-weight: 800;
+            padding: 6px 12px;
+        }
+        .wiki-enchantment-grid {
+            display: grid;
+            gap: 14px;
+            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+        }
+        .wiki-enchantment-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            display: grid;
+            gap: 12px;
+            min-height: 206px;
+            padding: 16px;
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+        }
+        .wiki-enchantment-card:hover {
+            border-color: #93c5fd;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+            transform: translateY(-3px);
+        }
+        .wiki-enchantment-card-top {
+            align-items: flex-start;
+            display: flex;
+            gap: 12px;
+            justify-content: space-between;
+        }
+        .wiki-enchantment-icon-wrap {
+            align-items: center;
+            background: #ffffff;
+            border: 2px solid #dbeafe;
+            border-radius: 18px;
+            display: flex;
+            flex-shrink: 0;
+            height: 72px;
+            justify-content: center;
+            overflow: hidden;
+            width: 72px;
+        }
+        .wiki-enchantment-icon-wrap img {
+            height: 100%;
+            object-fit: cover;
+            width: 100%;
+        }
+        .wiki-enchantment-fallback {
+            color: #94a3b8;
+            font-size: 1.5rem;
+            font-weight: 800;
+        }
+        .wiki-enchantment-name {
+            color: #0f172a;
+            font-size: 0.94rem;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+        .wiki-enchantment-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .wiki-enchantment-pill {
+            align-items: center;
+            border-radius: 999px;
+            display: inline-flex;
+            font-size: 0.7rem;
+            font-weight: 800;
+            line-height: 1.2;
+            max-width: 100%;
+            padding: 5px 10px;
+        }
+        .wiki-enchantment-pill.tier {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+        .wiki-enchantment-pill.branch {
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+        .wiki-enchantment-pill.slug {
+            background: #f1f5f9;
+            color: #475569;
+            overflow-wrap: anywhere;
+        }
+
         /* ===== States ===== */
         .wiki-state { text-align: center; padding: 60px 20px; color: #64748b; }
         .wiki-state-icon { font-size: 3.5rem; margin-bottom: 12px; opacity: 0.6; }
@@ -183,6 +335,12 @@ body {
             margin-bottom: 20px;
         }
         .wiki-spell-count {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;
+            padding: 4px 12px; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
+            margin-bottom: 20px;
+        }
+        .wiki-enchantment-count {
             display: inline-flex; align-items: center; gap: 6px;
             background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;
             padding: 4px 12px; border-radius: 999px; font-size: 0.78rem; font-weight: 700;

@@ -2,10 +2,8 @@ package com.example.demo.component;
 
 import com.example.demo.entity.EsportsDraftFormat;
 import com.example.demo.entity.EsportsDraftPhaseRule;
-import com.example.demo.entity.EsportsMatchGame;
 import com.example.demo.repository.EsportsDraftFormatRepository;
 import com.example.demo.repository.EsportsDraftPhaseRuleRepository;
-import com.example.demo.repository.EsportsMatchGameRepository;
 import com.example.demo.util.EsportsDraftDefaults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,14 +20,11 @@ public class EsportsDraftFormatSeeder implements CommandLineRunner {
 
     private final EsportsDraftFormatRepository esportsDraftFormatRepository;
     private final EsportsDraftPhaseRuleRepository esportsDraftPhaseRuleRepository;
-    private final EsportsMatchGameRepository esportsMatchGameRepository;
 
     public EsportsDraftFormatSeeder(EsportsDraftFormatRepository esportsDraftFormatRepository,
-                                    EsportsDraftPhaseRuleRepository esportsDraftPhaseRuleRepository,
-                                    EsportsMatchGameRepository esportsMatchGameRepository) {
+                                    EsportsDraftPhaseRuleRepository esportsDraftPhaseRuleRepository) {
         this.esportsDraftFormatRepository = esportsDraftFormatRepository;
         this.esportsDraftPhaseRuleRepository = esportsDraftPhaseRuleRepository;
-        this.esportsMatchGameRepository = esportsMatchGameRepository;
     }
 
     @Override
@@ -37,7 +32,6 @@ public class EsportsDraftFormatSeeder implements CommandLineRunner {
     public void run(String... args) {
         EsportsDraftFormat defaultFormat = upsertDefaultFormat();
         syncDefaultRules(defaultFormat);
-        backfillGames(defaultFormat);
     }
 
     private EsportsDraftFormat upsertDefaultFormat() {
@@ -97,16 +91,5 @@ public class EsportsDraftFormatSeeder implements CommandLineRunner {
             }
         }
         return true;
-    }
-
-    private void backfillGames(EsportsDraftFormat defaultFormat) {
-        List<EsportsMatchGame> gamesWithoutFormat = esportsMatchGameRepository.findAllByDraftFormatIsNull();
-        if (gamesWithoutFormat.isEmpty()) {
-            return;
-        }
-
-        gamesWithoutFormat.forEach(game -> game.setDraftFormat(defaultFormat));
-        esportsMatchGameRepository.saveAll(gamesWithoutFormat);
-        log.info(">> [Esports Draft Seeder] Da backfill draft_format_id cho {} game cu.", gamesWithoutFormat.size());
     }
 }

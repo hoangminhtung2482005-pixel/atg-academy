@@ -4,7 +4,6 @@ import com.example.demo.dto.wiki.SpellDto;
 import com.example.demo.service.SpellService;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,7 +18,7 @@ class SpellControllerTest {
         SpellService spellService = mock(SpellService.class);
         SpellController controller = new SpellController(spellService);
         List<SpellDto> spells = List.of(
-                new SpellDto(1L, "Bộc phá", "boc-pha", "/images/spells/boc-pha.png", LocalDateTime.now(), LocalDateTime.now())
+                new SpellDto("boc-pha", "Bá»™c phÃ¡", "/images/spells/boc-pha.png", null)
         );
 
         when(spellService.getAllSpells()).thenReturn(spells);
@@ -32,7 +31,7 @@ class SpellControllerTest {
     void getSpellBySlugDelegatesToService() {
         SpellService spellService = mock(SpellService.class);
         SpellController controller = new SpellController(spellService);
-        SpellDto spell = new SpellDto(8L, "Tốc biến", "toc-bien", "/images/spells/toc-bien.png", LocalDateTime.now(), LocalDateTime.now());
+        SpellDto spell = new SpellDto("toc-bien", "Tá»‘c biáº¿n", "/images/spells/toc-bien.png", null);
 
         when(spellService.getSpellBySlug("toc-bien")).thenReturn(spell);
 

@@ -987,6 +987,45 @@ body[data-page="admin-dashboard"] .spinner {
 }
 
 /* Admin esports data page ownership */
+body[data-page="admin-esports-data"] .btn {
+    border-radius: 999px;
+}
+
+body[data-page="admin-esports-data"] .admin-page-header,
+body[data-page="admin-esports-data"] .admin-section,
+body[data-page="admin-esports-data"] .game-draft-card,
+body[data-page="admin-esports-data"] .form-card,
+body[data-page="admin-esports-data"] .slot-section,
+body[data-page="admin-esports-data"] .summary-card,
+body[data-page="admin-esports-data"] .verify-card,
+body[data-page="admin-esports-data"] .selected-summary {
+    box-shadow: none;
+}
+
+body[data-page="admin-esports-data"] .field input,
+body[data-page="admin-esports-data"] .field select {
+    border-radius: 999px;
+    background: #ffffff;
+}
+
+body[data-page="admin-esports-data"] .field textarea {
+    background: #ffffff;
+    border-radius: 18px;
+}
+
+body[data-page="admin-esports-data"] .toggle-field {
+    align-items: center;
+    display: inline-flex;
+    gap: 10px;
+    color: #334155;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+body[data-page="admin-esports-data"] .toggle-field input {
+    accent-color: #2563eb;
+}
+
 body[data-page="admin-esports-data"] .admin-two-column {
     display: grid;
     gap: 18px;
@@ -1023,6 +1062,21 @@ body[data-page="admin-esports-data"] .summary-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+body[data-page="admin-esports-data"] .admin-catalog-grid {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 20px;
+}
+
+body[data-page="admin-esports-data"] .section-header.compact {
+    margin-bottom: 0;
+}
+
+body[data-page="admin-esports-data"] .admin-inline-table {
+    min-width: 760px;
+}
+
 body[data-page="admin-esports-data"] .summary-card,
 body[data-page="admin-esports-data"] .verify-card,
 body[data-page="admin-esports-data"] .selected-summary {
@@ -1034,6 +1088,11 @@ body[data-page="admin-esports-data"] .selected-summary {
 
 body[data-page="admin-esports-data"] .selected-summary.empty {
     color: #64748b;
+}
+
+body[data-page="admin-esports-data"] .selected-summary.warning {
+    background: #fff7ed;
+    border-color: #fed7aa;
 }
 
 body[data-page="admin-esports-data"] .selected-summary-grid {
@@ -1064,6 +1123,60 @@ body[data-page="admin-esports-data"] .summary-note {
     font-size: 0.82rem;
     line-height: 1.5;
     margin: 8px 0 0;
+}
+
+body[data-page="admin-esports-data"] .bulk-import-layout {
+    display: grid;
+    gap: 16px;
+}
+
+body[data-page="admin-esports-data"] .bulk-import-layout textarea {
+    font-family: Consolas, monospace;
+    min-height: 170px;
+}
+
+body[data-page="admin-esports-data"] .bulk-import-footer {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    justify-content: space-between;
+}
+
+body[data-page="admin-esports-data"] .bulk-import-meta {
+    display: grid;
+    gap: 8px;
+    max-width: 720px;
+}
+
+body[data-page="admin-esports-data"] .bulk-import-meta .summary-note {
+    margin-top: 0;
+}
+
+body[data-page="admin-esports-data"] .import-preview-grid {
+    margin-bottom: 20px;
+}
+
+body[data-page="admin-esports-data"] #import-file-input {
+    border-radius: 18px;
+    padding: 12px 14px;
+}
+
+body[data-page="admin-esports-data"] .import-preview-summary-grid {
+    margin-bottom: 20px;
+}
+
+body[data-page="admin-esports-data"] .import-preview-table {
+    min-width: 1180px;
+}
+
+body[data-page="admin-esports-data"] .import-preview-table td {
+    vertical-align: top;
+}
+
+body[data-page="admin-esports-data"] .import-preview-table .table-subtext {
+    line-height: 1.45;
+    white-space: normal;
 }
 
 body[data-page="admin-esports-data"] .table-subtext {
@@ -1159,9 +1272,118 @@ body[data-page="admin-esports-data"] .phase-action-chip.pick {
     color: #047857;
 }
 
+body[data-page="admin-esports-data"] .draft-phase-board {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body[data-page="admin-esports-data"] .draft-team-panel {
+    border: 1px solid #e2e8f0;
+    border-radius: 22px;
+    background: #ffffff;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.05);
+    overflow: hidden;
+}
+
+body[data-page="admin-esports-data"] .draft-team-panel.blue {
+    background: linear-gradient(180deg, rgba(219, 234, 254, 0.55), #ffffff 26%);
+}
+
+body[data-page="admin-esports-data"] .draft-team-panel.red {
+    background: linear-gradient(180deg, rgba(254, 226, 226, 0.52), #ffffff 26%);
+}
+
+body[data-page="admin-esports-data"] .draft-team-panel-header {
+    align-items: center;
+    display: flex;
+    gap: 14px;
+    justify-content: space-between;
+    padding: 18px 18px 14px;
+}
+
+body[data-page="admin-esports-data"] .draft-team-groups {
+    display: grid;
+    gap: 14px;
+    padding: 0 18px 18px;
+}
+
+body[data-page="admin-esports-data"] .draft-action-group {
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    background: rgba(248, 250, 252, 0.92);
+    padding: 14px;
+}
+
+body[data-page="admin-esports-data"] .draft-action-group.ban {
+    border-color: #fecdd3;
+    background: rgba(255, 241, 242, 0.88);
+}
+
+body[data-page="admin-esports-data"] .draft-action-group.pick {
+    border-color: #bbf7d0;
+    background: rgba(236, 253, 245, 0.88);
+}
+
+body[data-page="admin-esports-data"] .draft-action-group-header {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+body[data-page="admin-esports-data"] .draft-action-card-list {
+    display: grid;
+    gap: 12px;
+}
+
+body[data-page="admin-esports-data"] .draft-phase-card {
+    border: 1px solid #dbe3ef;
+    border-radius: 16px;
+    background: #ffffff;
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+}
+
+body[data-page="admin-esports-data"] .draft-phase-card.ban {
+    border-top: 4px solid #e11d48;
+}
+
+body[data-page="admin-esports-data"] .draft-phase-card.pick {
+    border-top: 4px solid #047857;
+}
+
+body[data-page="admin-esports-data"] .draft-phase-card-top {
+    align-items: flex-start;
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+body[data-page="admin-esports-data"] .draft-phase-card-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+body[data-page="admin-esports-data"] .draft-phase-hero-preview {
+    align-items: center;
+    border: 1px dashed #cbd5e1;
+    border-radius: 14px;
+    display: flex;
+    min-height: 54px;
+    padding: 10px 12px;
+}
+
+body[data-page="admin-esports-data"] .draft-phase-field {
+    gap: 6px;
+}
+
 body[data-page="admin-esports-data"] .draft-search-input,
 body[data-page="admin-esports-data"] .draft-hero-select {
-    min-width: 220px;
     width: 100%;
 }
 
@@ -1249,11 +1471,24 @@ body[data-page="admin-esports-data"] .verify-item-value {
     min-width: 0;
 }
 
+body[data-page="admin-esports-data"] .verify-status-chip.ok {
+    background: #ecfdf5;
+    border-color: #bbf7d0;
+    color: #047857;
+}
+
+body[data-page="admin-esports-data"] .verify-status-chip.warn {
+    background: #fff1f2;
+    border-color: #fecdd3;
+    color: #be123c;
+}
+
 body[data-page="admin-esports-data"] .esports-match-filter-grid {
     grid-template-columns: minmax(220px, 1.15fr) 180px 190px 170px 170px auto;
 }
 
 @media (max-width: 1280px) {
+    body[data-page="admin-esports-data"] .admin-catalog-grid,
     body[data-page="admin-esports-data"] .summary-grid,
     body[data-page="admin-esports-data"] .verify-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1265,7 +1500,9 @@ body[data-page="admin-esports-data"] .esports-match-filter-grid {
 }
 
 @media (max-width: 980px) {
+    body[data-page="admin-esports-data"] .admin-catalog-grid,
     body[data-page="admin-esports-data"] .admin-two-column,
+    body[data-page="admin-esports-data"] .draft-phase-board,
     body[data-page="admin-esports-data"] .lineup-grid,
     body[data-page="admin-esports-data"] .selected-summary-grid {
         grid-template-columns: 1fr;
@@ -1283,8 +1520,354 @@ body[data-page="admin-esports-data"] .esports-match-filter-grid {
         grid-template-columns: 1fr;
     }
 
+    body[data-page="admin-esports-data"] .bulk-import-footer {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
     body[data-page="admin-esports-data"] .verify-item {
         grid-template-columns: 1fr;
+    }
+
+    body[data-page="admin-esports-data"] .draft-team-panel-header,
+    body[data-page="admin-esports-data"] .draft-action-group-header,
+    body[data-page="admin-esports-data"] .draft-phase-card-top {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    body[data-page="admin-esports-data"] .draft-phase-card-chips {
+        justify-content: flex-start;
+    }
+}
+
+/* Admin wiki data page ownership */
+body[data-page="admin-wiki-data"] .wiki-data-layout {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.95fr);
+}
+
+body[data-page="admin-wiki-data"] .wiki-data-filter-grid {
+    grid-template-columns: minmax(220px, 1fr) auto auto;
+}
+
+body[data-page="admin-wiki-data"] .enchantment-filter-grid {
+    grid-template-columns: minmax(220px, 1fr) 220px auto auto;
+}
+
+body[data-page="admin-wiki-data"] .wiki-data-table {
+    min-width: 820px;
+}
+
+body[data-page="admin-wiki-data"] .enchantment-table {
+    min-width: 900px;
+}
+
+body[data-page="admin-wiki-data"] .wiki-data-editor {
+    align-self: start;
+    background: #f8fafc;
+}
+
+body[data-page="admin-wiki-data"] .form-pane-header h4 {
+    margin: 0;
+}
+
+body[data-page="admin-wiki-data"] .form-pane-header p {
+    margin: 6px 0 0;
+    color: #64748b;
+    font-size: 0.84rem;
+}
+
+body[data-page="admin-wiki-data"] .wiki-data-preview {
+    align-items: center;
+    display: grid;
+    gap: 14px;
+    grid-template-columns: 88px minmax(0, 1fr);
+    border: 1px solid #dbe3ef;
+    border-radius: 18px;
+    background: #ffffff;
+    padding: 14px;
+}
+
+body[data-page="admin-wiki-data"] .wiki-data-preview-media {
+    width: 88px;
+    height: 88px;
+    border-radius: 18px;
+    border: 1px solid #dbe3ef;
+    background: #f8fafc;
+    overflow: hidden;
+    position: relative;
+}
+
+body[data-page="admin-wiki-data"] .wiki-data-preview-media img,
+body[data-page="admin-wiki-data"] .wiki-data-preview-fallback {
+    width: 100%;
+    height: 100%;
+}
+
+body[data-page="admin-wiki-data"] .wiki-data-preview-media img {
+    display: none;
+    object-fit: cover;
+}
+
+body[data-page="admin-wiki-data"] .wiki-data-preview-fallback {
+    align-items: center;
+    color: #475569;
+    display: grid;
+    font-size: 1.45rem;
+    font-weight: 900;
+    place-items: center;
+}
+
+body[data-page="admin-wiki-data"] .wiki-data-preview-content strong {
+    color: #0f172a;
+    display: block;
+    font-size: 0.9rem;
+}
+
+body[data-page="admin-wiki-data"] .wiki-data-preview-content p,
+body[data-page="admin-wiki-data"] .wiki-url-text {
+    color: #64748b;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    margin: 6px 0 0;
+    overflow-wrap: anywhere;
+}
+
+body[data-page="admin-wiki-data"] .wiki-mini-icon-wrap {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    border: 1px solid #dbe3ef;
+    background: #f8fafc;
+    overflow: hidden;
+    position: relative;
+}
+
+body[data-page="admin-wiki-data"] .wiki-mini-icon,
+body[data-page="admin-wiki-data"] .wiki-mini-fallback {
+    width: 100%;
+    height: 100%;
+}
+
+body[data-page="admin-wiki-data"] .wiki-mini-icon {
+    object-fit: cover;
+}
+
+body[data-page="admin-wiki-data"] .wiki-mini-fallback {
+    align-items: center;
+    color: #64748b;
+    display: grid;
+    font-size: 0.95rem;
+    font-weight: 900;
+    place-items: center;
+}
+
+body[data-page="admin-wiki-data"] .admin-table tr.row-selected td {
+    background: #eff6ff;
+}
+
+@media (max-width: 1280px) {
+    body[data-page="admin-wiki-data"] .wiki-data-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 980px) {
+    body[data-page="admin-wiki-data"] .enchantment-filter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 820px) {
+    body[data-page="admin-wiki-data"] .wiki-data-filter-grid,
+    body[data-page="admin-wiki-data"] .enchantment-filter-grid,
+    body[data-page="admin-wiki-data"] .wiki-data-preview {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Admin Esports Data page refresh for game draft records */
+body[data-page="admin-esports-data"] .editor-grid {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+}
+
+body[data-page="admin-esports-data"] .game-draft-list {
+    display: grid;
+    gap: 14px;
+}
+
+body[data-page="admin-esports-data"] .game-draft-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    background: #ffffff;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+    padding: 16px;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+body[data-page="admin-esports-data"] .game-draft-card:hover {
+    border-color: #bfdbfe;
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
+    transform: translateY(-1px);
+}
+
+body[data-page="admin-esports-data"] .game-draft-card.selected {
+    border-color: #93c5fd;
+    background: linear-gradient(180deg, #f8fbff, #ffffff);
+}
+
+body[data-page="admin-esports-data"] .game-draft-card-head,
+body[data-page="admin-esports-data"] .slot-section-header,
+body[data-page="admin-esports-data"] .game-draft-card-footer {
+    align-items: flex-start;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+}
+
+body[data-page="admin-esports-data"] .game-draft-card-head strong {
+    color: #0f172a;
+    display: block;
+    font-size: 1rem;
+    margin-top: 6px;
+}
+
+body[data-page="admin-esports-data"] .game-draft-card-metrics {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin: 16px 0 14px;
+}
+
+body[data-page="admin-esports-data"] .game-draft-card-metrics span {
+    color: #64748b;
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+body[data-page="admin-esports-data"] .game-draft-card-metrics strong {
+    color: #0f172a;
+    display: block;
+    font-size: 0.92rem;
+    margin-top: 6px;
+}
+
+body[data-page="admin-esports-data"] .game-draft-card-footer {
+    border-top: 1px solid #eef2f7;
+    padding-top: 14px;
+}
+
+body[data-page="admin-esports-data"] .game-draft-card-footer small {
+    color: #64748b;
+    display: block;
+    line-height: 1.5;
+    max-width: 420px;
+}
+
+body[data-page="admin-esports-data"] .draft-slot-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body[data-page="admin-esports-data"] .slot-section {
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    background: #ffffff;
+    padding: 16px;
+}
+
+body[data-page="admin-esports-data"] .slot-section.blue {
+    background: linear-gradient(180deg, rgba(239, 246, 255, 0.88), #ffffff 35%);
+}
+
+body[data-page="admin-esports-data"] .slot-section.red {
+    background: linear-gradient(180deg, rgba(254, 242, 242, 0.9), #ffffff 35%);
+}
+
+body[data-page="admin-esports-data"] .slot-section-header {
+    margin-bottom: 12px;
+}
+
+body[data-page="admin-esports-data"] .slot-section-header h5 {
+    color: #0f172a;
+    font-size: 0.94rem;
+    margin: 0;
+}
+
+body[data-page="admin-esports-data"] .section-chip,
+body[data-page="admin-esports-data"] .verify-status-chip {
+    align-items: center;
+    border: 1px solid #dbe3ef;
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 0.72rem;
+    font-weight: 800;
+    min-height: 28px;
+    padding: 0 10px;
+    white-space: nowrap;
+}
+
+body[data-page="admin-esports-data"] .section-chip {
+    background: #ffffff;
+    color: #475569;
+}
+
+body[data-page="admin-esports-data"] .slot-stack {
+    display: grid;
+    gap: 10px;
+}
+
+body[data-page="admin-esports-data"] .slot-row {
+    align-items: center;
+    column-gap: 10px;
+    display: grid;
+    grid-template-columns: 62px minmax(0, 1fr);
+}
+
+body[data-page="admin-esports-data"] .slot-row span {
+    color: #334155;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+body[data-page="admin-esports-data"] .verify-item.full {
+    grid-column: 1 / -1;
+}
+
+body[data-page="admin-esports-data"] .verify-item-value .verify-status-chip {
+    vertical-align: middle;
+}
+
+@media (max-width: 1180px) {
+    body[data-page="admin-esports-data"] .editor-grid,
+    body[data-page="admin-esports-data"] .draft-slot-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 820px) {
+    body[data-page="admin-esports-data"] .game-draft-card-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    body[data-page="admin-esports-data"] .slot-row {
+        grid-template-columns: 1fr;
+    }
+
+    body[data-page="admin-esports-data"] .game-draft-card-head,
+    body[data-page="admin-esports-data"] .slot-section-header,
+    body[data-page="admin-esports-data"] .game-draft-card-footer {
+        flex-direction: column;
     }
 }
 

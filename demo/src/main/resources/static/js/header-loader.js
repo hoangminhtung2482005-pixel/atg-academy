@@ -14,10 +14,6 @@
         switch (rawTab) {
             case 'spells':
                 return 'wiki-spells';
-            case 'items':
-                return 'wiki-items';
-            case 'arcana':
-                return 'wiki-arcana';
             case 'enchantments':
                 return 'wiki-enchantments';
             case '':

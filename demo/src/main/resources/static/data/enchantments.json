@@ -1,0 +1,281 @@
+[
+  {
+    "slug": "qua-cau-bang-suong",
+    "name": "Quả cầu băng sương",
+    "branch": "thanh-khoi-nguyen",
+    "branchName": "Thành khởi nguyên",
+    "level": 1,
+    "iconUrl": "/images/enchantments/thanh-khoi-nguyen/qua-cau-bang-suong.webp",
+    "description": null
+  },
+  {
+    "slug": "sieu-hoi-mau",
+    "name": "Siêu hồi máu",
+    "branch": "thanh-khoi-nguyen",
+    "branchName": "Thành khởi nguyên",
+    "level": 1,
+    "iconUrl": "/images/enchantments/thanh-khoi-nguyen/sieu-hoi-mau.webp",
+    "description": null
+  },
+  {
+    "slug": "mat-ngu",
+    "name": "Mật ngữ",
+    "branch": "thanh-khoi-nguyen",
+    "branchName": "Thành khởi nguyên",
+    "level": 1,
+    "iconUrl": "/images/enchantments/thanh-khoi-nguyen/mat-ngu.webp",
+    "description": null
+  },
+  {
+    "slug": "uy-ap",
+    "name": "Uy áp",
+    "branch": "thanh-khoi-nguyen",
+    "branchName": "Thành khởi nguyên",
+    "level": 2,
+    "iconUrl": "/images/enchantments/thanh-khoi-nguyen/uy-ap.webp",
+    "description": null
+  },
+  {
+    "slug": "tho-san",
+    "name": "Thợ săn",
+    "branch": "thanh-khoi-nguyen",
+    "branchName": "Thành khởi nguyên",
+    "level": 2,
+    "iconUrl": "/images/enchantments/thanh-khoi-nguyen/tho-san.webp",
+    "description": null
+  },
+  {
+    "slug": "chuyen-sinh",
+    "name": "Chuyển sinh",
+    "branch": "thanh-khoi-nguyen",
+    "branchName": "Thành khởi nguyên",
+    "level": 3,
+    "iconUrl": "/images/enchantments/thanh-khoi-nguyen/chuyen-sinh.webp",
+    "description": null
+  },
+  {
+    "slug": "luyen-kim",
+    "name": "Luyện kim",
+    "branch": "thanh-khoi-nguyen",
+    "branchName": "Thành khởi nguyên",
+    "level": 3,
+    "iconUrl": "/images/enchantments/thanh-khoi-nguyen/luyen-kim.webp",
+    "description": null
+  },
+  {
+    "slug": "tuong-phan",
+    "name": "Tương phản",
+    "branch": "thap-quang-minh",
+    "branchName": "Tháp quang minh",
+    "level": 1,
+    "iconUrl": "/images/enchantments/thap-quang-minh/tuong-phan.webp",
+    "description": null
+  },
+  {
+    "slug": "sung-man",
+    "name": "Sung mãn",
+    "branch": "thap-quang-minh",
+    "branchName": "Tháp quang minh",
+    "level": 1,
+    "iconUrl": "/images/enchantments/thap-quang-minh/sung-man.webp",
+    "description": null
+  },
+  {
+    "slug": "thanh-chau",
+    "name": "Thánh châu",
+    "branch": "thap-quang-minh",
+    "branchName": "Tháp quang minh",
+    "level": 1,
+    "iconUrl": "/images/enchantments/thap-quang-minh/thanh-chau.webp",
+    "description": null
+  },
+  {
+    "slug": "xuyen-tam",
+    "name": "Xuyên tâm",
+    "branch": "thap-quang-minh",
+    "branchName": "Tháp quang minh",
+    "level": 2,
+    "iconUrl": "/images/enchantments/thap-quang-minh/xuyen-tam.webp",
+    "description": null
+  },
+  {
+    "slug": "bi-quyet",
+    "name": "Bí quyết",
+    "branch": "thap-quang-minh",
+    "branchName": "Tháp quang minh",
+    "level": 2,
+    "iconUrl": "/images/enchantments/thap-quang-minh/bi-quyet.webp",
+    "description": null
+  },
+  {
+    "slug": "thanh-thuan",
+    "name": "Thánh thuẫn",
+    "branch": "thap-quang-minh",
+    "branchName": "Tháp quang minh",
+    "level": 3,
+    "iconUrl": "/images/enchantments/thap-quang-minh/thanh-thuan.webp",
+    "description": null
+  },
+  {
+    "slug": "than-quang",
+    "name": "Thần quang",
+    "branch": "thap-quang-minh",
+    "branchName": "Tháp quang minh",
+    "level": 3,
+    "iconUrl": "/images/enchantments/thap-quang-minh/than-quang.webp",
+    "description": null
+  },
+  {
+    "slug": "tinh-linh",
+    "name": "Tinh linh",
+    "branch": "thap-quang-minh",
+    "branchName": "Tháp quang minh",
+    "level": 3,
+    "iconUrl": "/images/enchantments/thap-quang-minh/tinh-linh.webp",
+    "description": null
+  },
+  {
+    "slug": "ma-hoa",
+    "name": "Ma hỏa",
+    "branch": "vuc-hon-mang",
+    "branchName": "Vực hỗn mang",
+    "level": 1,
+    "iconUrl": "/images/enchantments/vuc-hon-mang/ma-hoa.webp",
+    "description": null
+  },
+  {
+    "slug": "du-anh",
+    "name": "Dư ảnh",
+    "branch": "vuc-hon-mang",
+    "branchName": "Vực hỗn mang",
+    "level": 1,
+    "iconUrl": "/images/enchantments/vuc-hon-mang/du-anh.webp",
+    "description": null
+  },
+  {
+    "slug": "hap-huyet",
+    "name": "Hấp huyết",
+    "branch": "vuc-hon-mang",
+    "branchName": "Vực hỗn mang",
+    "level": 1,
+    "iconUrl": "/images/enchantments/vuc-hon-mang/hap-huyet.webp",
+    "description": null
+  },
+  {
+    "slug": "co-thu",
+    "name": "Cố thủ",
+    "branch": "vuc-hon-mang",
+    "branchName": "Vực hỗn mang",
+    "level": 2,
+    "iconUrl": "/images/enchantments/vuc-hon-mang/co-thu.webp",
+    "description": null
+  },
+  {
+    "slug": "cuong-cong",
+    "name": "Cường công",
+    "branch": "vuc-hon-mang",
+    "branchName": "Vực hỗn mang",
+    "level": 2,
+    "iconUrl": "/images/enchantments/vuc-hon-mang/cuong-cong.webp",
+    "description": null
+  },
+  {
+    "slug": "ma-tinh",
+    "name": "Ma tính",
+    "branch": "vuc-hon-mang",
+    "branchName": "Vực hỗn mang",
+    "level": 3,
+    "iconUrl": "/images/enchantments/vuc-hon-mang/ma-tinh.webp",
+    "description": null
+  },
+  {
+    "slug": "ma-chu",
+    "name": "Ma chú",
+    "branch": "vuc-hon-mang",
+    "branchName": "Vực hỗn mang",
+    "level": 3,
+    "iconUrl": "/images/enchantments/vuc-hon-mang/ma-chu.webp",
+    "description": null
+  },
+  {
+    "slug": "dau-khi",
+    "name": "Đấu khí",
+    "branch": "vuc-hon-mang",
+    "branchName": "Vực hỗn mang",
+    "level": 3,
+    "iconUrl": "/images/enchantments/vuc-hon-mang/dau-khi.webp",
+    "description": null
+  },
+  {
+    "slug": "canh-gac",
+    "name": "Canh gác",
+    "branch": "rung-nguyen-sinh",
+    "branchName": "Rừng nguyên sinh",
+    "level": 1,
+    "iconUrl": "/images/enchantments/rung-nguyen-sinh/canh-gac.webp",
+    "description": null
+  },
+  {
+    "slug": "am-kich",
+    "name": "Ám kích",
+    "branch": "rung-nguyen-sinh",
+    "branchName": "Rừng nguyên sinh",
+    "level": 1,
+    "iconUrl": "/images/enchantments/rung-nguyen-sinh/am-kich.webp",
+    "description": null
+  },
+  {
+    "slug": "nhay-ben",
+    "name": "Nhạy bén",
+    "branch": "rung-nguyen-sinh",
+    "branchName": "Rừng nguyên sinh",
+    "level": 1,
+    "iconUrl": "/images/enchantments/rung-nguyen-sinh/nhay-ben.webp",
+    "description": null
+  },
+  {
+    "slug": "sinh-ton",
+    "name": "Sinh tồn",
+    "branch": "rung-nguyen-sinh",
+    "branchName": "Rừng nguyên sinh",
+    "level": 2,
+    "iconUrl": "/images/enchantments/rung-nguyen-sinh/sinh-ton.webp",
+    "description": null
+  },
+  {
+    "slug": "bom-mau",
+    "name": "Bơm máu",
+    "branch": "rung-nguyen-sinh",
+    "branchName": "Rừng nguyên sinh",
+    "level": 2,
+    "iconUrl": "/images/enchantments/rung-nguyen-sinh/bom-mau.webp",
+    "description": null
+  },
+  {
+    "slug": "du-hiep",
+    "name": "Du hiệp",
+    "branch": "rung-nguyen-sinh",
+    "branchName": "Rừng nguyên sinh",
+    "level": 3,
+    "iconUrl": "/images/enchantments/rung-nguyen-sinh/du-hiep.webp",
+    "description": null
+  },
+  {
+    "slug": "moc-giap",
+    "name": "Mộc giáp",
+    "branch": "rung-nguyen-sinh",
+    "branchName": "Rừng nguyên sinh",
+    "level": 3,
+    "iconUrl": "/images/enchantments/rung-nguyen-sinh/moc-giap.webp",
+    "description": null
+  },
+  {
+    "slug": "troi-buoc",
+    "name": "Trói buộc",
+    "branch": "rung-nguyen-sinh",
+    "branchName": "Rừng nguyên sinh",
+    "level": 3,
+    "iconUrl": "/images/enchantments/rung-nguyen-sinh/troi-buoc.webp",
+    "description": null
+  }
+]

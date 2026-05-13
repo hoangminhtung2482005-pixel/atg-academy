@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wiki - ATG Academy</title>
-    <meta name="description" content="Thư viện Wiki Liên Quân Mobile — tra cứu thông tin Tướng, Trang bị, Ngọc, Phù hiệu và Bổ trợ.">
+    <meta name="description" content="Thư viện Wiki Liên Quân Mobile — tra cứu thông tin Tướng, Phù hiệu và Bổ trợ.">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/css/style.css?v=20260507-css-modules">
-    <link rel="stylesheet" href="/css/wiki.css?v=20260507-css-modules">
+    <link rel="stylesheet" href="/css/wiki.css?v=20260509-enchantments">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -29,12 +29,6 @@
                 <button class="wiki-tab" data-tab="spells" role="tab" aria-selected="false">
                     <span class="wiki-tab-icon">✨</span> Bổ trợ
                 </button>
-                <button class="wiki-tab" data-tab="items" role="tab" aria-selected="false">
-                    <span class="wiki-tab-icon">🛡️</span> Trang bị
-                </button>
-                <button class="wiki-tab" data-tab="arcana" role="tab" aria-selected="false">
-                    <span class="wiki-tab-icon">💎</span> Ngọc
-                </button>
                 <button class="wiki-tab" data-tab="enchantments" role="tab" aria-selected="false">
                     <span class="wiki-tab-icon">🔮</span> Phù hiệu
                 </button>
@@ -51,22 +45,24 @@
 
         const HERO_API = '/api/wiki/heroes';
         const SPELLS_API = '/api/spells';
+        const ENCHANTMENTS_API = '/api/enchantments';
         const DEFAULT_TAB = 'heroes';
         const TAB_PAGE_MAP = {
             heroes: 'wiki-home',
             spells: 'wiki-spells',
-            items: 'wiki-items',
-            arcana: 'wiki-arcana',
             enchantments: 'wiki-enchantments'
         };
 
         let heroesData = [];
         let spellsData = [];
+        let enchantmentsData = [];
         let activeTab = DEFAULT_TAB;
         let activeClassFilter = 'all';
         let activeRoleFilter = 'all';
         let spellsLoading = false;
         let spellsReady = false;
+        let enchantmentsLoading = false;
+        let enchantmentsReady = false;
 
         const HERO_CLASS_FILTERS = ['Đấu sĩ', 'Sát thủ', 'Pháp sư', 'Xạ thủ', 'Đỡ đòn', 'Trợ thủ'];
         const ROLE_FILTERS = [
@@ -147,7 +143,7 @@
             } else if (activeTab === 'spells') {
                 renderSpellsTab();
             } else {
-                renderPlaceholderTab(activeTab);
+                renderEnchantmentsTab();
             }
         }
 
@@ -345,7 +341,7 @@
             }
 
             if (spellsData.length === 0) {
-                content.innerHTML = buildEmptyState('✨', 'Chưa có dữ liệu Bổ trợ', 'Danh sách Bổ trợ sẽ xuất hiện khi database có dữ liệu.');
+                content.innerHTML = buildEmptyState('✨', 'Chưa có dữ liệu Bổ trợ', 'Danh sách Bổ trợ sẽ xuất hiện khi file JSON có dữ liệu.');
                 return;
             }
 
@@ -401,28 +397,133 @@
             }).join('');
         }
 
-        // ==================== PLACEHOLDER TAB ====================
+        // ==================== ENCHANTMENTS TAB ====================
 
-        var placeholderConfig = {
-            spells:       { icon: '✨', label: 'Bổ trợ' },
-            items:        { icon: '🛡️', label: 'Trang bị' },
-            arcana:       { icon: '💎', label: 'Ngọc' },
-            enchantments: { icon: '🔮', label: 'Phù hiệu' }
-        };
-
-        function renderPlaceholderTab(tabId) {
+        function renderEnchantmentsTab() {
             var content = document.getElementById('wiki-content');
             if (!content) return;
 
-            var config = placeholderConfig[tabId] || { icon: '📦', label: tabId };
+            if (!enchantmentsReady) {
+                content.innerHTML = buildEnchantmentSkeletonGrid();
+                if (!enchantmentsLoading) {
+                    fetchEnchantments();
+                }
+                return;
+            }
 
-            content.innerHTML =
-                '<div class="wiki-placeholder">' +
-                    '<div class="wiki-placeholder-icon">' + config.icon + '</div>' +
-                    '<div class="wiki-placeholder-title">Danh mục ' + escapeHtml(config.label) + '</div>' +
-                    '<div class="wiki-placeholder-text">Tính năng đang được cập nhật...<br>Dữ liệu ' + escapeHtml(config.label) + ' sẽ sớm có mặt trên Wiki.</div>' +
-                    '<span class="wiki-placeholder-badge">🚧 Coming Soon</span>' +
-                '</div>';
+            if (enchantmentsData.length === 0) {
+                content.innerHTML = buildEmptyState('🔮', 'Chưa có dữ liệu Phù hiệu', 'Danh sách Phù hiệu sẽ xuất hiện khi file JSON có dữ liệu.');
+                return;
+            }
+
+            content.innerHTML = buildEnchantmentIntro()
+                + buildEnchantmentCountBadge(enchantmentsData.length)
+                + '<div class="wiki-enchantment-sections" id="enchantment-sections"></div>';
+            renderEnchantmentSections(enchantmentsData);
+        }
+
+        async function fetchEnchantments() {
+            var content = document.getElementById('wiki-content');
+            enchantmentsLoading = true;
+
+            try {
+                var response = await fetch(ENCHANTMENTS_API, { headers: { 'Accept': 'application/json' } });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+
+                var enchantments = await response.json();
+                if (!Array.isArray(enchantments)) throw new Error('Invalid payload');
+
+                enchantmentsData = enchantments;
+                enchantmentsReady = true;
+
+                if (activeTab === 'enchantments') {
+                    renderEnchantmentsTab();
+                }
+            } catch (error) {
+                console.error('Wiki enchantment fetch error:', error);
+                enchantmentsReady = false;
+                if (activeTab === 'enchantments' && content) {
+                    content.innerHTML = buildEmptyState('❌', 'Không thể tải dữ liệu Phù hiệu', 'Vui lòng kiểm tra kết nối server và thử tải lại trang.');
+                }
+            } finally {
+                enchantmentsLoading = false;
+            }
+        }
+
+        function renderEnchantmentSections(enchantments) {
+            var container = document.getElementById('enchantment-sections');
+            if (!container) return;
+
+            var grouped = groupEnchantmentsByBranch(enchantments);
+            container.innerHTML = grouped.map(function (group) {
+                var sectionIcon = group.branchIconUrl
+                    ? '<img src="' + escapeHtml(group.branchIconUrl) + '" alt="' + escapeHtml(group.branch) + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
+                      '<span class="wiki-enchantment-branch-fallback" style="display:none">' + escapeHtml(getBranchInitial(group.branch)) + '</span>'
+                    : '<span class="wiki-enchantment-branch-fallback">' + escapeHtml(getBranchInitial(group.branch)) + '</span>';
+
+                return '<section class="wiki-enchantment-section">' +
+                    '<div class="wiki-enchantment-section-head">' +
+                        '<div class="wiki-enchantment-branch">' +
+                            '<div class="wiki-enchantment-branch-icon">' + sectionIcon + '</div>' +
+                            '<div>' +
+                                '<div class="wiki-enchantment-branch-title">' + escapeHtml(group.branch) + '</div>' +
+                                '<div class="wiki-enchantment-branch-text">Asset folder: /images/enchantments/' + escapeHtml(group.branchSlug || 'khac') + '/</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="wiki-enchantment-branch-count">' + group.items.length + ' phù hiệu</div>' +
+                    '</div>' +
+                    '<div class="wiki-enchantment-grid">' + group.items.map(buildEnchantmentCard).join('') + '</div>' +
+                '</section>';
+            }).join('');
+        }
+
+        function groupEnchantmentsByBranch(enchantments) {
+            var groups = [];
+            var lookup = new Map();
+
+            enchantments.forEach(function (enchantment) {
+                var branch = enchantment.branchName || enchantment.branch || 'Khác';
+                var branchSlug = enchantment.branch || enchantment.branchSlug || normalize(branch).replace(/\s+/g, '-');
+                if (!lookup.has(branchSlug)) {
+                    var group = {
+                        branch: branch,
+                        branchSlug: branchSlug,
+                        branchIconUrl: enchantment.branchIconUrl || ('/images/enchantments/' + branchSlug + '/' + branchSlug + '.webp'),
+                        items: []
+                    };
+                    lookup.set(branchSlug, group);
+                    groups.push(group);
+                }
+
+                lookup.get(branchSlug).items.push(enchantment);
+            });
+
+            return groups;
+        }
+
+        function buildEnchantmentCard(enchantment) {
+            var iconHtml;
+            if (enchantment.iconUrl) {
+                iconHtml = '<img src="' + escapeHtml(enchantment.iconUrl) + '" alt="' + escapeHtml(enchantment.name) + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
+                    '<span class="wiki-enchantment-fallback" style="display:none">' + escapeHtml((enchantment.name || '?').charAt(0)) + '</span>';
+            } else {
+                iconHtml = '<span class="wiki-enchantment-fallback">' + escapeHtml((enchantment.name || '?').charAt(0)) + '</span>';
+            }
+
+            var level = enchantment.level != null ? enchantment.level : enchantment.tier;
+            var tierLabel = level ? 'Cấp ' + level : 'Chưa rõ cấp';
+            var branchLabel = enchantment.branchName || enchantment.branch || 'Khác';
+
+            return '<article class="wiki-enchantment-card">' +
+                '<div class="wiki-enchantment-card-top">' +
+                    '<div class="wiki-enchantment-icon-wrap">' + iconHtml + '</div>' +
+                    '<span class="wiki-enchantment-pill tier">' + escapeHtml(tierLabel) + '</span>' +
+                '</div>' +
+                '<div class="wiki-enchantment-name">' + escapeHtml(enchantment.name || 'Unknown') + '</div>' +
+                '<div class="wiki-enchantment-meta">' +
+                    '<span class="wiki-enchantment-pill branch">' + escapeHtml(branchLabel) + '</span>' +
+                '</div>' +
+            '</article>';
         }
 
         // ==================== HTML BUILDERS ====================
@@ -473,13 +574,27 @@
                 '<div class="wiki-category-intro-icon">✨</div>' +
                 '<div>' +
                     '<div class="wiki-category-intro-title">Bổ trợ</div>' +
-                    '<div class="wiki-category-intro-text">Danh sách 12 bổ trợ chuẩn hóa dùng chung cho Wiki và tạo giáo án.</div>' +
+                    '<div class="wiki-category-intro-text">Danh sách 12 bổ trợ được đọc từ JSON dùng chung cho Wiki và create-guide.</div>' +
                 '</div>' +
             '</div>';
         }
 
         function buildSpellCountBadge(count) {
             return '<div class="wiki-spell-count">✨ ' + count + ' bổ trợ</div>';
+        }
+
+        function buildEnchantmentIntro() {
+            return '<div class="wiki-category-intro">' +
+                '<div class="wiki-category-intro-icon">🔮</div>' +
+                '<div>' +
+                    '<div class="wiki-category-intro-title">Phù hiệu</div>' +
+                    '<div class="wiki-category-intro-text">Danh sách phù hiệu được đọc từ JSON, nhóm theo 4 nhánh và map trực tiếp sang asset tại /images/enchantments/...</div>' +
+                '</div>' +
+            '</div>';
+        }
+
+        function buildEnchantmentCountBadge(count) {
+            return '<div class="wiki-enchantment-count">🔮 ' + count + ' phù hiệu</div>';
         }
 
         function buildSkeletonGrid() {
@@ -496,6 +611,14 @@
                 cards += '<div class="wiki-spell-card"><div class="skeleton" style="width:64px;height:64px;border-radius:50%;margin:0 auto 12px"></div><div class="skeleton" style="height:14px;width:72%;margin:0 auto"></div></div>';
             }
             return buildSpellIntro() + '<div class="wiki-spell-grid">' + cards + '</div>';
+        }
+
+        function buildEnchantmentSkeletonGrid() {
+            var cards = '';
+            for (var i = 0; i < 8; i++) {
+                cards += '<div class="wiki-enchantment-card"><div class="skeleton" style="width:72px;height:72px;border-radius:18px;margin:0 0 14px"></div><div class="skeleton" style="height:14px;width:78%;margin-bottom:10px"></div><div class="skeleton" style="height:12px;width:56%;margin-bottom:8px"></div><div class="skeleton" style="height:12px;width:42%"></div></div>';
+            }
+            return buildEnchantmentIntro() + '<div class="wiki-enchantment-grid">' + cards + '</div>';
         }
 
         function buildEmptyState(icon, title, text) {
@@ -624,6 +747,14 @@
 
         function normalize(value) {
             return (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+        }
+
+        function getBranchInitial(value) {
+            var words = String(value || '').trim().split(/\s+/).filter(Boolean);
+            if (!words.length) return '?';
+            return words.slice(0, 2).map(function (word) {
+                return word.charAt(0).toUpperCase();
+            }).join('');
         }
 
         // ==================== INIT ====================

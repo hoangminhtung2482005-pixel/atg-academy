@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bổ trợ & Phù hiệu - AoV Tactics & Guides</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css?v=20260507-css-modules">
+    <link rel="stylesheet" href="/css/admin.css?v=20260509-wiki-data-admin">
+</head>
+<body data-page="admin-wiki-data">
+<div id="toast" class="toast-box"></div>
+
+<aside class="admin-sidebar">
+    <div class="sidebar-brand">
+        <a href="/html/index.html" class="back-link">← Về trang chủ</a>
+        <div class="brand-row">
+            <div class="brand-mark">ATG</div>
+            <div>
+                <div class="brand-name">AoV Tactics</div>
+                <div class="brand-subtitle">Admin Panel</div>
+            </div>
+        </div>
+    </div>
+
+    <nav class="sidebar-nav">
+        <a class="nav-item" href="/html/admin.html">Tổng quan</a>
+        <a class="nav-item" href="/html/admin-heroes.html">Quản lý Tướng</a>
+        <a class="nav-item" href="/html/admin-attributes.html">Đặc điểm tướng</a>
+        <a class="nav-item active" href="/html/admin-wiki-data.html">Bổ trợ &amp; Phù hiệu</a>
+        <a class="nav-item" href="/html/admin.html#guides">Cẩm nang</a>
+        <a class="nav-item" href="/html/admin.html#users">Người dùng</a>
+        <a class="nav-item" href="/html/admin.html#aer-data">AER Data</a>
+        <a class="nav-item" href="/html/admin-esports-data.html">Esports Data</a>
+    </nav>
+</aside>
+
+<main class="admin-shell">
+    <header class="topbar">
+        <h1>Dữ liệu Wiki</h1>
+        <span id="header-clock" class="clock"></span>
+    </header>
+
+    <section class="admin-page">
+        <div class="admin-page-header">
+            <div>
+                <p class="eyebrow">Wiki Data Admin</p>
+                <h2>Bổ trợ &amp; Phù hiệu</h2>
+                <p>Quản lý metadata JSON cho Wiki và guide picker. Dữ liệu đọc/ghi qua API admin, ưu tiên <code>atg.data.dir</code> nếu cấu hình, fallback về <code>src/main/resources/static/data</code> khi chạy local.</p>
+            </div>
+            <div class="header-actions">
+                <button id="btn-refresh-wiki-data" type="button" class="btn btn-dark">Làm mới</button>
+            </div>
+        </div>
+
+        <div class="admin-tabs">
+            <button id="tab-button-spells" type="button" class="admin-tab-button active" data-tab="spells">Bổ trợ</button>
+            <button id="tab-button-enchantments" type="button" class="admin-tab-button" data-tab="enchantments">Phù hiệu</button>
+        </div>
+
+        <section id="tab-panel-spells" class="admin-tab-panel active">
+            <section class="admin-section">
+                <div class="section-header">
+                    <div>
+                        <h3>Danh sách Bổ trợ</h3>
+                        <p>Đang dùng trực tiếp cho <code>/api/spells</code>, Wiki tab <strong>Bổ trợ</strong> và spell picker ở <code>create-guide.html</code>.</p>
+                    </div>
+                    <span id="spell-count-pill" class="count-pill">0 bổ trợ</span>
+                </div>
+
+                <div class="wiki-data-layout">
+                    <div class="panel-stack">
+                        <div class="filter-grid wiki-data-filter-grid spell-filter-grid">
+                            <label class="field">
+                                <span>Tìm kiếm</span>
+                                <input id="spell-search" type="search" placeholder="Tên hoặc slug bổ trợ">
+                            </label>
+                            <button id="btn-spell-clear-search" type="button" class="btn btn-light">Xóa lọc</button>
+                            <button id="btn-new-spell" type="button" class="btn btn-primary">Thêm Bổ trợ</button>
+                        </div>
+
+                        <div id="spells-error" class="error-state hidden"></div>
+
+                        <div class="admin-table-card">
+                            <table class="admin-table wiki-data-table">
+                                <thead>
+                                <tr>
+                                    <th>Icon</th>
+                                    <th>Tên</th>
+                                    <th>Slug</th>
+                                    <th>Icon URL</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                                </thead>
+                                <tbody id="spells-tbody">
+                                <tr><td colspan="5" class="table-state">Đang tải dữ liệu Bổ trợ...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="form-card wiki-data-editor">
+                        <div class="form-pane-header">
+                            <div>
+                                <h4 id="spell-form-title">Thêm Bổ trợ</h4>
+                                <p id="spell-form-subtitle">Lưu vào JSON, không dùng bảng DB <code>spells</code>.</p>
+                            </div>
+                        </div>
+                        <div id="spell-form-error" class="inline-error hidden"></div>
+                        <form id="spell-form" class="form-grid">
+                            <input id="sf-current-slug" type="hidden">
+                            <div class="form-grid two">
+                                <label class="field">
+                                    <span>Tên *</span>
+                                    <input id="sf-name" type="text" required>
+                                </label>
+                                <label class="field">
+                                    <span>Slug *</span>
+                                    <input id="sf-slug" type="text" required>
+                                </label>
+                            </div>
+                            <label class="field">
+                                <span>Icon URL *</span>
+                                <input id="sf-icon-url" type="text" placeholder="/images/spells/toc-bien.png" required>
+                            </label>
+
+                            <div class="wiki-data-preview">
+                                <div class="wiki-data-preview-media">
+                                    <img id="spell-preview-image" alt="Spell preview">
+                                    <span id="spell-preview-fallback" class="wiki-data-preview-fallback">?</span>
+                                </div>
+                                <div class="wiki-data-preview-content">
+                                    <strong>Preview icon</strong>
+                                    <p id="spell-preview-path">Chưa có iconUrl</p>
+                                </div>
+                            </div>
+
+                            <label class="field">
+                                <span>Mô tả</span>
+                                <textarea id="sf-description" rows="5" placeholder="Để trống nếu project chưa có mô tả thật"></textarea>
+                                <small class="field-help">API sẽ chặn xóa nếu spell này còn đang được guide hiện tại tham chiếu qua <code>spellSlug</code>.</small>
+                            </label>
+
+                            <div class="modal-actions">
+                                <button id="btn-spell-reset-form" type="button" class="btn btn-light">Tạo form mới</button>
+                                <button id="btn-spell-delete" type="button" class="btn btn-danger">Xóa</button>
+                                <button id="btn-spell-submit" type="submit" class="btn btn-primary">Lưu Bổ trợ</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+        </section>
+
+        <section id="tab-panel-enchantments" class="admin-tab-panel">
+            <section class="admin-section">
+                <div class="section-header">
+                    <div>
+                        <h3>Danh sách Phù hiệu</h3>
+                        <p>Đang dùng trực tiếp cho <code>/api/enchantments</code> và Wiki tab <strong>Phù hiệu</strong>. Ảnh vẫn đặt trong <code>/images/enchantments/{branch}/</code>.</p>
+                    </div>
+                    <span id="enchantment-count-pill" class="count-pill">0 phù hiệu</span>
+                </div>
+
+                <div class="wiki-data-layout">
+                    <div class="panel-stack">
+                        <div class="filter-grid wiki-data-filter-grid enchantment-filter-grid">
+                            <label class="field">
+                                <span>Tìm kiếm</span>
+                                <input id="enchantment-search" type="search" placeholder="Tên, slug hoặc branch">
+                            </label>
+                            <label class="field">
+                                <span>Branch</span>
+                                <select id="enchantment-filter-branch"></select>
+                            </label>
+                            <button id="btn-enchantment-clear-search" type="button" class="btn btn-light">Xóa lọc</button>
+                            <button id="btn-new-enchantment" type="button" class="btn btn-primary">Thêm Phù hiệu</button>
+                        </div>
+
+                        <div id="enchantments-error" class="error-state hidden"></div>
+
+                        <div class="admin-table-card">
+                            <table class="admin-table wiki-data-table enchantment-table">
+                                <thead>
+                                <tr>
+                                    <th>Icon</th>
+                                    <th>Tên</th>
+                                    <th>Branch</th>
+                                    <th>Level</th>
+                                    <th>Slug</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                                </thead>
+                                <tbody id="enchantments-tbody">
+                                <tr><td colspan="6" class="table-state">Đang tải dữ liệu Phù hiệu...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="form-card wiki-data-editor">
+                        <div class="form-pane-header">
+                            <div>
+                                <h4 id="enchantment-form-title">Thêm Phù hiệu</h4>
+                                <p id="enchantment-form-subtitle">Lưu vào JSON, không dùng DB runtime cho <code>phu_hieu</code>.</p>
+                            </div>
+                        </div>
+                        <div id="enchantment-form-error" class="inline-error hidden"></div>
+                        <form id="enchantment-form" class="form-grid">
+                            <input id="ef-current-slug" type="hidden">
+                            <div class="form-grid two">
+                                <label class="field">
+                                    <span>Tên *</span>
+                                    <input id="ef-name" type="text" required>
+                                </label>
+                                <label class="field">
+                                    <span>Slug *</span>
+                                    <input id="ef-slug" type="text" required>
+                                </label>
+                            </div>
+                            <div class="form-grid three">
+                                <label class="field">
+                                    <span>Branch *</span>
+                                    <select id="ef-branch" required></select>
+                                </label>
+                                <label class="field">
+                                    <span>Branch Name *</span>
+                                    <input id="ef-branch-name" type="text" required>
+                                </label>
+                                <label class="field">
+                                    <span>Level</span>
+                                    <input id="ef-level" type="number" min="1" step="1" placeholder="1, 2, 3">
+                                </label>
+                            </div>
+                            <label class="field">
+                                <span>Icon URL *</span>
+                                <input id="ef-icon-url" type="text" placeholder="/images/enchantments/thap-quang-minh/than-quang.webp" required>
+                            </label>
+
+                            <div class="wiki-data-preview">
+                                <div class="wiki-data-preview-media">
+                                    <img id="enchantment-preview-image" alt="Enchantment preview">
+                                    <span id="enchantment-preview-fallback" class="wiki-data-preview-fallback">?</span>
+                                </div>
+                                <div class="wiki-data-preview-content">
+                                    <strong>Preview icon</strong>
+                                    <p id="enchantment-preview-path">Chưa có iconUrl</p>
+                                </div>
+                            </div>
+
+                            <label class="field">
+                                <span>Mô tả</span>
+                                <textarea id="ef-description" rows="5" placeholder="Để trống nếu project chưa có mô tả thật"></textarea>
+                                <small class="field-help">UI admin sẽ cảnh báo khi xóa vì legacy table <code>phu_hieu</code> / <code>huong_dan_phu_hieu</code> có thể vẫn còn dữ liệu cũ chờ migration riêng.</small>
+                            </label>
+
+                            <div class="modal-actions">
+                                <button id="btn-enchantment-reset-form" type="button" class="btn btn-light">Tạo form mới</button>
+                                <button id="btn-enchantment-delete" type="button" class="btn btn-danger">Xóa</button>
+                                <button id="btn-enchantment-submit" type="submit" class="btn btn-primary">Lưu Phù hiệu</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+        </section>
+    </section>
+</main>
+
+<script src="/js/auth.js?v=20260424-account-profile"></script>
+<script src="/js/admin-wiki-data.js?v=20260509-wiki-data-admin"></script>
+</body>
+</html>

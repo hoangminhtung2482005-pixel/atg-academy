@@ -4,7 +4,7 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
 
 ## Ghi chú quyền truy cập
 
-- Public `GET` đang mở cho: `Wiki`, `Spells`, `Esports`, `Guides`, `Tier Lists`, `Ban/Pick leaderboard`, `Ban/Pick result`.
+- Public `GET` đang mở cho: `Wiki`, `Spells`, `Enchantments`, `Esports`, `Guides`, `Tier Lists`, `Ban/Pick leaderboard`, `Ban/Pick result`.
 - Các thao tác ghi dữ liệu như tạo guide, tạo/rate/comment/save tier list, room Ban/Pick online, profile account đều cần đăng nhập.
 - Toàn bộ `/api/admin/**` yêu cầu role `ADMIN`.
 
@@ -282,7 +282,8 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
         - `GET /api/spells`
       - Ghi chú dữ liệu/DB:
         - Nội dung guide hiện lưu chủ yếu trong `guides.contentData`.
-        - Picker `spell` đã dùng API.
+        - Picker `spell` đã dùng API JSON `/api/spells` và lưu `spell`, `spellSlug`, `spellIconUrl` dạng string vào `contentData`.
+        - Khung `Phù hiệu` trong form vẫn là placeholder trực quan; chưa gọi API `enchantments` và chưa thay đổi flow tạo guide hiện tại.
         - Picker hero/lane trong form còn có phần dữ liệu frontend hardcode; cần kiểm tra thêm mức hoàn thiện.
 
     - Chi tiết giáo án
@@ -296,7 +297,8 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
         - `GET /api/guides/{id}`
       - Ghi chú dữ liệu/DB:
         - Bảng chính `guides`.
-        - Các entity như `GuideItem`, `GuideArcana`, `GuideEnchantment` còn tồn tại; mức sử dụng runtime cần kiểm tra thêm.
+        - Runtime hiện đọc nội dung guide chủ yếu từ `guides.contentData`; spell không còn phụ thuộc FK bảng `spells`.
+        - Các bảng/entity legacy kiểu `huong_dan_*` có thể còn tồn tại trong SQL thủ công, nhưng `spells` và `phu_hieu` không còn là runtime dependency của Wiki/Admin sau khi chuyển sang JSON.
 
   - Esports
     - Ranking
@@ -335,19 +337,18 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
         - Chưa thấy UI public riêng; cần kiểm tra thêm.
       - Admin được làm gì:
         - Thêm/sửa/xóa trận và reset match history ở Admin.
-        - Chọn một match để quản lý game, draft 18 phase, và final lineup ở page admin riêng.
+        - Dùng form series để nhập/chỉnh `match_date`, `team 1`, `team 2`, `score1`, `score2`, `giải/tier`, và `stage`.
+        - Chọn một match để load danh sách game, mở draft 18 phase, final lineup, và panel verify ở page admin riêng.
+        - Đối chiếu score series đang lưu với winner của từng game để phát hiện lệch dữ liệu.
       - API chính:
         - `GET /api/esports/matches/recent`
-        - `GET /api/esports/matches/{matchId}/games`
-        - `GET /api/esports/games/{gameId}/draft-actions`
-        - `GET /api/esports/games/{gameId}/lineups`
         - `GET/POST/PUT/DELETE /api/admin/esports/matches...`
-        - `GET/POST /api/admin/esports/matches/{matchId}/games`
-        - `GET/PUT/DELETE /api/admin/esports/games/{gameId}`
-        - `GET/PUT /api/admin/esports/games/{gameId}/draft-actions`
-        - `GET/PUT /api/admin/esports/games/{gameId}/lineups`
+        - `GET/POST /api/admin/esports/matches/{matchId}/game-drafts`
+        - `GET/PUT/DELETE /api/admin/esports/game-drafts/{gameDraftId}`
+        - `GET /api/admin/esports/game-drafts/export`
       - Ghi chú dữ liệu/DB:
-        - Admin hiện có page riêng `/html/admin-esports-data.html` để nhập dữ liệu game/draft/lineup cho match đã có.
+        - Admin hiện có page riêng `/html/admin-esports-data.html` để nhập dữ liệu chi tiết match/game/draft/lineup cho Esports Data; workflow AER/ranking/bulk import nằm ở `/html/admin.html#aer-data`.
+        - Stage đang lưu dạng string nên admin page cho phép giữ preset cũ hoặc nhập stage custom nếu bracket cần chi tiết hơn.
 
     - Esports Data
       - Route chính: `/esports/data`, `/html/esports-data.html`
@@ -368,8 +369,8 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
       - Ghi chú dữ liệu/DB:
         - Dashboard public hiện lấy KPI/chart/insight/table chủ yếu từ endpoint tổng hợp `GET /api/esports/data/dashboard`.
         - Filter `tournamentName`, `teamCode`, `dateFrom`, `dateTo` áp dụng đồng thời cho toàn bộ dashboard.
-        - Analytics đang dựa trên dữ liệu draft esports.
-        - Bảng liên quan nhìn thấy rõ: `esports_matches`, `esports_match_games`, `esports_match_draft_actions`; `Draft Accuracy` còn dùng thêm `heroes.ban_pick_score`.
+        - Analytics đang dựa trên `esports_game_drafts`; `Hero Statistics`/`Top Ban`, `Blue Side WR`, và `Draft Accuracy` đều aggregate từ bảng game draft mới.
+        - Bảng runtime liên quan: `esports_matches`, `esports_game_drafts`, `esports_teams`, `heroes`; old tables `esports_match_games`, `esports_match_draft_actions`, `esports_match_game_lineups` đã retired.
 
   - Wiki
     - Hero Wiki
@@ -393,14 +394,43 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
       - Người dùng được làm gì:
         - Xem danh sách spells/bổ trợ.
       - Admin được làm gì:
-        - Chưa thấy UI/API admin riêng cho spells.
+        - Quản lý JSON metadata tại `/html/admin-wiki-data.html`.
       - API chính:
         - `GET /api/spells`
         - `GET /api/spells/{slug}`
+        - `GET /api/admin/spells`
+        - `POST /api/admin/spells`
+        - `PUT /api/admin/spells/{slug}`
+        - `DELETE /api/admin/spells/{slug}`
       - Ghi chú dữ liệu/DB:
-        - Dữ liệu nằm ở bảng `spells`.
+        - Runtime đọc/ghi JSON tại `demo/src/main/resources/static/data/spells.json`.
+        - `WikiJsonStorageService` ưu tiên external data dir qua `atg.data.dir`; nếu không có thì fallback bundled JSON/classpath và ghi vào `src/main/resources/static/data` khi chạy local.
+        - Asset path giữ nguyên `/images/spells/{slug}.png`.
+        - `create-guide.html` dùng cùng API `/api/spells`; guide lưu `spell`, `spellSlug`, `spellIconUrl` dạng string trong `contentData`.
+        - Không còn runtime dependency vào bảng DB `spells`; `schema.sql` và `data.sql` cũ cho spells đã bị vô hiệu hóa, và có script `demo/sql/drop_spells_table.sql` để cleanup DB riêng.
 
-    - Trang bị / Ngọc / Phù hiệu
+    - Phù hiệu / Enchantments
+      - Route chính: `/html/wiki.html?tab=enchantments`
+      - Người dùng được làm gì:
+        - Xem danh sách Phù hiệu theo 4 nhánh.
+        - Xem card gồm icon, tên, nhánh, và cấp nếu có.
+      - Admin được làm gì:
+        - Quản lý JSON metadata tại `/html/admin-wiki-data.html`, có filter theo branch và preview icon.
+      - API chính:
+        - `GET /api/enchantments`
+        - `GET /api/enchantments/{slug}`
+        - `GET /api/admin/enchantments`
+        - `POST /api/admin/enchantments`
+        - `PUT /api/admin/enchantments/{slug}`
+        - `DELETE /api/admin/enchantments/{slug}`
+      - Ghi chú dữ liệu/DB:
+        - Runtime đọc/ghi JSON tại `demo/src/main/resources/static/data/enchantments.json`.
+        - JSON hiện nhóm dữ liệu theo 4 branch asset: `thanh-khoi-nguyen`, `thap-quang-minh`, `vuc-hon-mang`, `rung-nguyen-sinh`.
+        - Asset path giữ nguyên convention `/images/enchantments/{category-folder}/{file-name}`.
+        - 4 file cùng tên folder được dùng làm icon nhánh trong Wiki; icon Phù hiệu thực tế map theo file thật trong từng folder.
+        - Không còn runtime dependency vào bảng/entity `phu_hieu`/`Enchantment`; nếu DB legacy vẫn còn `phu_hieu` hoặc `huong_dan_phu_hieu` thì cleanup chạy riêng bằng `demo/sql/drop_phu_hieu_tables_after_guide_migration.sql`.
+
+    - Trang bị / Ngọc
       - Route chính: tab trong `/html/wiki.html`
       - Người dùng được làm gì:
         - Hiện chỉ thấy placeholder `Coming Soon`.
@@ -409,7 +439,7 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
       - API chính:
         - Chưa thấy controller/API public tương ứng; cần kiểm tra thêm.
       - Ghi chú dữ liệu/DB:
-        - Có entity liên quan trong project, nhưng UI public hiện chưa hoàn chỉnh.
+        - Chưa thấy UI public hoàn chỉnh trong phạm vi đã inspect.
 
     - Esports Data
       - Ghi chú menu:
@@ -472,8 +502,8 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
       - Route chính: `/html/admin.html`
       - Admin được làm gì:
         - Xem tổng quan.
-        - Điều hướng sang module user, team, esports, hero, attributes.
-        - Có link sang page `Esports Data / Draft`.
+        - Điều hướng sang module user, hero, attributes, `AER Data`, và `Esports Data`.
+        - Sidebar admin tách rõ `AER Data` và `Esports Data`, không còn dùng label `Esports Data / Draft` gây nhầm lẫn.
       - API chính:
         - Gọi các API admin theo từng module con.
       - Ghi chú dữ liệu/DB:
@@ -520,30 +550,46 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
       - Ghi chú dữ liệu/DB:
         - Dữ liệu user chính ở `users`.
 
-    - Quản lý esports
+    - AER Data
       - Route/UI chính:
-        - Section `Teams` trong `/html/admin.html`
-        - Section `Giải đấu AER 2026` trong `/html/admin.html`
-        - Page riêng `/html/admin-esports-data.html`
+        - Section `AER Data` trong `/html/admin.html`
+        - Canonical hash: `/html/admin.html#aer-data`
+        - Legacy hash `/html/admin.html#teams` và `/html/admin.html#esports` cùng mở lại module này để không làm hỏng flow cũ.
       - Admin được làm gì:
         - CRUD đội tuyển.
-        - Bulk import match history.
-        - Thêm/sửa/xóa trận.
-        - Thêm/sửa/xóa game trong match.
-        - Nhập/sửa 18 phase draft theo hard phase rule.
-        - Nhập/sửa final lineup 10 hero sau swap.
-        - Reset match history và Elo.
+        - Bulk import match history/ranking theo workflow AER cũ.
+        - Thêm/sửa/xóa trận tổng quát để phục vụ ranking/AER.
+        - Reset match history và chạy lại Elo.
       - API chính:
         - `GET/POST/PUT/DELETE /api/admin/esports/teams...`
         - `POST /api/admin/esports/teams/matches/bulk-import`
         - `GET/POST/PUT/DELETE /api/admin/esports/matches...`
-        - `GET/POST /api/admin/esports/matches/{matchId}/games`
-        - `GET/PUT/DELETE /api/admin/esports/games/{gameId}`
-        - `GET/PUT /api/admin/esports/games/{gameId}/draft-actions`
-        - `GET/PUT /api/admin/esports/games/{gameId}/lineups`
+        - `DELETE /api/admin/esports/matches`
       - Ghi chú dữ liệu/DB:
-        - Bảng chính `esports_teams`, `esports_matches`, `esports_match_games`, `esports_match_draft_actions`, `esports_match_game_lineups`.
-        - UI admin hiện đã có page riêng để quản trị game/draft/lineup mà không đổi DB schema.
+        - Bảng chính `esports_teams`, `esports_matches`.
+        - Bulk Import vẫn nằm ở module này và không làm mất dữ liệu ranking/AER cũ ngoài hành vi reset/import vốn có của flow hiện tại.
+
+    - Esports Data
+      - Route/UI chính:
+        - Page chính `/html/admin-esports-data.html`
+      - Admin được làm gì:
+        - Thêm/sửa series chi tiết với `giải/tier`, `stage`, `match_date`, `team 1`, `team 2`, `score1`, `score2`.
+        - Chọn lại match từ danh sách để load game của series và gợi ý score series từ game winners.
+        - Thêm/sửa/xóa game trong match với `game_number`, `blue_team`, `red_team`, `winner_team`, `duration_seconds`, `draft_format`.
+        - Nhập/sửa 18 phase draft theo hard phase rule; admin chỉ chọn hero, không được đổi `team_side`/`action_type`.
+        - Nhập/sửa final lineup 10 hero sau swap; chỉ chọn từ 10 PICK của game.
+        - Dùng panel verify để check match metadata, game winner, `18/18`, `8 BAN / 10 PICK`, `10/10 lineup`, hero trùng, rồi mở nhanh `/esports/data`.
+      - API chính:
+        - `GET/POST/PUT/DELETE /api/admin/esports/matches...`
+        - `GET/POST /api/admin/esports/matches/{matchId}/game-drafts`
+        - `GET/PUT/DELETE /api/admin/esports/game-drafts/{gameDraftId}`
+        - `GET /api/admin/esports/game-drafts/export`
+        - `POST /api/admin/esports/game-drafts/import/preview`
+        - `POST /api/admin/esports/game-drafts/import/confirm`
+      - Ghi chú dữ liệu/DB:
+        - Bảng chính runtime là `esports_matches`, `esports_game_drafts`, `esports_franchises`, `esports_tournaments`, `esports_tournament_teams`.
+        - UI admin dùng page riêng để nhập game draft record, import preview/confirm, export CSV, và verify nhanh trước khi xem thống kê public.
+        - Tournament Management quản lý trực tiếp franchise/tournament/roster; `esports_tournaments.aer_tier` là nguồn tier cho CSV -> AER JSON sau này.
 
     - Quản lý tier list
       - Route/UI chính:
@@ -558,10 +604,18 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
       - Ghi chú dữ liệu/DB:
         - Dùng chung dữ liệu `tier_lists`, `tier_list_admin_ratings`.
 
-    - Quản lý spells
-      - Trạng thái:
-        - Chưa thấy UI/API admin riêng cho spells trong phạm vi đã inspect.
-        - Cần kiểm tra thêm.
+    - Quản lý dữ liệu Wiki
+      - Route chính: `/html/admin-wiki-data.html`
+      - Admin được làm gì:
+        - CRUD `Bổ trợ` qua JSON `spells.json`.
+        - CRUD `Phù hiệu` qua JSON `enchantments.json`.
+        - Xem preview icon, validate `slug/name/iconUrl`, lọc Phù hiệu theo branch, và nhận cảnh báo trước khi xóa dữ liệu legacy khó kiểm tra reference.
+      - API chính:
+        - `GET/POST/PUT/DELETE /api/admin/spells...`
+        - `GET/POST/PUT/DELETE /api/admin/enchantments...`
+      - Ghi chú dữ liệu/DB:
+        - Đây là admin module cho metadata Wiki, không upload ảnh.
+        - Ảnh vẫn lấy trực tiếp từ `/images/spells/...` và `/images/enchantments/...`.
 
     - Quản lý guide / cẩm nang
       - Route/UI chính: section `Cẩm nang` trong `/html/admin.html`

@@ -1,15 +1,19 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.esports.EsportsDashboardResponse;
+import com.example.demo.dto.esports.EsportsFranchiseResponse;
 import com.example.demo.dto.esports.EsportsHeroBanStatResponse;
 import com.example.demo.dto.esports.EsportsHeroStatResponse;
+import com.example.demo.dto.esports.EsportsTournamentResponse;
+import com.example.demo.dto.esports.EsportsTournamentTeamResponse;
 import com.example.demo.dto.esports.EsportsTournamentOptionResponse;
 import com.example.demo.entity.EsportsMatch;
 import com.example.demo.entity.EsportsTeam;
 import com.example.demo.repository.EsportsMatchRepository;
 import com.example.demo.repository.EsportsTeamRepository;
 import com.example.demo.service.EsportsDataService;
-import com.example.demo.service.EsportsDraftService;
+import com.example.demo.service.EsportsFranchiseService;
+import com.example.demo.service.EsportsTournamentService;
 import com.example.demo.util.EsportsTournamentCatalog;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +28,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 /**
@@ -37,17 +40,20 @@ public class EsportsController {
 
     private final EsportsTeamRepository esportsTeamRepository;
     private final EsportsMatchRepository esportsMatchRepository;
-    private final EsportsDraftService esportsDraftService;
     private final EsportsDataService esportsDataService;
+    private final EsportsFranchiseService esportsFranchiseService;
+    private final EsportsTournamentService esportsTournamentService;
 
     public EsportsController(EsportsTeamRepository esportsTeamRepository,
                              EsportsMatchRepository esportsMatchRepository,
-                             EsportsDraftService esportsDraftService,
-                             EsportsDataService esportsDataService) {
+                             EsportsDataService esportsDataService,
+                             EsportsFranchiseService esportsFranchiseService,
+                             EsportsTournamentService esportsTournamentService) {
         this.esportsTeamRepository = esportsTeamRepository;
         this.esportsMatchRepository = esportsMatchRepository;
-        this.esportsDraftService = esportsDraftService;
         this.esportsDataService = esportsDataService;
+        this.esportsFranchiseService = esportsFranchiseService;
+        this.esportsTournamentService = esportsTournamentService;
     }
 
     @GetMapping("/teams")
@@ -76,44 +82,58 @@ public class EsportsController {
         return ResponseEntity.ok(matches);
     }
 
-    @GetMapping("/matches/{matchId}/games")
-    public ResponseEntity<?> getMatchGames(@PathVariable Long matchId) {
-        try {
-            return ResponseEntity.ok(esportsDraftService.getGamesByMatchId(matchId));
-        } catch (NoSuchElementException e) {
-            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    @GetMapping("/games/{gameId}/draft-actions")
-    public ResponseEntity<?> getGameDraftActions(@PathVariable Long gameId) {
-        try {
-            return ResponseEntity.ok(esportsDraftService.getDraftActionsByGameId(gameId));
-        } catch (NoSuchElementException e) {
-            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    @GetMapping("/games/{gameId}/lineups")
-    public ResponseEntity<?> getGameLineups(@PathVariable Long gameId) {
-        try {
-            return ResponseEntity.ok(esportsDraftService.getLineupsByGameId(gameId));
-        } catch (NoSuchElementException e) {
-            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
-        }
-    }
-
     @GetMapping("/data/tournaments")
     public ResponseEntity<List<EsportsTournamentOptionResponse>> getDraftTournaments() {
         return ResponseEntity.ok(esportsDataService.getAvailableTournaments());
     }
 
+    @GetMapping("/franchises")
+    public ResponseEntity<List<EsportsFranchiseResponse>> getFranchises() {
+        return ResponseEntity.ok(esportsFranchiseService.getPublicFranchises());
+    }
+
+    @GetMapping("/franchises/{code}")
+    public ResponseEntity<?> getFranchiseDetail(@PathVariable String code) {
+        try {
+            return ResponseEntity.ok(esportsFranchiseService.getFranchiseByCode(code));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/tournaments")
+    public ResponseEntity<List<EsportsTournamentResponse>> getTournaments(
+            @RequestParam(required = false) Long franchiseId,
+            @RequestParam(required = false) String franchiseCode) {
+        return ResponseEntity.ok(esportsTournamentService.getPublicTournaments(franchiseId, franchiseCode));
+    }
+
+    @GetMapping("/tournaments/{id}")
+    public ResponseEntity<?> getTournamentDetail(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(esportsTournamentService.getTournamentDetail(id));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/tournaments/{id}/teams")
+    public ResponseEntity<?> getTournamentTeams(@PathVariable Long id) {
+        try {
+            List<EsportsTournamentTeamResponse> payload = esportsTournamentService.listTournamentTeams(id);
+            return ResponseEntity.ok(payload);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @GetMapping("/data/top-banned-heroes")
     public ResponseEntity<?> getTopBannedHeroes(
+            @RequestParam(required = false) Long tournamentId,
             @RequestParam(required = false) String tournamentName,
             @RequestParam(defaultValue = "5") Integer limit) {
         try {
-            List<EsportsHeroBanStatResponse> payload = esportsDataService.getTopBannedHeroes(tournamentName, limit);
+            List<EsportsHeroBanStatResponse> payload = esportsDataService.getTopBannedHeroes(tournamentId, tournamentName, limit);
             return ResponseEntity.ok(payload);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -122,10 +142,11 @@ public class EsportsController {
 
     @GetMapping("/data/top-blue-banned-heroes")
     public ResponseEntity<?> getTopBlueBannedHeroes(
+            @RequestParam(required = false) Long tournamentId,
             @RequestParam(required = false) String tournamentName,
             @RequestParam(defaultValue = "5") Integer limit) {
         try {
-            List<EsportsHeroBanStatResponse> payload = esportsDataService.getTopBlueBannedHeroes(tournamentName, limit);
+            List<EsportsHeroBanStatResponse> payload = esportsDataService.getTopBlueBannedHeroes(tournamentId, tournamentName, limit);
             return ResponseEntity.ok(payload);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -133,9 +154,10 @@ public class EsportsController {
     }
 
     @GetMapping("/data/hero-stats")
-    public ResponseEntity<?> getHeroStats(@RequestParam(required = false) String tournamentName) {
+    public ResponseEntity<?> getHeroStats(@RequestParam(required = false) Long tournamentId,
+                                          @RequestParam(required = false) String tournamentName) {
         try {
-            List<EsportsHeroStatResponse> payload = esportsDataService.getHeroStats(tournamentName);
+            List<EsportsHeroStatResponse> payload = esportsDataService.getHeroStats(tournamentId, tournamentName);
             return ResponseEntity.ok(payload);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -144,12 +166,14 @@ public class EsportsController {
 
     @GetMapping("/data/dashboard")
     public ResponseEntity<?> getDashboard(
+            @RequestParam(required = false) Long tournamentId,
             @RequestParam(required = false) String tournamentName,
             @RequestParam(required = false) String teamCode,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
         try {
             EsportsDashboardResponse payload = esportsDataService.getDashboard(
+                    tournamentId,
                     tournamentName,
                     teamCode,
                     dateFrom,
@@ -173,10 +197,18 @@ public class EsportsController {
                 displayTeamName(match.getTeam2Code(), team2),
                 teamLogo(match.getTeam2Code(), team2),
                 match.getScore2(),
-                EsportsTournamentCatalog.resolveTournamentName(match.getTier()),
+                resolveMatchTournamentName(match),
+                match.getTournamentId(),
                 match.getTier(),
                 match.getStage()
         );
+    }
+
+    private String resolveMatchTournamentName(EsportsMatch match) {
+        if (match != null && match.getTournament() != null && match.getTournament().getName() != null && !match.getTournament().getName().isBlank()) {
+            return match.getTournament().getName();
+        }
+        return EsportsTournamentCatalog.resolveTournamentName(match != null ? match.getTier() : null);
     }
 
     private static String normalizeCode(String code) {
@@ -207,6 +239,7 @@ public class EsportsController {
             String team2Logo,
             Integer team2Score,
             String tournamentName,
+            Long tournamentId,
             String tournamentTier,
             String stage
     ) {

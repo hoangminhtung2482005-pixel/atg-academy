@@ -74,6 +74,11 @@
             <span>Đặc điểm tướng</span>
         </a>
 
+        <a class="nav-item w-full" href="/html/admin-wiki-data.html" title="Bổ trợ và Phù hiệu">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 4h6a2 2 0 012 2v12a2 2 0 01-2 2H9a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg>
+            <span>Bổ trợ &amp; Phù hiệu</span>
+        </a>
+
         <button type="button" class="nav-item w-full" data-page="guides" title="Cẩm nang">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
             <span>Cẩm nang</span>
@@ -86,19 +91,14 @@
 
         <div class="text-[0.6rem] text-slate-400 font-bold uppercase tracking-[3px] px-4 mt-5 mb-3">Esports</div>
 
-        <button type="button" class="nav-item w-full" data-page="teams" title="Quản lý Đội">
+        <button type="button" class="nav-item w-full" data-page="aer-data" title="AER Data">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m9-4a4 4 0 10-8 0 4 4 0 008 0zm6 4a4 4 0 10-8 0"/></svg>
-            <span>Quản lý Đội</span>
+            <span>AER Data</span>
         </button>
 
-        <button type="button" class="nav-item w-full" data-page="esports" title="Giải đấu AER 2026">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
-            <span>Giải đấu AER 2026</span>
-        </button>
-
-        <a class="nav-item w-full" href="/html/admin-esports-data.html" title="Esports Data / Draft">
+        <a class="nav-item w-full" href="/html/admin-esports-data.html" title="Esports Data">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h10"/><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l3 3-3 3"/></svg>
-            <span>Esports Data / Draft</span>
+            <span>Esports Data</span>
         </a>
     </nav>
 
@@ -122,9 +122,9 @@
                     <div>
                         <p class="text-[0.68rem] text-accent-blue font-bold uppercase tracking-[3px] mb-2">Admin Dashboard</p>
                         <h2 class="font-orbitron text-xl font-bold tracking-widest text-slate-900 uppercase">Tổng quan hệ thống</h2>
-                        <p class="text-sm text-slate-500 mt-2">Dùng sidebar để đi thẳng đến từng module quản trị. Quản lý Tướng và Đặc điểm tướng hiện là hai trang riêng, không còn trang trung gian.</p>
+                        <p class="text-sm text-slate-500 mt-2">Dùng sidebar để đi thẳng đến từng module quản trị. Flow esports đã tách rõ: <strong class="text-slate-700">AER Data</strong> giữ dữ liệu ranking/đội/bulk import/match history, còn <strong class="text-slate-700">Esports Data</strong> dùng để nhập series/game/draft chi tiết.</p>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
                         <a href="/html/admin-heroes.html" class="rounded-xl border border-slate-200 bg-slate-50 hover:bg-white p-4 transition-all">
                             <div class="text-2xl mb-3">⚔</div>
                             <h3 class="font-semibold text-slate-900">Quản lý Tướng</h3>
@@ -140,15 +140,20 @@
                             <h3 class="font-semibold text-slate-900">Người dùng</h3>
                             <p class="text-xs text-slate-500 mt-1">Theo dõi tài khoản và phân quyền.</p>
                         </button>
-                        <button type="button" onclick="switchPage('esports')" class="rounded-xl border border-slate-200 bg-slate-50 hover:bg-white p-4 text-left transition-all">
+                        <a href="/html/admin-wiki-data.html" class="rounded-xl border border-slate-200 bg-slate-50 hover:bg-white p-4 transition-all">
+                            <div class="text-2xl mb-3">✨</div>
+                            <h3 class="font-semibold text-slate-900">Bổ trợ &amp; Phù hiệu</h3>
+                            <p class="text-xs text-slate-500 mt-1">Quản lý JSON metadata cho Wiki Bổ trợ và Phù hiệu.</p>
+                        </a>
+                        <button type="button" onclick="switchPage('aer-data')" class="rounded-xl border border-slate-200 bg-slate-50 hover:bg-white p-4 text-left transition-all">
                             <div class="text-2xl mb-3">🏆</div>
-                            <h3 class="font-semibold text-slate-900">Giải đấu AER 2026</h3>
-                            <p class="text-xs text-slate-500 mt-1">Quản lý lịch đấu, đội tuyển và kết quả.</p>
+                            <h3 class="font-semibold text-slate-900">AER Data</h3>
+                            <p class="text-xs text-slate-500 mt-1">Quản lý đội, bulk import, match history và dữ liệu ranking/AER tổng quát hiện có.</p>
                         </button>
                         <a href="/html/admin-esports-data.html" class="rounded-xl border border-slate-200 bg-slate-50 hover:bg-white p-4 transition-all">
-                            <div class="text-2xl mb-3">📊</div>
-                            <h3 class="font-semibold text-slate-900">Esports Data / Draft</h3>
-                            <p class="text-xs text-slate-500 mt-1">Quản lý game, 18 phase draft và final lineup để thống kê public cập nhật đúng.</p>
+                            <div class="text-2xl mb-3">🎮</div>
+                            <h3 class="font-semibold text-slate-900">Esports Data</h3>
+                            <p class="text-xs text-slate-500 mt-1">Nhập series, game, 18 phase draft, final lineup và verify thống kê public `/esports/data`.</p>
                         </a>
                     </div>
                 </div>
@@ -237,8 +242,21 @@
             </div>
         </section>
 
-        <!-- Page: Teams Management -->
-        <section id="page-teams" class="page-section space-y-6">
+        <!-- Page: AER Data -->
+        <section id="page-aer-data" class="page-section space-y-6">
+            <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
+                <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                    <div>
+                        <p class="text-[0.68rem] text-accent-blue font-bold uppercase tracking-[3px] mb-2">AER Data</p>
+                        <h2 class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Ranking / Teams / Match History</h2>
+                        <p class="text-sm text-slate-500 mt-2">Module này giữ workflow AER/ranking cũ: quản lý đội, bulk import, match history và reset Elo. Flow nhập draft chi tiết đã tách sang trang <strong class="text-slate-700">Esports Data</strong>.</p>
+                    </div>
+                    <a href="/html/admin-esports-data.html" class="btn-press inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-all hover:bg-white">
+                        <span>🎮</span>
+                        <span>Mở Esports Data</span>
+                    </a>
+                </div>
+            </div>
 
             <!-- Add Team Button -->
             <div class="flex items-center justify-between">
@@ -279,10 +297,6 @@
                     </table>
                 </div>
             </div>
-        </section>
-
-        <!-- Page: Esports -->
-        <section id="page-esports" class="page-section space-y-6">
 
             <!-- Bulk Import -->
             <div class="card-glow rounded-xl border border-slate-200 bg-white shadow-sm backdrop-blur-sm overflow-hidden">
@@ -290,7 +304,7 @@
                     <span class="text-xl">📦</span>
                     <div>
                         <h2 class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Bulk Import</h2>
-                        <p class="text-xs text-slate-500 mt-0.5">Nhập liệu hàng loạt từ dữ liệu raw text</p>
+                        <p class="text-xs text-slate-500 mt-0.5">Nhập liệu hàng loạt cho ranking/AER từ dữ liệu raw text</p>
                     </div>
                 </div>
                 <div class="p-6 space-y-4">
@@ -315,7 +329,7 @@
                     <span class="text-xl">🎮</span>
                     <div>
                         <h2 class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Add Single Match</h2>
-                        <p class="text-xs text-slate-500 mt-0.5">Thêm một trận đấu đơn lẻ vào hệ thống</p>
+                        <p class="text-xs text-slate-500 mt-0.5">Thêm nhanh một trận vào workflow AER/ranking hiện có</p>
                     </div>
                 </div>
                 <div class="p-6">
@@ -525,8 +539,13 @@
         dashboard: { title: 'Tổng quan' },
         guides: { title: 'Quản lý Cẩm nang' },
         users: { title: 'Quản lý người dùng', onEnter: function () { loadUsers(0); } },
-        teams: { title: 'Quản lý Đội Tuyển', onEnter: loadTeams },
-        esports: { title: 'Giải đấu AER 2026', onEnter: loadMatches }
+        'aer-data': {
+            title: 'AER Data',
+            onEnter: function () {
+                loadTeams();
+                loadMatches();
+            }
+        }
     };
 
     // ==================== SWITCH PAGE ====================
@@ -558,6 +577,9 @@
 
     function openHashPage() {
         var pageId = window.location.hash ? window.location.hash.substring(1) : '';
+        if (pageId === 'teams' || pageId === 'esports') {
+            pageId = 'aer-data';
+        }
         if (pageId && PAGES[pageId]) {
             switchPage(pageId);
         }

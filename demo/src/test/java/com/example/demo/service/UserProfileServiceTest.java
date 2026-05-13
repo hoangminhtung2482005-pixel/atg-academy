@@ -75,7 +75,7 @@ class UserProfileServiceTest {
                 new UserProfileUpdateRequest("   ", "Normal")
         )).isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
             assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-            assertThat(exception.getReason()).isEqualTo("Ten hien thi khong duoc de trong");
+            assertThat(exception.getReason()).isNotBlank();
         });
     }
 

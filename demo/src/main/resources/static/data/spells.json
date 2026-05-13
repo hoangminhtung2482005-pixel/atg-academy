@@ -1,0 +1,74 @@
+[
+  {
+    "slug": "boc-pha",
+    "name": "Bộc phá",
+    "iconUrl": "/images/spells/boc-pha.png",
+    "description": null
+  },
+  {
+    "slug": "cap-cuu",
+    "name": "Cấp cứu",
+    "iconUrl": "/images/spells/cap-cuu.png",
+    "description": null
+  },
+  {
+    "slug": "gam-thet",
+    "name": "Gầm thét",
+    "iconUrl": "/images/spells/gam-thet.png",
+    "description": null
+  },
+  {
+    "slug": "la-chan-sinh-menh",
+    "name": "Lá chắn sinh mệnh",
+    "iconUrl": "/images/spells/la-chan-sinh-menh.png",
+    "description": null
+  },
+  {
+    "slug": "ngat-ngu",
+    "name": "Ngất ngư",
+    "iconUrl": "/images/spells/ngat-ngu.png",
+    "description": null
+  },
+  {
+    "slug": "suy-nhuoc",
+    "name": "Suy nhược",
+    "iconUrl": "/images/spells/suy-nhuoc.png",
+    "description": null
+  },
+  {
+    "slug": "thanh-tay",
+    "name": "Thanh tẩy",
+    "iconUrl": "/images/spells/thanh-tay.png",
+    "description": null
+  },
+  {
+    "slug": "toc-bien",
+    "name": "Tốc biến",
+    "iconUrl": "/images/spells/toc-bien.png",
+    "description": null
+  },
+  {
+    "slug": "toc-hanh",
+    "name": "Tốc hành",
+    "iconUrl": "/images/spells/toc-hanh.png",
+    "description": null
+  },
+  {
+    "slug": "trung-tri",
+    "name": "Trừng trị",
+    "iconUrl": "/images/spells/trung-tri.png",
+    "description": null
+  },
+  {
+    "slug": "tu-bao-bon",
+    "name": "Tự bạo bổn",
+    "iconUrl": "/images/spells/tu-bao-bon.png",
+    "description": null
+  },
+  {
+    "slug": "vien-binh-lien-hiep",
+    "name": "Viện binh liên hiệp",
+    "iconUrl": "/images/spells/vien-binh-lien-hiep.png",
+    "description": null
+  }
+]

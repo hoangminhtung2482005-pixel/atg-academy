@@ -1,14 +1,20 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.esports.EsportsDraftActionRequest;
-import com.example.demo.dto.esports.EsportsDraftActionUpsertRequest;
-import com.example.demo.dto.esports.EsportsMatchGameLineupUpsertRequest;
-import com.example.demo.dto.esports.EsportsMatchGameRequest;
+import com.example.demo.dto.esports.EsportsFranchiseRequest;
+import com.example.demo.dto.esports.EsportsTournamentRequest;
+import com.example.demo.dto.esports.EsportsTournamentTeamRequest;
+import com.example.demo.dto.esports.EsportsGameDraftImportConfirmRequest;
+import com.example.demo.dto.esports.EsportsGameDraftRequest;
 import com.example.demo.entity.EsportsMatch;
 import com.example.demo.entity.EsportsTeam;
 import com.example.demo.service.EsportsAdminService;
 import com.example.demo.service.EsportsDraftService;
+import com.example.demo.service.EsportsFranchiseService;
+import com.example.demo.service.EsportsTournamentService;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,8 +23,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -29,11 +39,17 @@ public class EsportsAdminController {
 
     private final EsportsAdminService esportsAdminService;
     private final EsportsDraftService esportsDraftService;
+    private final EsportsFranchiseService esportsFranchiseService;
+    private final EsportsTournamentService esportsTournamentService;
 
     public EsportsAdminController(EsportsAdminService esportsAdminService,
-                                  EsportsDraftService esportsDraftService) {
+                                  EsportsDraftService esportsDraftService,
+                                  EsportsFranchiseService esportsFranchiseService,
+                                  EsportsTournamentService esportsTournamentService) {
         this.esportsAdminService = esportsAdminService;
         this.esportsDraftService = esportsDraftService;
+        this.esportsFranchiseService = esportsFranchiseService;
+        this.esportsTournamentService = esportsTournamentService;
     }
 
     @GetMapping("/teams")
@@ -62,6 +78,105 @@ public class EsportsAdminController {
         }
     }
 
+    @GetMapping("/franchises")
+    public ResponseEntity<?> getFranchises() {
+        return ResponseEntity.ok(esportsFranchiseService.getAdminFranchises());
+    }
+
+    @PostMapping("/franchises")
+    public ResponseEntity<?> createFranchise(@RequestBody EsportsFranchiseRequest request) {
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED).body(esportsFranchiseService.createFranchise(request));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/franchises/{id}")
+    public ResponseEntity<?> updateFranchise(@PathVariable Long id,
+                                             @RequestBody EsportsFranchiseRequest request) {
+        try {
+            return ResponseEntity.ok(esportsFranchiseService.updateFranchise(id, request));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/franchises/{id}")
+    public ResponseEntity<?> deleteFranchise(@PathVariable Long id) {
+        try {
+            esportsFranchiseService.deactivateFranchise(id);
+            return ResponseEntity.ok(Map.of("message", "Da deactivate franchise voi ID: " + id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/tournaments")
+    public ResponseEntity<?> getTournaments(@RequestParam(required = false) Long franchiseId,
+                                            @RequestParam(required = false) String franchiseCode) {
+        return ResponseEntity.ok(esportsTournamentService.getAdminTournaments(franchiseId, franchiseCode));
+    }
+
+    @PostMapping("/tournaments")
+    public ResponseEntity<?> createTournament(@RequestBody EsportsTournamentRequest request) {
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED).body(esportsTournamentService.createTournament(request));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/tournaments/{id}")
+    public ResponseEntity<?> updateTournament(@PathVariable Long id,
+                                              @RequestBody EsportsTournamentRequest request) {
+        try {
+            return ResponseEntity.ok(esportsTournamentService.updateTournament(id, request));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/tournaments/{id}")
+    public ResponseEntity<?> deleteTournament(@PathVariable Long id) {
+        try {
+            esportsTournamentService.deleteTournament(id);
+            return ResponseEntity.ok(Map.of("message", "Da xoa tournament voi ID: " + id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/tournaments/{id}/teams")
+    public ResponseEntity<?> getTournamentTeams(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(esportsTournamentService.listTournamentTeams(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/tournaments/{id}/teams")
+    public ResponseEntity<?> addTeamToTournament(@PathVariable Long id,
+                                                 @RequestBody EsportsTournamentTeamRequest request) {
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED).body(esportsTournamentService.addTeamToTournament(id, request));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/tournaments/{id}/teams/{teamId}")
+    public ResponseEntity<?> removeTeamFromTournament(@PathVariable Long id,
+                                                      @PathVariable Long teamId) {
+        try {
+            esportsTournamentService.removeTeamFromTournament(id, teamId);
+            return ResponseEntity.ok(Map.of("message", "Da xoa team khoi tournament."));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @PutMapping("/teams/{id}")
     public ResponseEntity<?> updateTeam(@PathVariable Long id, @RequestBody EsportsTeam team) {
         try {
@@ -76,7 +191,7 @@ public class EsportsAdminController {
     public ResponseEntity<?> deleteTeam(@PathVariable Long id) {
         try {
             esportsAdminService.deleteTeam(id);
-            return ResponseEntity.ok(Map.of("message", "Đã xóa đội tuyển với ID: " + id));
+            return ResponseEntity.ok(Map.of("message", "Da xoa doi tuyen voi ID: " + id));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", e.getMessage()));
@@ -106,7 +221,7 @@ public class EsportsAdminController {
     public ResponseEntity<?> resetMatchHistory() {
         long deletedCount = esportsAdminService.resetMatchHistory();
         return ResponseEntity.ok(Map.of(
-                "message", "Đã xóa toàn bộ Match History và reset Elo.",
+                "message", "Da xoa toan bo Match History va reset Elo.",
                 "deletedCount", deletedCount
         ));
     }
@@ -146,28 +261,28 @@ public class EsportsAdminController {
     public ResponseEntity<?> deleteMatch(@PathVariable Long id) {
         try {
             esportsAdminService.deleteMatch(id);
-            return ResponseEntity.ok(Map.of("message", "Đã xóa trận đấu với ID: " + id));
+            return ResponseEntity.ok(Map.of("message", "Da xoa tran dau voi ID: " + id));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", e.getMessage()));
         }
     }
 
-    @GetMapping("/matches/{matchId}/games")
-    public ResponseEntity<?> getGamesByMatchId(@PathVariable Long matchId) {
+    @GetMapping("/matches/{matchId}/game-drafts")
+    public ResponseEntity<?> getGameDraftsByMatchId(@PathVariable Long matchId) {
         try {
-            return ResponseEntity.ok(esportsDraftService.getGamesByMatchId(matchId));
+            return ResponseEntity.ok(esportsDraftService.listGameDraftsByMatch(matchId));
         } catch (NoSuchElementException e) {
             return error(HttpStatus.NOT_FOUND, e);
         }
     }
 
-    @PostMapping("/matches/{matchId}/games")
-    public ResponseEntity<?> createGame(@PathVariable Long matchId,
-                                        @RequestBody EsportsMatchGameRequest request) {
+    @PostMapping("/matches/{matchId}/game-drafts")
+    public ResponseEntity<?> createGameDraft(@PathVariable Long matchId,
+                                             @RequestBody EsportsGameDraftRequest request) {
         try {
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(esportsDraftService.createGame(matchId, request));
+                    .body(esportsDraftService.createGameDraft(matchId, request));
         } catch (NoSuchElementException e) {
             return error(HttpStatus.NOT_FOUND, e);
         } catch (IllegalArgumentException e) {
@@ -175,20 +290,47 @@ public class EsportsAdminController {
         }
     }
 
-    @GetMapping("/games/{gameId}")
-    public ResponseEntity<?> getGame(@PathVariable Long gameId) {
+    @GetMapping("/game-drafts/{gameDraftId}")
+    public ResponseEntity<?> getGameDraft(@PathVariable Long gameDraftId) {
         try {
-            return ResponseEntity.ok(esportsDraftService.getGame(gameId));
+            return ResponseEntity.ok(esportsDraftService.getGameDraft(gameDraftId));
         } catch (NoSuchElementException e) {
             return error(HttpStatus.NOT_FOUND, e);
         }
     }
 
-    @PutMapping("/games/{gameId}")
-    public ResponseEntity<?> updateGame(@PathVariable Long gameId,
-                                        @RequestBody EsportsMatchGameRequest request) {
+    @PostMapping(value = "/game-drafts/import/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> previewGameDraftImport(@RequestPart("file") MultipartFile file,
+                                                    @RequestParam(defaultValue = "false") boolean overwriteExisting) {
         try {
-            return ResponseEntity.ok(esportsDraftService.updateGame(gameId, request));
+            return ResponseEntity.ok(esportsDraftService.previewGameDraftImport(file, overwriteExisting));
+        } catch (IllegalArgumentException e) {
+            return error(HttpStatus.BAD_REQUEST, e);
+        }
+    }
+
+    @PostMapping("/game-drafts/import/confirm")
+    public ResponseEntity<?> confirmGameDraftImport(@RequestBody EsportsGameDraftImportConfirmRequest request) {
+        try {
+            return ResponseEntity.ok(esportsDraftService.confirmGameDraftImport(request));
+        } catch (IllegalArgumentException e) {
+            return error(HttpStatus.BAD_REQUEST, e);
+        }
+    }
+
+    @GetMapping("/game-drafts/export")
+    public ResponseEntity<?> exportGameDraftsCsv(
+            @RequestParam(required = false) Long tournamentId,
+            @RequestParam(required = false) String tournamentName,
+            @RequestParam(required = false) Long matchId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
+        try {
+            byte[] csvBytes = esportsDraftService.exportGameDraftsCsv(tournamentId, tournamentName, matchId, dateFrom, dateTo);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"esports-game-drafts.csv\"")
+                    .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                    .body(csvBytes);
         } catch (NoSuchElementException e) {
             return error(HttpStatus.NOT_FOUND, e);
         } catch (IllegalArgumentException e) {
@@ -196,30 +338,11 @@ public class EsportsAdminController {
         }
     }
 
-    @DeleteMapping("/games/{gameId}")
-    public ResponseEntity<?> deleteGame(@PathVariable Long gameId) {
+    @PutMapping("/game-drafts/{gameDraftId}")
+    public ResponseEntity<?> updateGameDraft(@PathVariable Long gameDraftId,
+                                             @RequestBody EsportsGameDraftRequest request) {
         try {
-            esportsDraftService.deleteGame(gameId);
-            return ResponseEntity.ok(Map.of("message", "Đã xóa ván đấu với ID: " + gameId));
-        } catch (NoSuchElementException e) {
-            return error(HttpStatus.NOT_FOUND, e);
-        }
-    }
-
-    @GetMapping("/games/{gameId}/draft-actions")
-    public ResponseEntity<?> getDraftActionsByGameId(@PathVariable Long gameId) {
-        try {
-            return ResponseEntity.ok(esportsDraftService.getDraftActionsByGameId(gameId));
-        } catch (NoSuchElementException e) {
-            return error(HttpStatus.NOT_FOUND, e);
-        }
-    }
-
-    @PutMapping("/games/{gameId}/draft-actions")
-    public ResponseEntity<?> replaceDraftActions(@PathVariable Long gameId,
-                                                 @RequestBody EsportsDraftActionUpsertRequest request) {
-        try {
-            return ResponseEntity.ok(esportsDraftService.replaceDraftActions(gameId, request));
+            return ResponseEntity.ok(esportsDraftService.updateGameDraft(gameDraftId, request));
         } catch (NoSuchElementException e) {
             return error(HttpStatus.NOT_FOUND, e);
         } catch (IllegalArgumentException e) {
@@ -227,57 +350,11 @@ public class EsportsAdminController {
         }
     }
 
-    @GetMapping("/games/{gameId}/lineups")
-    public ResponseEntity<?> getLineupsByGameId(@PathVariable Long gameId) {
+    @DeleteMapping("/game-drafts/{gameDraftId}")
+    public ResponseEntity<?> deleteGameDraft(@PathVariable Long gameDraftId) {
         try {
-            return ResponseEntity.ok(esportsDraftService.getLineupsByGameId(gameId));
-        } catch (NoSuchElementException e) {
-            return error(HttpStatus.NOT_FOUND, e);
-        }
-    }
-
-    @PutMapping("/games/{gameId}/lineups")
-    public ResponseEntity<?> upsertLineups(@PathVariable Long gameId,
-                                           @RequestBody EsportsMatchGameLineupUpsertRequest request) {
-        try {
-            return ResponseEntity.ok(esportsDraftService.upsertLineups(gameId, request));
-        } catch (NoSuchElementException e) {
-            return error(HttpStatus.NOT_FOUND, e);
-        } catch (IllegalArgumentException e) {
-            return error(HttpStatus.BAD_REQUEST, e);
-        }
-    }
-
-    @PostMapping("/games/{gameId}/draft-actions")
-    public ResponseEntity<?> createDraftAction(@PathVariable Long gameId,
-                                               @RequestBody EsportsDraftActionRequest request) {
-        try {
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(esportsDraftService.createDraftAction(gameId, request));
-        } catch (NoSuchElementException e) {
-            return error(HttpStatus.NOT_FOUND, e);
-        } catch (IllegalArgumentException e) {
-            return error(HttpStatus.BAD_REQUEST, e);
-        }
-    }
-
-    @PutMapping("/draft-actions/{actionId}")
-    public ResponseEntity<?> updateDraftAction(@PathVariable Long actionId,
-                                               @RequestBody EsportsDraftActionRequest request) {
-        try {
-            return ResponseEntity.ok(esportsDraftService.updateDraftAction(actionId, request));
-        } catch (NoSuchElementException e) {
-            return error(HttpStatus.NOT_FOUND, e);
-        } catch (IllegalArgumentException e) {
-            return error(HttpStatus.BAD_REQUEST, e);
-        }
-    }
-
-    @DeleteMapping("/draft-actions/{actionId}")
-    public ResponseEntity<?> deleteDraftAction(@PathVariable Long actionId) {
-        try {
-            esportsDraftService.deleteDraftAction(actionId);
-            return ResponseEntity.ok(Map.of("message", "Đã xóa draft action với ID: " + actionId));
+            esportsDraftService.deleteGameDraft(gameDraftId);
+            return ResponseEntity.ok(Map.of("message", "Da xoa game draft voi ID: " + gameDraftId));
         } catch (NoSuchElementException e) {
             return error(HttpStatus.NOT_FOUND, e);
         }
