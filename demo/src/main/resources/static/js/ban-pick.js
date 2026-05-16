@@ -29,6 +29,162 @@
             return Math.round((score + Number.EPSILON) * 100) / 100;
         }
 
+        function escapeBanPickHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            }[char]));
+        }
+
+        function formatProfileNumber(value, fallback = 0) {
+            const normalized = Number(value);
+            return (Number.isFinite(normalized) ? normalized : fallback).toLocaleString('vi-VN');
+        }
+
+        function formatProfileWinRate(value) {
+            const normalized = Number(value);
+            const rounded = Number.isFinite(normalized)
+                ? Math.round((normalized + Number.EPSILON) * 100) / 100
+                : 0;
+            return `${rounded.toLocaleString('vi-VN', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2
+            })}%`;
+        }
+
+        function getProfileAvatarUrl(profile) {
+            const playerCardAvatar = profile?.playerCard?.avatarUrl;
+            if (typeof playerCardAvatar === "string" && playerCardAvatar.trim()) {
+                return playerCardAvatar.trim();
+            }
+            const onlineAvatar = profile?.user?.avatarUrl;
+            if (typeof onlineAvatar === "string" && onlineAvatar.trim()) {
+                return onlineAvatar.trim();
+            }
+            const authUser = getCurrentAuthUser();
+            if (typeof authUser?.picture === "string" && authUser.picture.trim()) {
+                return authUser.picture.trim();
+            }
+            if (typeof authUser?.avatarUrl === "string" && authUser.avatarUrl.trim()) {
+                return authUser.avatarUrl.trim();
+            }
+            return "";
+        }
+
+        function getProfilePlayerName(profile) {
+            const playerCardName = profile?.playerCard?.displayName;
+            if (typeof playerCardName === "string" && playerCardName.trim()) {
+                return playerCardName.trim();
+            }
+
+            const onlineName = profile?.user?.name;
+            if (typeof onlineName === "string" && onlineName.trim()) {
+                return onlineName.trim();
+            }
+
+            const authUser = getCurrentAuthUser();
+            if (typeof authUser?.displayName === "string" && authUser.displayName.trim()) {
+                return authUser.displayName.trim();
+            }
+            if (typeof authUser?.name === "string" && authUser.name.trim()) {
+                return authUser.name.trim();
+            }
+            return "Người chơi";
+        }
+
+        function formatProfileHistoryDate(value) {
+            if (!value) return "Không rõ thời gian";
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return String(value);
+            return date.toLocaleString('vi-VN', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function getProfileHistoryOutcome(item) {
+            if (item?.endReason === "DODGE_TIMEOUT") {
+                return `${item.winnerUser?.name || "Đối thủ"} thắng do hết giờ lượt draft`;
+            }
+            if (item?.endReason === "DODGE_DISCONNECT") {
+                return `${item.winnerUser?.name || "Đối thủ"} thắng do mất kết nối quá grace`;
+            }
+            if (item?.endReason === "DODGE_RESET") {
+                return `${item.winnerUser?.name || "Đối thủ"} thắng do reset giữa trận`;
+            }
+            if (item?.winnerSide === "BLUE") {
+                return `${item.blueUser?.name || "Bên Xanh"} thắng`;
+            }
+            if (item?.winnerSide === "RED") {
+                return `${item.redUser?.name || "Bên Đỏ"} thắng`;
+            }
+            if (item?.resultRecordedAt) {
+                return "Hòa theo điểm";
+            }
+            return "Chưa chốt kết quả";
+        }
+
+        function buildOnlinePlayerCardData(profile) {
+            return {
+                ...(profile?.playerCard || {}),
+                avatarUrl: profile?.playerCard?.avatarUrl || getProfileAvatarUrl(profile),
+                displayName: profile?.playerCard?.displayName || getProfilePlayerName(profile),
+                elo: profile?.playerCard?.elo ?? profile?.stats?.rating ?? 0,
+                variant: "solo-ban-pick"
+            };
+        }
+
+        function renderOnlineProfileHeroPills(stats) {
+            const heroes = Array.isArray(stats?.mostPickedHeroes)
+                ? stats.mostPickedHeroes.slice(0, 4)
+                : [];
+            if (!heroes.length) {
+                return '<div class="online-player-stats-empty">Chưa có dữ liệu pick.</div>';
+            }
+            return heroes.map(hero => `
+                <div class="online-player-pill">
+                    <strong>${escapeBanPickHtml(hero.heroName || "Hero")}</strong>
+                    <span>${formatProfileNumber(hero.count)} lần</span>
+                </div>
+            `).join('');
+        }
+
+        function renderOnlineProfileHistoryItems(history) {
+            const recentHistory = Array.isArray(history) ? history.slice(0, 3) : [];
+            if (!recentHistory.length) {
+                return '<div class="online-player-stats-empty">Hoàn tất một phòng solo để bắt đầu lưu lịch sử.</div>';
+            }
+            return recentHistory.map(item => `
+                <article class="online-player-history-item">
+                    <strong>${escapeBanPickHtml(item.blueUser?.name || "Bên Xanh")} vs ${escapeBanPickHtml(item.redUser?.name || "Bên Đỏ")}</strong>
+                    <span>Room ${escapeBanPickHtml(item.roomCode || "-")} · ${escapeBanPickHtml(formatProfileHistoryDate(item.createdAt))}</span>
+                    <span>${escapeBanPickHtml(getProfileHistoryOutcome(item))}</span>
+                </article>
+            `).join('');
+        }
+
+        function renderOnlineProfileMetricCards(stats) {
+            return `
+                <article class="online-player-stat">
+                    <span>W / L</span>
+                    <strong>${formatProfileNumber(stats?.wins)}/${formatProfileNumber(stats?.losses)}</strong>
+                </article>
+                <article class="online-player-stat">
+                    <span>Win rate</span>
+                    <strong>${escapeBanPickHtml(formatProfileWinRate(stats?.winRate))}</strong>
+                </article>
+                <article class="online-player-stat">
+                    <span>Tổng trận</span>
+                    <strong>${formatProfileNumber(stats?.totalMatches)}</strong>
+                </article>
+            `;
+        }
+
         async function loadHeroesFromApi() {
             try {
                 const response = await fetch('/api/wiki/heroes', { headers: { 'Accept': 'application/json' } });
@@ -97,12 +253,16 @@
         let onlineSocketClosing = false;
         let onlineInfoMessage = "";
         let onlineErrorMessage = "";
+        let onlineProfile = null;
+        let onlineProfileLoading = false;
+        let onlineProfileError = "";
         let onlineNewActionSlots = new Set();
         let onlinePresence = null;
         let suppressOnlineStatusMessage = false;
         let toastTimer = null;
         let lineupDragState = null;
         let selectedLineupSwap = null;
+        const ONLINE_DISCONNECT_GRACE_SECONDS = 10;
 
         const draftPhases = [
             { team: "blue", action: "ban", count: 1, label: "Xanh cấm lượt 1" },
@@ -220,6 +380,20 @@
             return isOnlineLineupAdjustment() || isLocalLineupAdjustment();
         }
 
+        function areBothOnlineLineupsConfirmed() {
+            return Boolean(onlineRoom?.blueLineupConfirmed) && Boolean(onlineRoom?.redLineupConfirmed);
+        }
+
+        function isOnlineDraftEvaluationUnlocked() {
+            return Boolean(isOnlineRoomMode() && onlineRoom?.status === "FINISHED" && areBothOnlineLineupsConfirmed());
+        }
+
+        function shouldShowTeamEvaluation() {
+            if (currentMode === "free" || currentMode === "standard") return true;
+            if (isSoloOneVOneMode()) return isOnlineDraftEvaluationUnlocked();
+            return false;
+        }
+
         async function initApp() {
             // 1. Fetch hero list from API (real DB IDs)
             await loadHeroesFromApi();
@@ -244,6 +418,7 @@
             startConfiguredMode();
             document.addEventListener('authChanged', () => {
                 if (currentMode !== "solo-1v1") return;
+                loadOnlineProfile({ silent: Boolean(onlineProfile) });
                 renderOnlineSetup();
                 if (getCurrentAuthUser() && onlineRoomCode) {
                     if (!onlineRoom) {
@@ -287,7 +462,7 @@
 
             if (configuredMode === "solo-1v1") {
                 showPvpSetup();
-                renderOnlineSetup();
+                loadOnlineProfile({ silent: true });
                 initializeOnlineRoomFromUrl();
                 return;
             }
@@ -531,6 +706,114 @@
             feedback.className = `online-room-feedback ${type}`.trim();
         }
 
+        function renderOnlineProfilePanelV2() {
+            const panel = document.getElementById('online-player-stats-card');
+            const summary = document.getElementById('online-player-stats-summary');
+            const cardModule = document.getElementById('online-player-card-module');
+            const playerCard = document.getElementById('solo-player-card');
+            const statsPanel = document.getElementById('online-player-stats-panel');
+            const metrics = document.getElementById('online-player-stats-metrics');
+            const detail = document.getElementById('online-player-stats-detail');
+            const pills = document.getElementById('online-player-pills');
+            const history = document.getElementById('online-player-history');
+            if (!panel || !summary || !cardModule || !playerCard || !statsPanel || !metrics || !detail || !pills || !history) return;
+
+            const loggedIn = Boolean(getCurrentAuthUser());
+            panel.classList.toggle('is-guest', !loggedIn);
+            panel.classList.toggle('is-loading', loggedIn && onlineProfileLoading);
+            panel.classList.toggle('is-error', loggedIn && Boolean(onlineProfileError) && !onlineProfile);
+
+            if (!loggedIn) {
+                summary.textContent = "Đăng nhập để xem Player Card.";
+                cardModule.hidden = true;
+                statsPanel.hidden = true;
+                playerCard.innerHTML = "";
+                metrics.innerHTML = "";
+                pills.innerHTML = "";
+                history.innerHTML = "";
+                return;
+            }
+
+            if (onlineProfileLoading && !onlineProfile) {
+                summary.textContent = "Đang tải Player Card...";
+                cardModule.hidden = true;
+                statsPanel.hidden = true;
+                playerCard.innerHTML = "";
+                return;
+            }
+
+            if (onlineProfileError && !onlineProfile) {
+                summary.textContent = onlineProfileError;
+                cardModule.hidden = true;
+                statsPanel.hidden = true;
+                playerCard.innerHTML = "";
+                return;
+            }
+
+            const profile = onlineProfile || {};
+            const stats = profile.stats || {};
+            const playerName = getProfilePlayerName(profile);
+            const totalMatches = Number(stats.totalMatches) || 0;
+
+            summary.textContent = totalMatches > 0
+                ? `Player Card dùng hồ sơ hiện tại. Stats bên cạnh lấy từ ${formatProfileNumber(totalMatches)} draft solo gần nhất của ${playerName}.`
+                : `Player Card hiển thị hồ sơ hiện tại của ${playerName}. Hoàn tất một phòng solo để mở thêm thống kê 50 trận gần nhất.`;
+
+            if (!window.ATGPlayerCard || typeof window.ATGPlayerCard.renderPlayerCard !== 'function') {
+                summary.textContent = "Không thể tải component Player Card.";
+                cardModule.hidden = true;
+                statsPanel.hidden = true;
+                playerCard.innerHTML = "";
+                return;
+            }
+
+            window.ATGPlayerCard.renderPlayerCard(playerCard, buildOnlinePlayerCardData(profile));
+            cardModule.hidden = false;
+
+            metrics.innerHTML = renderOnlineProfileMetricCards(stats);
+            pills.innerHTML = renderOnlineProfileHeroPills(stats);
+            history.innerHTML = renderOnlineProfileHistoryItems(profile.history);
+            statsPanel.hidden = false;
+        }
+
+        async function loadOnlineProfile(options = {}) {
+            if (getPageMode() !== "solo-1v1" && currentMode !== "solo-1v1") {
+                return;
+            }
+
+            if (!getCurrentAuthUser()) {
+                onlineProfile = null;
+                onlineProfileLoading = false;
+                onlineProfileError = "";
+                renderOnlineProfilePanelV2();
+                return;
+            }
+
+            if (onlineProfileLoading) return;
+
+            onlineProfileLoading = true;
+            if (!options.silent) {
+                onlineProfileError = "";
+            }
+            renderOnlineProfilePanelV2();
+
+            try {
+                const response = await fetch('/api/ban-pick/profile');
+                const payload = await response.json().catch(() => null);
+                if (!response.ok) {
+                    throw new Error(payload?.message || "Không thể tải thống kê solo.");
+                }
+                onlineProfile = payload;
+                onlineProfileError = "";
+            } catch (error) {
+                onlineProfile = null;
+                onlineProfileError = error?.message || "Không thể tải thống kê solo.";
+            } finally {
+                onlineProfileLoading = false;
+                renderOnlineProfilePanelV2();
+            }
+        }
+
         function setOnlineRealtimeIndicator(message, type = "") {
             const indicator = document.getElementById('online-realtime-indicator');
             if (!indicator) return;
@@ -547,12 +830,30 @@
                 : onlineRoom.hostUser?.email;
             const connectedEmails = payload.connectedEmails || [];
             if (opponentEmail && onlineRoom.status === "IN_PROGRESS" && !connectedEmails.includes(opponentEmail)) {
+                if (onlineRoom.phaseType === "DRAFT") {
+                    setOnlineRealtimeIndicator(`Đối thủ mất kết nối. Nếu không quay lại trong ${ONLINE_DISCONNECT_GRACE_SECONDS}s, hệ thống sẽ xử thua.`, "error");
+                    return;
+                }
                 setOnlineRealtimeIndicator("Đối thủ đã mất kết nối", "error");
                 return;
             }
             if (onlineSocketConnected) {
                 setOnlineRealtimeIndicator("Realtime đã kết nối", "success");
             }
+        }
+
+        function syncOnlineResetButtons() {
+            const shouldBlockReset = Boolean(isOnlineRoomMode() && onlineRoom?.status === "IN_PROGRESS");
+            ['draft-reset-btn', 'draft-page-reset-btn'].forEach(id => {
+                const button = document.getElementById(id);
+                if (!button) return;
+                button.disabled = shouldBlockReset;
+                if (shouldBlockReset) {
+                    button.title = "Không thể reset khi phòng solo đang diễn ra.";
+                } else {
+                    button.removeAttribute('title');
+                }
+            });
         }
 
         function showBanPickToast(message) {
@@ -730,9 +1031,11 @@
         }
 
         function renderOnlineSetup() {
+            renderOnlineProfilePanelV2();
             const loggedIn = Boolean(getCurrentAuthUser());
             document.getElementById('online-login-gate').classList.toggle('is-hidden', loggedIn);
             document.getElementById('online-room-shell').classList.toggle('is-hidden', !loggedIn);
+            syncOnlineResetButtons();
 
             const roomActions = document.getElementById('online-room-actions');
             const roomCard = document.getElementById('online-room-card');
@@ -807,10 +1110,14 @@
         }
 
         function applyOnlineRoomState(room) {
+            const previousStatus = onlineRoom?.status;
             onlineRoom = room;
             onlineRoomCode = room?.roomCode || onlineRoomCode;
             if (onlineRoomCode) onlineShareableUrl = buildOnlineRoomLink(onlineRoomCode);
             if (room?.seriesType) setOnlineSeriesType(room.seriesType);
+            if (room?.status === "FINISHED" && previousStatus !== "FINISHED") {
+                loadOnlineProfile({ silent: true });
+            }
             renderOnlineSetup();
         }
 
@@ -1016,31 +1323,6 @@
                     showBanPickToast("Đã copy link phòng.");
                 });
         }
-
-        function getDraftResultLink() {
-            const historyId = onlineRoom?.draftHistoryId;
-            return historyId ? `${window.location.origin}/ban-pick/result/${historyId}` : "";
-        }
-
-        function shareDraftResult() {
-            const link = getDraftResultLink();
-            if (!link) {
-                showBanPickToast("Chưa có kết quả draft để chia sẻ.");
-                return;
-            }
-            navigator.clipboard?.writeText(link)
-                .then(() => showBanPickToast("Đã copy link kết quả draft."))
-                .catch(() => {
-                    const temp = document.createElement('textarea');
-                    temp.value = link;
-                    document.body.appendChild(temp);
-                    temp.select();
-                    document.execCommand('copy');
-                    temp.remove();
-                    showBanPickToast("Đã copy link kết quả draft.");
-                });
-        }
-
         function getHeroNameById(heroId) {
             const hero = heroByIdMap[String(heroId)] || heroes.find(h => Number(h.id) === Number(heroId));
             return hero?.name || `Hero #${heroId}`;
@@ -1150,6 +1432,27 @@
                 redWinRate,
                 totalScore,
                 hasData: true
+            };
+        }
+
+        function getBanPickEvaluationOutcome(evaluation) {
+            const blueScore = sanitizeBanPickScore(evaluation?.blueScore);
+            const redScore = sanitizeBanPickScore(evaluation?.redScore);
+            if (blueScore > redScore) {
+                return {
+                    text: "Bên Xanh thắng theo điểm đội hình.",
+                    tone: "blue"
+                };
+            }
+            if (redScore > blueScore) {
+                return {
+                    text: "Bên Đỏ thắng theo điểm đội hình.",
+                    tone: "red"
+                };
+            }
+            return {
+                text: "Hai đội bằng điểm. Hệ thống không tự chọn winner.",
+                tone: "neutral"
             };
         }
 
@@ -1346,6 +1649,7 @@
                 const value = btn.getAttribute('data-role-filter') || btn.textContent.trim();
                 btn.classList.toggle('active', value === currentRoleFilter);
             });
+            syncOnlineResetButtons();
         }
 
         function getCurrentPhase() {
@@ -1935,13 +2239,56 @@
             document.getElementById('pvp-turn-owner').textContent = `Lượt của ${getActivePlayerName()} - ${getActiveSideLabel()}`;
         }
 
+        function renderSummaryBanPickEvaluation(visible, evaluation) {
+            const panel = document.getElementById('summary-draft-balance-panel');
+            const blueSummary = document.getElementById('summary-draft-balance-blue');
+            const redSummary = document.getElementById('summary-draft-balance-red');
+            const outcome = document.getElementById('summary-draft-balance-outcome');
+            if (!panel || !blueSummary || !redSummary) return;
+            panel.classList.toggle('is-hidden', !visible);
+            panel.classList.toggle('is-empty', visible && !evaluation.hasData);
+            panel.setAttribute('aria-hidden', visible ? 'false' : 'true');
+            if (!visible) {
+                if (outcome) {
+                    outcome.textContent = '';
+                    outcome.className = 'draft-balance-outcome';
+                }
+                return;
+            }
+            blueSummary.textContent = `Xanh: ${formatBanPickScore(evaluation.blueScore)} điểm · ${formatBanPickWinRate(evaluation.blueWinRate)}`;
+            redSummary.textContent = `Đỏ: ${formatBanPickScore(evaluation.redScore)} điểm · ${formatBanPickWinRate(evaluation.redWinRate)}`;
+        }
+
+        function renderSummaryBanPickOutcome(visible, evaluation) {
+            const outcome = document.getElementById('summary-draft-balance-outcome');
+            if (!outcome) return;
+            if (!visible) {
+                outcome.textContent = '';
+                outcome.className = 'draft-balance-outcome';
+                return;
+            }
+            const outcomeState = getBanPickEvaluationOutcome(evaluation);
+            outcome.textContent = outcomeState.text;
+            outcome.className = `draft-balance-outcome ${outcomeState.tone}`;
+        }
+
         function renderBanPickEvaluation() {
             const blueSummary = document.getElementById('draft-balance-blue');
             const redSummary = document.getElementById('draft-balance-red');
             const panel = document.getElementById('draft-balance-panel');
             if (!blueSummary || !redSummary || !panel) return;
 
+            const visible = shouldShowTeamEvaluation();
+            panel.classList.toggle('is-hidden', !visible);
+            panel.setAttribute('aria-hidden', visible ? 'false' : 'true');
+
             const evaluation = calculateBanPickWinRate(bluePicks, redPicks);
+            renderSummaryBanPickEvaluation(visible, evaluation);
+            renderSummaryBanPickOutcome(visible, evaluation);
+            if (!visible) {
+                panel.classList.remove('is-empty');
+                return;
+            }
             blueSummary.textContent = `Xanh: ${formatBanPickScore(evaluation.blueScore)} điểm · ${formatBanPickWinRate(evaluation.blueWinRate)}`;
             redSummary.textContent = `Đỏ: ${formatBanPickScore(evaluation.redScore)} điểm · ${formatBanPickWinRate(evaluation.redWinRate)}`;
             panel.classList.toggle('is-empty', !evaluation.hasData);
@@ -2185,8 +2532,7 @@
             document.getElementById('summary-red-bans').innerHTML = formatHeroIconList(redBans);
             document.getElementById('summary-blue-picks').innerHTML = formatHeroIconList(bluePicks);
             document.getElementById('summary-red-picks').innerHTML = formatHeroIconList(redPicks);
-            const shareButton = document.getElementById('share-draft-btn');
-            if (shareButton) shareButton.disabled = isOnlineRoomMode() && !onlineRoom?.draftHistoryId;
+            renderBanPickEvaluation();
             const seriesActionButton = document.getElementById('online-series-action-btn');
             if (seriesActionButton) {
                 const showSeriesButton = isOnlineRoomMode() && onlineRoom && (onlineRoom.maxGames || 1) > 1;

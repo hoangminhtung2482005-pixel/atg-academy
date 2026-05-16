@@ -63,87 +63,97 @@
             <h2>✨ Tạo Tier List Của Bạn</h2>
             <button class="modal-close-btn" onclick="closeCreateModal()">✕</button>
         </div>
-        <div class="modal-body">
-            <div style="margin-bottom:16px;">
-                <label for="modal-title" style="display:block;font-weight:600;color:#334155;margin-bottom:6px;">Tiêu đề</label>
-                <input type="text" id="modal-title" placeholder="VD: Meta Mid S2 2026..." title="Tiêu đề tier list" style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:0.95rem;outline:none;box-sizing:border-box;">
-            </div>
-            <div style="margin-bottom:16px;">
-                <label for="modal-note" style="display:block;font-weight:600;color:#334155;margin-bottom:6px;">Ghi chú</label>
-                <textarea id="modal-note" rows="3" placeholder="Lý do xếp hạng, phiên bản meta, hoặc lưu ý cho người xem..." title="Ghi chú tier list" style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:0.95rem;outline:none;box-sizing:border-box;resize:vertical;"></textarea>
-            </div>
-            <div class="tier-grid-container">
-                <div class="tier-grid tier-board" id="modal-tier-grid" style="grid-template-columns:80px repeat(5,minmax(120px,1fr));">
-                    <div class="tier-cell header-cell empty"></div>
-                    <div class="tier-cell header-cell"><span contenteditable="true">DSL</span></div>
-                    <div class="tier-cell header-cell"><span contenteditable="true">JGL</span></div>
-                    <div class="tier-cell header-cell"><span contenteditable="true">MID</span></div>
-                    <div class="tier-cell header-cell"><span contenteditable="true">ADL</span></div>
-                    <div class="tier-cell header-cell"><span contenteditable="true">SUP</span></div>
-
-                    <div class="tier-cell tier-label" style="background-color:#e74c3c;"><span contenteditable="true">S</span></div>
-                    <div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div>
-
-                    <div class="tier-cell tier-label" style="background-color:#9b59b6;"><span contenteditable="true">A</span></div>
-                    <div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div>
-
-                    <div class="tier-cell tier-label" style="background-color:#3498db;"><span contenteditable="true">B</span></div>
-                    <div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div>
-
-                    <div class="tier-cell tier-label" style="background-color:#2ecc71;"><span contenteditable="true">C</span></div>
-                    <div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div>
-
-                    <div class="tier-cell tier-label" style="background-color:#95a5a6;"><span contenteditable="true">D</span></div>
-                    <div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div>
+        <div class="modal-body community-tier-editor-modal-body">
+            <div class="community-tier-editor-fields community-tier-meta" role="group" aria-label="Thông tin tier list">
+                <div class="community-tier-editor-field community-tier-meta-row">
+                    <label class="community-tier-editor-label" for="modal-title">Tiêu đề</label>
+                    <input class="community-tier-editor-input" type="text" id="modal-title" placeholder="VD: Meta Mid S2 2026..." title="Tiêu đề tier list">
+                </div>
+                <div class="community-tier-editor-field community-tier-meta-row">
+                    <label class="community-tier-editor-label" for="modal-note">Ghi chú</label>
+                    <textarea class="community-tier-editor-textarea" id="modal-note" rows="1" placeholder="Lý do xếp hạng, phiên bản meta, hoặc lưu ý cho người xem..." title="Ghi chú tier list"></textarea>
                 </div>
             </div>
-            <div class="modal-drop-out-zone" id="modal-drop-out-zone">
-                <span>Trả về Danh sách tướng</span>
-                <strong>Thả tướng ở đây</strong>
-            </div>
-            <div class="tier-pool-modal tier-pool" id="modal-hero-pool">
-                <div class="hero-pool-header">
-                    <div>
-                        <h3>Danh sách tướng</h3>
-                        <p>Kéo tướng vào tier hoặc chuột phải để tạo bản tạm.</p>
+            <div class="community-tier-editor-layout">
+                <div class="community-tier-editor-board">
+                    <div class="community-tier-editor-board-shell">
+                        <div class="tier-grid-container">
+                            <div class="tier-grid tier-board" id="modal-tier-grid" style="grid-template-columns:80px repeat(5,minmax(120px,1fr));">
+                                <div class="tier-cell header-cell empty"></div>
+                                <div class="tier-cell header-cell"><span contenteditable="true">DSL</span></div>
+                                <div class="tier-cell header-cell"><span contenteditable="true">JGL</span></div>
+                                <div class="tier-cell header-cell"><span contenteditable="true">MID</span></div>
+                                <div class="tier-cell header-cell"><span contenteditable="true">ADL</span></div>
+                                <div class="tier-cell header-cell"><span contenteditable="true">SUP</span></div>
+
+                                <div class="tier-cell tier-label" style="background-color:#e74c3c;"><span contenteditable="true">S</span></div>
+                                <div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div>
+
+                                <div class="tier-cell tier-label" style="background-color:#9b59b6;"><span contenteditable="true">A</span></div>
+                                <div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div>
+
+                                <div class="tier-cell tier-label" style="background-color:#3498db;"><span contenteditable="true">B</span></div>
+                                <div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div>
+
+                                <div class="tier-cell tier-label" style="background-color:#2ecc71;"><span contenteditable="true">C</span></div>
+                                <div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div>
+
+                                <div class="tier-cell tier-label" style="background-color:#95a5a6;"><span contenteditable="true">D</span></div>
+                                <div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div><div class="tier-cell tier-content tier-heroes modal-drop"></div>
+                            </div>
+                        </div>
+                        <div class="modal-drop-out-zone" id="modal-drop-out-zone">
+                            <span>Trả về Danh sách tướng</span>
+                            <strong>Thả tướng ở đây</strong>
+                        </div>
                     </div>
                 </div>
-                <div class="hero-pool-toolbar">
-                    <label class="hero-search-wrap" for="modal-search">
-                        <span aria-hidden="true">⌕</span>
-                        <input type="text" id="modal-search" placeholder="Tìm kiếm tướng..." title="Tìm kiếm tướng để thêm vào tier list" oninput="filterModalHeroes()">
-                    </label>
-                    <label class="hero-class-filter" for="modal-class-filter">
-                        <span>Class</span>
-                        <select id="modal-class-filter" title="Lọc theo class tướng" onchange="setModalClassFilter(this.value)">
-                            <option value="Tất cả">Tất cả class</option>
-                        </select>
-                    </label>
-                </div>
-                <div class="hero-filter-row">
-                    <div class="role-filters" id="modal-role-filters">
-                        <button class="role-btn active" data-role-filter="Tất cả" onclick="setModalRoleFilter('Tất cả')"><div class="role-icon"></div><span>Tất cả</span></button>
-                        <button class="role-btn" data-role-filter="DSL" onclick="setModalRoleFilter('DSL')"><div class="role-icon"></div><span>DSL</span></button>
-                        <button class="role-btn" data-role-filter="JGL" onclick="setModalRoleFilter('JGL')"><div class="role-icon"></div><span>JGL</span></button>
-                        <button class="role-btn" data-role-filter="MID" onclick="setModalRoleFilter('MID')"><div class="role-icon"></div><span>MID</span></button>
-                        <button class="role-btn" data-role-filter="ADL" onclick="setModalRoleFilter('ADL')"><div class="role-icon"></div><span>ADL</span></button>
-                        <button class="role-btn" data-role-filter="SUP" onclick="setModalRoleFilter('SUP')"><div class="role-icon"></div><span>SUP</span></button>
+                <div class="community-tier-editor-heroes">
+                    <div class="tier-pool-modal tier-pool" id="modal-hero-pool">
+                        <div class="hero-pool-header">
+                            <div>
+                                <h3>Danh sách tướng</h3>
+                                <p>Kéo tướng vào tier hoặc chuột phải để tạo bản tạm.</p>
+                            </div>
+                        </div>
+                        <div class="hero-pool-toolbar">
+                            <label class="hero-search-wrap" for="modal-search">
+                                <span aria-hidden="true">⌕</span>
+                                <input type="text" id="modal-search" placeholder="Tìm kiếm tướng..." title="Tìm kiếm tướng để thêm vào tier list" oninput="filterModalHeroes()">
+                            </label>
+                            <label class="hero-class-filter" for="modal-class-filter">
+                                <span>Class</span>
+                                <select id="modal-class-filter" title="Lọc theo class tướng" onchange="setModalClassFilter(this.value)">
+                                    <option value="Tất cả">Tất cả class</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div class="hero-filter-row">
+                            <div class="role-filters" id="modal-role-filters">
+                                <button class="role-btn active" data-role-filter="Tất cả" onclick="setModalRoleFilter('Tất cả')"><div class="role-icon"></div><span>Tất cả</span></button>
+                                <button class="role-btn" data-role-filter="DSL" onclick="setModalRoleFilter('DSL')"><div class="role-icon"></div><span>DSL</span></button>
+                                <button class="role-btn" data-role-filter="JGL" onclick="setModalRoleFilter('JGL')"><div class="role-icon"></div><span>JGL</span></button>
+                                <button class="role-btn" data-role-filter="MID" onclick="setModalRoleFilter('MID')"><div class="role-icon"></div><span>MID</span></button>
+                                <button class="role-btn" data-role-filter="ADL" onclick="setModalRoleFilter('ADL')"><div class="role-icon"></div><span>ADL</span></button>
+                                <button class="role-btn" data-role-filter="SUP" onclick="setModalRoleFilter('SUP')"><div class="role-icon"></div><span>SUP</span></button>
+                            </div>
+                        </div>
+                        <div class="hero-temp-section" id="modal-hero-temp-section" hidden>
+                            <div class="hero-temp-section__head">
+                                <span>Bản tạm</span>
+                                <small>Kéo vào tier list hoặc xóa nếu chưa dùng.</small>
+                            </div>
+                            <div class="hero-grid hero-temp-grid" id="modal-hero-temp-grid"></div>
+                        </div>
+                        <div class="hero-grid" id="modal-hero-grid"></div>
+                        <div class="hero-pool-empty" id="modal-hero-pool-empty" hidden>Không tìm thấy tướng phù hợp.</div>
                     </div>
                 </div>
-                <div class="hero-temp-section" id="modal-hero-temp-section" hidden>
-                    <div class="hero-temp-section__head">
-                        <span>Bản tạm</span>
-                        <small>Kéo vào tier list hoặc xóa nếu chưa dùng.</small>
-                    </div>
-                    <div class="hero-grid hero-temp-grid" id="modal-hero-temp-grid"></div>
-                </div>
-                <div class="hero-grid" id="modal-hero-grid"></div>
-                <div class="hero-pool-empty" id="modal-hero-pool-empty" hidden>Không tìm thấy tướng phù hợp.</div>
             </div>
         </div>
-        <div class="modal-footer">
-            <button class="add-grid-btn" onclick="closeCreateModal()" style="background:#94a3b8;">Hủy</button>
-            <button class="btn-save-official" onclick="submitCommunityTierList()">📤 Đăng Tier List</button>
+        <div class="community-tier-floating-actions" role="group" aria-label="Hành động tier list">
+            <button type="button" class="add-grid-btn community-tier-action-secondary" onclick="closeCreateModal()">Hủy</button>
+            <button type="button" class="btn-save-official community-tier-action-primary" onclick="submitCommunityTierList()">📤 Đăng Tier List</button>
         </div>
     </div>
 </div>

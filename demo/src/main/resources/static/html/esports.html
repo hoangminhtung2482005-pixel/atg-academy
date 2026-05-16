@@ -21,7 +21,8 @@
                     <h1 id="esports-hero-title">AoV Esports Ranking</h1>
                     <p>
                         Bảng xếp hạng giải đấu chuyên nghiệp Liên Quân. Theo dõi sức mạnh khu vực,
-                        điểm AER và phong độ các đội tuyển hàng đầu.
+                        điểm AER và phong độ các đội tuyển hàng đầu. Bảng xếp hạng bên dưới dùng
+                        <strong>Series W/L</strong> = series thắng / series thua, không phải game thắng / game thua.
                     </p>
                     <div class="hero-tags" aria-label="Khu vực giải đấu">
                         <span>RPL</span>
@@ -80,8 +81,8 @@
                                 <th>Region</th>
                                 <th>Tier</th>
                                 <th>Elo Score</th>
-                                <th>Matches</th>
-                                <th>W/L</th>
+                                <th>Series</th>
+                                <th>Series W/L</th>
                                 <th>Win Rate</th>
                             </tr>
                         </thead>
@@ -94,7 +95,9 @@
         </section>
     </main>
 
-    <footer class="esports-footer">
+    <div id="footer-placeholder"></div>
+
+    <footer class="esports-footer" hidden>
         <span>&copy; 2026 ATG Academy. Nền tảng esports chuyên sâu.</span>
         <span id="last-updated">Đang tải dữ liệu...</span>
     </footer>
@@ -513,6 +516,6 @@
         }
     </script>
     <script src="/js/auth.js?v=20260424-account-profile"></script>
-    <script src="/js/header-loader.js?v=20260507-tierlist-route-cleanup"></script>
+    <script src="/js/header-loader.js?v=20260514-layout-partials"></script>
 </body>
 </html>

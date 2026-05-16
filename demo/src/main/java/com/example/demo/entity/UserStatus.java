@@ -11,6 +11,6 @@ public enum UserStatus {
         return Arrays.stream(values())
                 .filter(status -> status.name().equalsIgnoreCase(normalized))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Trang thai khong hop le"));
+                .orElseThrow(() -> new IllegalArgumentException("Trạng thái không hợp lệ"));
     }
 }

@@ -1,15 +1,19 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.esports.EsportsMatchRequest;
 import com.example.demo.entity.EsportsMatch;
 import com.example.demo.entity.EsportsTeam;
 import com.example.demo.entity.EsportsTournament;
 import com.example.demo.repository.EsportsMatchRepository;
 import com.example.demo.repository.EsportsTeamRepository;
 import com.example.demo.repository.EsportsTournamentRepository;
+import com.example.demo.util.EsportsStageSupport;
+import com.example.demo.util.EsportsTierSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -113,15 +117,26 @@ public class EsportsAdminService {
     }
 
     @Transactional
-    public EsportsMatch addMatch(EsportsMatch match) {
-        EsportsTournament tournament = resolveTournament(match.getTournamentId());
+    public EsportsMatch addMatch(EsportsMatchRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("payload la bat buoc.");
+        }
+
+        EsportsMatch match = new EsportsMatch();
+        applyMatchRequest(match, request, true);
+
+        EsportsTournament tournament = resolveTournament(request.tournamentId());
         if (tournament != null) {
             match.setTier(resolveMatchTier(tournament));
-        } else if (match.getTier() == null) {
-            match.setTier("1");
+        } else {
+            match.setTier(EsportsTierSupport.normalizeLegacyTierOrDefault(request.tier()));
         }
-        if (match.getStage() == null) match.setStage("bang");
-        if (match.getMatchDate() == null) match.setMatchDate(LocalDateTime.now());
+        if (!StringUtils.hasText(match.getStage())) {
+            match.setStage(EsportsStageSupport.DEFAULT_STAGE);
+        }
+        if (match.getMatchDate() == null) {
+            match.setMatchDate(LocalDateTime.now());
+        }
         match.setTournament(tournament);
 
         EsportsMatch saved = esportsMatchRepository.save(match);
@@ -134,21 +149,19 @@ public class EsportsAdminService {
     }
 
     @Transactional
-    public EsportsMatch updateMatch(Long id, EsportsMatch updatedData) {
+    public EsportsMatch updateMatch(Long id, EsportsMatchRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("payload la bat buoc.");
+        }
         EsportsMatch existing = esportsMatchRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy trận đấu với ID: " + id));
 
-        if (updatedData.getTeam1Code() != null) existing.setTeam1Code(updatedData.getTeam1Code());
-        if (updatedData.getTeam2Code() != null) existing.setTeam2Code(updatedData.getTeam2Code());
-        if (updatedData.getScore1() != null) existing.setScore1(updatedData.getScore1());
-        if (updatedData.getScore2() != null) existing.setScore2(updatedData.getScore2());
-        if (updatedData.getStage() != null) existing.setStage(updatedData.getStage());
-        if (updatedData.getMatchDate() != null) existing.setMatchDate(updatedData.getMatchDate());
-        EsportsTournament tournament = resolveTournament(updatedData.getTournamentId());
+        applyMatchRequest(existing, request, false);
+        EsportsTournament tournament = resolveTournament(request.tournamentId());
         if (tournament != null) {
             existing.setTier(resolveMatchTier(tournament));
-        } else if (updatedData.getTier() != null) {
-            existing.setTier(updatedData.getTier());
+        } else if (request.tier() != null) {
+            existing.setTier(EsportsTierSupport.normalizeLegacyTierOrDefault(request.tier()));
         }
         existing.setTournament(tournament);
 
@@ -236,8 +249,12 @@ public class EsportsAdminService {
             match.setTeam2Code(parts[1]);
             match.setScore1(score1);
             match.setScore2(score2);
-            match.setTier(parts.length >= 5 ? parts[4] : "1");
-            match.setStage(parts.length >= 6 ? parts[5] : "bang");
+            match.setTier(EsportsTierSupport.normalizeLegacyTierOrDefault(parts.length >= 5 ? parts[4] : null));
+            try {
+                match.setStage(EsportsStageSupport.normalizeOrDefault(parts.length >= 6 ? parts[5] : null));
+            } catch (IllegalArgumentException exception) {
+                throw new IllegalArgumentException("DÃ²ng " + (i + 1) + " cÃ³ stage khÃ´ng há»£p lá»‡: " + exception.getMessage());
+            }
             match.setMatchDate(baseTime.plusMinutes(i));
             matchesToSave.add(match);
         }
@@ -266,22 +283,39 @@ public class EsportsAdminService {
             log.info(">> [Admin] Đã xóa {} team không còn trong dataset hiện tại.", staleTeams.size());
         }
     }
+
+    private void applyMatchRequest(EsportsMatch target, EsportsMatchRequest request, boolean create) {
+        if (request.team1Code() != null) {
+            target.setTeam1Code(request.team1Code().trim());
+        }
+        if (request.team2Code() != null) {
+            target.setTeam2Code(request.team2Code().trim());
+        }
+        if (request.score1() != null) {
+            target.setScore1(request.score1());
+        }
+        if (request.score2() != null) {
+            target.setScore2(request.score2());
+        }
+        if (request.stage() != null) {
+            target.setStage(EsportsStageSupport.requireCanonicalStage(request.stage()));
+        } else if (create && !StringUtils.hasText(target.getStage())) {
+            target.setStage(EsportsStageSupport.DEFAULT_STAGE);
+        }
+        if (request.matchDate() != null) {
+            target.setMatchDate(request.matchDate());
+        }
+    }
+
     private EsportsTournament resolveTournament(Long tournamentId) {
         if (tournamentId == null) {
             return null;
         }
         return esportsTournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new RuntimeException("Khong tim thay tournament voi ID: " + tournamentId));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tournament với ID: " + tournamentId));
     }
 
     private String resolveMatchTier(EsportsTournament tournament) {
-        if (tournament == null) {
-            return "1";
-        }
-        Integer aerTier = tournament.getAerTier();
-        if (aerTier != null && aerTier > 0) {
-            return String.valueOf(aerTier);
-        }
-        return "1";
+        return EsportsTierSupport.resolveTournamentSnapshotTier(tournament);
     }
 }

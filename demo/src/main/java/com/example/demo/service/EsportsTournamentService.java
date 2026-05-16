@@ -11,6 +11,7 @@ import com.example.demo.repository.EsportsMatchRepository;
 import com.example.demo.repository.EsportsTeamRepository;
 import com.example.demo.repository.EsportsTournamentRepository;
 import com.example.demo.repository.EsportsTournamentTeamRepository;
+import com.example.demo.util.EsportsTierSupport;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -19,7 +20,7 @@ import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -30,7 +31,6 @@ public class EsportsTournamentService {
 
     private static final List<DefaultTournamentSeed> DEFAULT_TOURNAMENTS = List.of(
             new DefaultTournamentSeed("AOG", "AOG Spring 2026", "aog-spring-2026", 2026, "Spring", "T1", 1, "UPCOMING"),
-            new DefaultTournamentSeed("AOG", "AOG Winter 2026", "aog-winter-2026", 2026, "Winter", "T1", 1, "UPCOMING"),
             new DefaultTournamentSeed("RPL", "RPL Summer 2026", "rpl-summer-2026", 2026, "Summer", "T1", 1, "UPCOMING"),
             new DefaultTournamentSeed("GCS", "GCS Spring 2026", "gcs-spring-2026", 2026, "Spring", "T1", 1, "UPCOMING")
     );
@@ -40,17 +40,20 @@ public class EsportsTournamentService {
     private final EsportsTournamentTeamRepository esportsTournamentTeamRepository;
     private final EsportsTeamRepository esportsTeamRepository;
     private final EsportsMatchRepository esportsMatchRepository;
+    private final EloCalculationService eloCalculationService;
 
     public EsportsTournamentService(EsportsFranchiseService esportsFranchiseService,
                                     EsportsTournamentRepository esportsTournamentRepository,
                                     EsportsTournamentTeamRepository esportsTournamentTeamRepository,
                                     EsportsTeamRepository esportsTeamRepository,
-                                    EsportsMatchRepository esportsMatchRepository) {
+                                    EsportsMatchRepository esportsMatchRepository,
+                                    EloCalculationService eloCalculationService) {
         this.esportsFranchiseService = esportsFranchiseService;
         this.esportsTournamentRepository = esportsTournamentRepository;
         this.esportsTournamentTeamRepository = esportsTournamentTeamRepository;
         this.esportsTeamRepository = esportsTeamRepository;
         this.esportsMatchRepository = esportsMatchRepository;
+        this.eloCalculationService = eloCalculationService;
     }
 
     public List<EsportsTournamentResponse> getPublicTournaments(Long franchiseId, String franchiseCode) {
@@ -93,14 +96,14 @@ public class EsportsTournamentService {
 
     public EsportsTournament findEntityById(Long id) {
         return esportsTournamentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay tournament voi ID: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tournament với ID: " + id));
     }
 
     @Transactional
     public EsportsTournamentResponse createTournament(EsportsTournamentRequest request) {
         String slug = normalizeSlug(request.slug());
         if (esportsTournamentRepository.existsBySlugIgnoreCase(slug)) {
-            throw new IllegalArgumentException("slug tournament da ton tai.");
+            throw new IllegalArgumentException("slug tournament đã tồn tại.");
         }
 
         EsportsTournament tournament = new EsportsTournament();
@@ -111,13 +114,22 @@ public class EsportsTournamentService {
     @Transactional
     public EsportsTournamentResponse updateTournament(Long id, EsportsTournamentRequest request) {
         EsportsTournament tournament = findEntityById(id);
+        Integer previousAerTier = tournament.getAerTier();
         String slug = normalizeSlug(request.slug());
         if (esportsTournamentRepository.existsBySlugIgnoreCaseAndIdNot(slug, id)) {
-            throw new IllegalArgumentException("slug tournament da ton tai.");
+            throw new IllegalArgumentException("slug tournament đã tồn tại.");
         }
 
         applyRequest(tournament, request, slug);
-        return mapTournaments(List.of(esportsTournamentRepository.save(tournament))).get(0);
+        EsportsTournament savedTournament = esportsTournamentRepository.save(tournament);
+        if (!Objects.equals(previousAerTier, savedTournament.getAerTier())) {
+            esportsMatchRepository.syncTierSnapshotByTournamentId(
+                    savedTournament.getId(),
+                    EsportsTierSupport.resolveTournamentSnapshotTier(savedTournament)
+            );
+            eloCalculationService.calculateAllRankings();
+        }
+        return mapTournaments(List.of(savedTournament)).get(0);
     }
 
     @Transactional
@@ -125,7 +137,7 @@ public class EsportsTournamentService {
         EsportsTournament tournament = findEntityById(id);
         long linkedMatches = esportsMatchRepository.countByTournamentId(id);
         if (linkedMatches > 0) {
-            throw new IllegalStateException("Khong the xoa tournament da duoc link voi esports_matches.");
+            throw new IllegalStateException("Không thể xóa tournament đã được link với esports_matches.");
         }
         esportsTournamentTeamRepository.findByTournamentId(id)
                 .forEach(esportsTournamentTeamRepository::delete);
@@ -140,11 +152,11 @@ public class EsportsTournamentService {
             throw new IllegalArgumentException("teamId la bat buoc.");
         }
         if (esportsTournamentTeamRepository.existsByTournamentIdAndTeamId(tournamentId, teamId)) {
-            throw new IllegalArgumentException("Team da ton tai trong tournament nay.");
+            throw new IllegalArgumentException("Team đã tồn tại trong tournament này.");
         }
 
         EsportsTeam team = esportsTeamRepository.findById(teamId)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay esports team voi ID: " + teamId));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy esports team với ID: " + teamId));
 
         EsportsTournamentTeam relation = new EsportsTournamentTeam();
         relation.setTournament(tournament);
@@ -159,7 +171,7 @@ public class EsportsTournamentService {
     @Transactional
     public void removeTeamFromTournament(Long tournamentId, Long teamId) {
         if (!esportsTournamentTeamRepository.existsByTournamentIdAndTeamId(tournamentId, teamId)) {
-            throw new IllegalArgumentException("Khong tim thay mapping team trong tournament.");
+            throw new IllegalArgumentException("Không tìm thấy mapping team trong tournament.");
         }
         esportsTournamentTeamRepository.deleteByTournamentIdAndTeamId(tournamentId, teamId);
     }
@@ -180,7 +192,7 @@ public class EsportsTournamentService {
                     tournament.setTierLevel(seed.tierLevel());
                     dirty = true;
                 }
-                if (tournament.getAerTier() == null || tournament.getAerTier() < 1) {
+                if (!EsportsTierSupport.isValidAerTier(tournament.getAerTier())) {
                     tournament.setAerTier(seed.aerTier());
                     dirty = true;
                 }
@@ -252,7 +264,7 @@ public class EsportsTournamentService {
         tournament.setStartDate(request.startDate());
         tournament.setEndDate(request.endDate());
         if (request.startDate() != null && request.endDate() != null && request.endDate().isBefore(request.startDate())) {
-            throw new IllegalArgumentException("endDate khong duoc nho hon startDate.");
+            throw new IllegalArgumentException("endDate không được nhỏ hơn startDate.");
         }
         tournament.setStatus(StringUtils.hasText(request.status()) ? request.status().trim().toUpperCase(Locale.ROOT) : "UPCOMING");
         tournament.setDescription(trimToNull(request.description()));
@@ -310,8 +322,8 @@ public class EsportsTournamentService {
 
     private static int normalizeAerTier(Integer value) {
         int aerTier = value == null ? DEFAULT_AER_TIER : value;
-        if (aerTier <= 0) {
-            throw new IllegalArgumentException("aerTier phai lon hon 0.");
+        if (aerTier < 0 || aerTier > 2) {
+            throw new IllegalArgumentException("aerTier chi hop le 0, 1 hoac 2.");
         }
         return aerTier;
     }

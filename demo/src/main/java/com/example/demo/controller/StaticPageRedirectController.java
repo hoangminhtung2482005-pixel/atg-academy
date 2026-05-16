@@ -20,8 +20,6 @@ public class StaticPageRedirectController {
             "/account.html",
             "/admin.html",
             "/ban-pick-leaderboard.html",
-            "/ban-pick-profile.html",
-            "/ban-pick-result.html",
             "/create-guide.html",
             "/esports.html",
             "/esports-data.html",
@@ -117,13 +115,18 @@ public class StaticPageRedirectController {
     }
 
     @GetMapping("/ban-pick/result/{id}")
-    public String forwardBanPickResult(@PathVariable Long id) {
-        return "forward:/html/ban-pick-result.html";
+    public String redirectLegacyBanPickResult(@PathVariable Long id) {
+        return "redirect:/html/ban-pick-solo.html";
     }
 
-    @GetMapping("/ban-pick/profile")
+    @GetMapping({"/ban-pick-result.html", "/html/ban-pick-result.html"})
+    public String redirectLegacyBanPickResultPage() {
+        return "redirect:/html/ban-pick-solo.html";
+    }
+
+    @GetMapping({"/ban-pick/profile", "/ban-pick-profile.html", "/html/ban-pick-profile.html"})
     public String redirectBanPickProfile() {
-        return "redirect:/html/ban-pick-profile.html";
+        return "redirect:/html/ban-pick-solo.html";
     }
 
     @GetMapping("/ban-pick/leaderboard")

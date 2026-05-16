@@ -8,7 +8,8 @@ public record EsportsGameDraftImportConfirmResponse(
         int updatedMatches,
         int createdDrafts,
         int overwrittenDrafts,
-        boolean rankingsRecalculated,
-        List<Long> affectedMatchIds
+        List<Long> affectedMatchIds,
+        int affectedSeriesCount,
+        boolean rankingsRecalculated
 ) {
 }

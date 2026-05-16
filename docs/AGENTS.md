@@ -26,6 +26,43 @@
 - Keep database schema, entities, migrations, and seed data unchanged for UI-only tasks.
 - Commit changes only when the user explicitly asks for a commit.
 
+## Database Work
+
+When the user explicitly requests a database change, or when the requested implementation requires a database, entity, schema, migration, seed, or cleanup change, the agent must handle the database work end-to-end.
+
+Required database workflow:
+
+1. Inspect the current code, entity, repository, service, controller, DTO, SQL, and documentation related to the requested database change.
+2. Read the active database configuration from `application.properties` or the relevant runtime config.
+3. Identify the local database target before running any SQL.
+4. Create or update the required migration SQL in the project SQL folder.
+5. Review existing migrations to avoid duplicate columns, duplicate tables, conflicting seeds, or repeated destructive actions.
+6. Backup the local database before destructive actions such as `DROP TABLE`, `DROP COLUMN`, mass `DELETE`, or destructive data migration, when database access is available.
+7. Apply the migration directly to the local database when credentials, tools, and permissions are available.
+8. Verify the real database after migration using SQL checks such as `SHOW TABLES`, `INFORMATION_SCHEMA`, row counts, FK checks, and targeted `SELECT` queries.
+9. Update code so JPA entities, repositories, services, controllers, DTOs, frontend calls, and tests match the new schema.
+10. Run compile/tests after applying database changes.
+11. Update `docs/so-do-tu-duy.md` when the database, entity, schema, migration, seed data, API, or workflow changes.
+12. Report the exact database target, SQL files executed, SQL checks run, schema/data result, and any remaining manual steps.
+
+The agent must not stop after only writing a SQL file when it has working access to the local database. If local database access is available, the agent must apply and verify the migration.
+
+If the agent cannot apply the database change directly, it must stop and report a blocker instead of pretending the change was applied. The blocker report must include:
+
+- Why the database change could not be applied.
+- What is missing, such as database credentials, `mysql` CLI, database server access, permission, database name, or network access.
+- Which SQL file was prepared.
+- The exact command or MySQL Workbench steps the user must run manually.
+- The SQL verification queries the user should run afterward.
+
+Database safety rules:
+
+- Never run destructive SQL against an unknown or production database.
+- Never drop core tables unless the user explicitly asks and the task scope confirms it.
+- Never claim a migration was applied unless it was actually executed against the target database.
+- Never rely only on `ddl-auto=update` as a substitute for explicit migration SQL when the task changes schema intentionally.
+- Do not create empty placeholder classes/entities just to hide compile errors after removing a database module. Fix the real runtime dependency instead.
+
 ## Anti-Overengineering Rules
 
 - Keep refactors limited to code directly affected by the task.
@@ -142,6 +179,8 @@ Write `N/A` for any field that has no matching code, endpoint, database object, 
 - Changed backend, frontend, API, routing, and database behavior matches the user's request.
 - Run the available verification command or manual check for the changed behavior.
 - State why verification was not run when the repository provides no usable verification path.
+- For database-impacting tasks, migration SQL is created or updated, applied to the local database when access is available, and verified with real schema/data checks.
+- For database-impacting tasks that cannot be applied directly, a clear blocker report is provided with the prepared SQL and manual commands.
 - `docs/so-do-tu-duy.md` is updated when a documentation trigger applies.
 - Only necessary files are modified.
 - The final response follows the user's requested output format.
@@ -154,3 +193,12 @@ Write `N/A` for any field that has no matching code, endpoint, database object, 
   - Docs updated: yes/no
   - File updated
   - Summary of documentation changes
+
+For database-impacting tasks, also include:
+
+- Database changed: yes/no
+- Database target
+- Backup created: yes/no
+- SQL files executed
+- Schema/data verification result
+- Blocker, if the database change could not be applied directly

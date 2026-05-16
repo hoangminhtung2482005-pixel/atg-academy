@@ -7,7 +7,11 @@ public record UserProfileResponse(
         String email,
         String displayName,
         String role,
-        String level
+        String level,
+        String playerBadgeCode,
+        String playerBadgeName,
+        String playerBadgeIconUrl,
+        String playerTitle
 ) {
 
     public static UserProfileResponse from(User user) {
@@ -16,7 +20,11 @@ public record UserProfileResponse(
                 user.getEmail(),
                 user.resolveDisplayName(),
                 user.getRole(),
-                user.resolveLevel()
+                user.resolveLevel(),
+                user.resolvePlayerBadgeCode(),
+                user.resolvePlayerBadgeName(),
+                user.resolvePlayerBadgeIconUrl(),
+                user.resolvePlayerTitle()
         );
     }
 }

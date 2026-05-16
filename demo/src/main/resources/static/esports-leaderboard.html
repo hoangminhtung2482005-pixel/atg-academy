@@ -20,7 +20,7 @@
             <div class="leaderboard-hero-card">
                 <span class="eyebrow">AER DASHBOARD</span>
                 <h1 id="leaderboard-title">Bảng xếp hạng Esports đầy đủ</h1>
-                <p>Theo dõi toàn bộ đội tuyển trong hệ thống AER.</p>
+                <p>Theo dõi toàn bộ đội tuyển trong hệ thống AER. Cột <strong>Series W/L</strong> hiển thị số series thắng/thua, không phải game thắng/thua.</p>
             </div>
         </section>
 
@@ -53,8 +53,8 @@
                                         <th>Khu vực</th>
                                         <th>Tier</th>
                                         <th>Điểm AER</th>
-                                        <th>Số trận</th>
-                                        <th>Thắng / Thua</th>
+                                        <th>Số series</th>
+                                        <th>Series W/L</th>
                                         <th>Tỷ lệ thắng</th>
                                     </tr>
                                 </thead>
@@ -77,7 +77,9 @@
         </section>
     </main>
 
-    <footer class="esports-footer">
+    <div id="footer-placeholder"></div>
+
+    <footer class="esports-footer" hidden>
         <span>© 2026 ATG Academy. Nền tảng esports chuyên sâu.</span>
         <span id="leaderboard-updated">Đang tải dữ liệu...</span>
     </footer>
@@ -361,6 +363,6 @@
         }
     </script>
     <script src="/js/auth.js?v=20260424-account-profile"></script>
-    <script src="/js/header-loader.js?v=20260427-dashboard-leaderboard"></script>
+    <script src="/js/header-loader.js?v=20260514-layout-partials"></script>
 </body>
 </html>

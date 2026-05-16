@@ -27,6 +27,9 @@ public class BanPickRoomTimeoutScheduler {
             banPickRoomService.resolveExpiredPhase(roomCode)
                     .ifPresent(this::broadcast);
         }
+        for (BanPickRoomStateResponse roomState : banPickRoomService.resolveExpiredDisconnectGraceWindows(now)) {
+            broadcast(roomState);
+        }
     }
 
     private void broadcast(BanPickRoomStateResponse roomState) {

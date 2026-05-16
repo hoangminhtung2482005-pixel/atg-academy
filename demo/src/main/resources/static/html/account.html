@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css?v=20260507-css-modules">
     <link rel="stylesheet" href="/css/account.css?v=20260507-css-modules">
+    <link rel="stylesheet" href="/css/player-card.css?v=20260516-player-card-component">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -29,14 +30,28 @@
         </div>
     </main>
 
+    <div id="footer-placeholder"></div>
+
+    <script src="/js/components/player-card.js?v=20260516-player-card-component"></script>
     <script src="/js/auth.js?v=20260424-account-profile"></script>
-    <script src="/js/header-loader.js?v=20260507-tierlist-route-cleanup"></script>
+    <script src="/js/header-loader.js?v=20260514-layout-partials"></script>
     <script>
         const accountProfileMessage = {
             text: '',
             type: 'success'
         };
         const ACCOUNT_COMMUNITY_TIER_LIST_LIMIT = 5;
+        const ACCOUNT_PLAYER_CARD_DEFAULT_TITLE = '\u2726 T\u00e2n Binh Ban/Pick \u2726';
+        const ACCOUNT_PLAYER_BADGE_OPTIONS = [
+            { code: 'default', name: 'ATG Player', iconUrl: '' },
+            { code: 'draft-scout', name: 'Draft Scout', iconUrl: '' },
+            { code: 'shot-caller', name: 'Shot Caller', iconUrl: '' },
+            { code: 'meta-reader', name: 'Meta Reader', iconUrl: '' }
+        ];
+        const accountPlayerCardMessage = {
+            text: '',
+            type: 'success'
+        };
         const accountContentState = {
             ownerEmail: '',
             loading: false,
@@ -49,6 +64,15 @@
                 guides: [],
                 tierLists: []
             }
+        };
+        const accountPlayerCardState = {
+            ownerEmail: '',
+            loading: false,
+            loaded: false,
+            error: '',
+            saving: false,
+            draft: null,
+            profile: null
         };
 
         function accountEscapeHtml(value) {
@@ -65,6 +89,11 @@
             accountProfileMessage.type = type === 'error' ? 'error' : 'success';
         }
 
+        function setAccountPlayerCardMessage(text, type) {
+            accountPlayerCardMessage.text = text || '';
+            accountPlayerCardMessage.type = type === 'error' ? 'error' : 'success';
+        }
+
         function resetAccountContentState(ownerEmail) {
             accountContentState.ownerEmail = ownerEmail || '';
             accountContentState.loading = false;
@@ -77,6 +106,17 @@
                 guides: [],
                 tierLists: []
             };
+        }
+
+        function resetAccountPlayerCardState(ownerEmail) {
+            accountPlayerCardState.ownerEmail = ownerEmail || '';
+            accountPlayerCardState.loading = false;
+            accountPlayerCardState.loaded = false;
+            accountPlayerCardState.error = '';
+            accountPlayerCardState.saving = false;
+            accountPlayerCardState.draft = null;
+            accountPlayerCardState.profile = null;
+            setAccountPlayerCardMessage('', 'success');
         }
 
         function normalizeAccountContentSummary(payload) {
@@ -93,6 +133,35 @@
             if (accountContentState.ownerEmail !== ownerEmail) {
                 resetAccountContentState(ownerEmail);
             }
+        }
+
+        function ensureAccountPlayerCardStateFor(user) {
+            const ownerEmail = String(user?.email || '').toLowerCase();
+            if (accountPlayerCardState.ownerEmail !== ownerEmail) {
+                resetAccountPlayerCardState(ownerEmail);
+            }
+        }
+
+        function findAccountPlayerBadgeOption(code) {
+            const normalizedCode = String(code || '').trim().toLowerCase();
+            return ACCOUNT_PLAYER_BADGE_OPTIONS.find(option => option.code === normalizedCode)
+                || ACCOUNT_PLAYER_BADGE_OPTIONS[0];
+        }
+
+        function normalizeAccountPlayerCardFormData(user) {
+            const draft = accountPlayerCardState.draft || {};
+            const profilePlayerCard = accountPlayerCardState.profile?.playerCard || {};
+            const badgeOption = findAccountPlayerBadgeOption(
+                draft.badgeCode
+                || profilePlayerCard.badgeCode
+                || user?.playerBadgeCode
+            );
+            return {
+                badgeCode: badgeOption.code,
+                badgeName: draft.badgeName || profilePlayerCard.badgeName || user?.playerBadgeName || badgeOption.name,
+                badgeIconUrl: draft.badgeIconUrl || profilePlayerCard.badgeIconUrl || user?.playerBadgeIconUrl || badgeOption.iconUrl || '',
+                title: draft.title || profilePlayerCard.title || user?.playerTitle || ACCOUNT_PLAYER_CARD_DEFAULT_TITLE
+            };
         }
 
         function formatAccountContentCount(value, type) {
@@ -195,6 +264,102 @@
             `;
         }
 
+        function renderAccountPlayerCardEditor(user) {
+            const playerCard = normalizeAccountPlayerCardFormData(user);
+            const buttonLabel = accountPlayerCardState.saving ? 'Đang lưu...' : 'Lưu Player Card';
+            const disabled = accountPlayerCardState.saving ? ' disabled' : '';
+            const messageClass = accountPlayerCardMessage.text
+                ? (accountPlayerCardMessage.type === 'error' ? ' is-error' : ' is-success')
+                : '';
+
+            return `
+                <form class="account-player-card-form" onsubmit="saveAccountPlayerCard(event)">
+                    <div class="account-player-card-grid">
+                        <div class="form-field">
+                            <label for="player-card-badge-select">Badge</label>
+                            <select id="player-card-badge-select" title="Badge Player Card"${disabled}>
+                                ${ACCOUNT_PLAYER_BADGE_OPTIONS.map(option => `
+                                    <option value="${accountEscapeHtml(option.code)}" ${playerCard.badgeCode === option.code ? 'selected' : ''}>
+                                        ${accountEscapeHtml(option.name)}
+                                    </option>
+                                `).join('')}
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="player-card-title-input">Title</label>
+                            <input id="player-card-title-input" type="text" maxlength="60" value="${accountEscapeHtml(playerCard.title)}" placeholder="Nhập title ngắn cho Player Card" title="Title hiển thị trên Player Card"${disabled}>
+                        </div>
+                    </div>
+                    <div class="account-player-card-actions">
+                        <button type="submit" id="player-card-save-btn" class="profile-save-btn"${disabled}>${buttonLabel}</button>
+                        <div class="profile-save-message${messageClass}" id="player-card-save-message" aria-live="polite">${accountEscapeHtml(accountPlayerCardMessage.text || '')}</div>
+                    </div>
+                    <p class="account-player-card-helper">Badge đang dùng preset gọn để giữ UI đồng nhất. Title tối đa 60 ký tự và sẽ phản ánh ngay trên Solo Ban/Pick sau khi lưu.</p>
+                </form>
+            `;
+        }
+
+        function renderAccountPlayerCardPanel(user) {
+            let previewState = '';
+            if (accountPlayerCardState.loading && !accountPlayerCardState.loaded) {
+                previewState = '<div class="account-player-card-state">Đang tải Player Card...</div>';
+            } else if (accountPlayerCardState.error) {
+                previewState = '<div class="account-player-card-state">' + accountEscapeHtml(accountPlayerCardState.error) + '</div>';
+            } else if (!accountPlayerCardState.profile) {
+                previewState = '<div class="account-player-card-state">Player Card sẽ hiển thị khi dữ liệu hồ sơ solo sẵn sàng.</div>';
+            }
+
+            return `
+                <aside class="side-panel account-player-card-panel">
+                    <div class="account-player-card-head">
+                        <h2 class="section-title">Player Card</h2>
+                        <p>Dùng chung component với Solo Ban/Pick. Card chỉ hiển thị avatar, IGN, rank, ELO, badge và title.</p>
+                    </div>
+                    <div class="account-player-card-preview" id="account-player-card-preview">${previewState}</div>
+                    ${renderAccountPlayerCardEditor(user)}
+                    <p class="account-player-card-note">Stats W/L, win rate, most picked và recent drafts tiếp tục chỉ nằm ở Solo Ban/Pick.</p>
+                </aside>
+            `;
+        }
+
+        function renderAccountSidebar(user) {
+            return `
+                <div class="account-sidebar">
+                    ${renderAccountPlayerCardPanel(user)}
+                    ${renderAccountPersonalContentPanel()}
+                </div>
+            `;
+        }
+
+        function buildAccountPlayerCardData(user) {
+            const profile = accountPlayerCardState.profile || {};
+            const playerCard = profile.playerCard || {};
+            const playerCardFormData = normalizeAccountPlayerCardFormData(user);
+            return {
+                ...playerCard,
+                avatarUrl: playerCard.avatarUrl || user.picture || user.avatarUrl || '',
+                displayName: playerCard.displayName || user.displayName || user.name || 'User',
+                elo: playerCard.elo ?? profile?.stats?.rating ?? 0,
+                badgeCode: playerCard.badgeCode || playerCardFormData.badgeCode,
+                badgeName: playerCard.badgeName || playerCardFormData.badgeName,
+                badgeIconUrl: playerCard.badgeIconUrl || playerCardFormData.badgeIconUrl,
+                title: playerCard.title || playerCardFormData.title,
+                variant: 'account-preview'
+            };
+        }
+
+        function renderAccountPlayerCardPreview(user) {
+            const container = document.getElementById('account-player-card-preview');
+            if (!container || !window.ATGPlayerCard || typeof window.ATGPlayerCard.renderPlayerCard !== 'function') {
+                return;
+            }
+            if (!accountPlayerCardState.loaded || accountPlayerCardState.error || !accountPlayerCardState.profile) {
+                return;
+            }
+
+            window.ATGPlayerCard.renderPlayerCard(container, buildAccountPlayerCardData(user));
+        }
+
         async function loadAccountContentSummary() {
             if (accountContentState.loading || accountContentState.loaded) {
                 return;
@@ -223,6 +388,57 @@
             }
         }
 
+        async function loadAccountPlayerCardProfile(options) {
+            const settings = options || {};
+            if (accountPlayerCardState.loading || (accountPlayerCardState.loaded && !settings.force)) {
+                return;
+            }
+
+            accountPlayerCardState.loading = true;
+            accountPlayerCardState.error = '';
+            renderAccountPage();
+
+            try {
+                const response = await fetch('/api/ban-pick/profile', {
+                    headers: { Accept: 'application/json' },
+                    cache: 'no-store'
+                });
+                if (!response.ok) {
+                    throw new Error(await readAccountApiMessage(response, 'Không thể tải Player Card.'));
+                }
+                accountPlayerCardState.profile = await response.json();
+                accountPlayerCardState.loaded = true;
+            } catch (error) {
+                accountPlayerCardState.error = error.message || 'Không thể tải Player Card.';
+                accountPlayerCardState.loaded = true;
+                accountPlayerCardState.profile = null;
+            } finally {
+                accountPlayerCardState.loading = false;
+                renderAccountPage();
+            }
+        }
+
+        function syncAccountPlayerCardPreviewFromProfile(profile) {
+            if (!profile) {
+                return;
+            }
+
+            accountPlayerCardState.draft = null;
+            accountPlayerCardState.error = '';
+            accountPlayerCardState.loaded = true;
+            const existingProfile = accountPlayerCardState.profile || {};
+            accountPlayerCardState.profile = {
+                ...existingProfile,
+                playerCard: {
+                    ...(existingProfile.playerCard || {}),
+                    badgeCode: profile.playerBadgeCode || 'default',
+                    badgeName: profile.playerBadgeName || 'ATG Player',
+                    badgeIconUrl: profile.playerBadgeIconUrl || '',
+                    title: profile.playerTitle || ACCOUNT_PLAYER_CARD_DEFAULT_TITLE
+                }
+            };
+        }
+
         function showAccountContentList(type) {
             accountContentState.activeList = accountContentState.activeList === type ? '' : type;
             renderAccountPage();
@@ -243,6 +459,7 @@
                 return;
             }
             ensureAccountContentStateFor(user);
+            ensureAccountPlayerCardStateFor(user);
 
             const root = document.getElementById('account-dashboard-root');
             const displayNameRaw = user.displayName || user.name || 'User';
@@ -337,11 +554,15 @@
                         </div>
                     </div>
 
-                    ${renderAccountPersonalContentPanel()}
+                    ${renderAccountSidebar(user)}
                 </div>
             `;
+            renderAccountPlayerCardPreview(user);
             if (!accountContentState.loaded && !accountContentState.loading) {
                 loadAccountContentSummary();
+            }
+            if (!accountPlayerCardState.loaded && !accountPlayerCardState.loading) {
+                loadAccountPlayerCardProfile();
             }
         }
 
@@ -393,6 +614,7 @@
 
                 const profile = await response.json();
                 setAccountProfileMessage('Đã lưu tên hiển thị.', 'success');
+                syncAccountPlayerCardPreviewFromProfile(profile);
                 applyAuthUserProfile(profile);
             } catch (error) {
                 setAccountProfileMessage(error.message || 'Không thể lưu tên hiển thị.', 'error');
@@ -401,6 +623,64 @@
                 if (submitButton) {
                     submitButton.disabled = false;
                 }
+            }
+        }
+
+        async function saveAccountPlayerCard(event) {
+            event.preventDefault();
+
+            const user = getAuthUser();
+            if (!user) {
+                window.location.replace('/html/index.html');
+                return;
+            }
+
+            const badgeOption = findAccountPlayerBadgeOption(
+                document.getElementById('player-card-badge-select')?.value || user.playerBadgeCode
+            );
+            const titleValue = document.getElementById('player-card-title-input')?.value || '';
+
+            accountPlayerCardState.saving = true;
+            accountPlayerCardState.draft = {
+                badgeCode: badgeOption.code,
+                badgeName: badgeOption.name,
+                badgeIconUrl: badgeOption.iconUrl || '',
+                title: titleValue
+            };
+            setAccountPlayerCardMessage('', 'success');
+            renderAccountPage();
+
+            try {
+                const response = await fetch('/api/users/me/profile', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        displayName: user.displayName || user.name || 'User',
+                        level: user.level || 'Normal',
+                        playerBadgeCode: badgeOption.code,
+                        playerBadgeName: badgeOption.name,
+                        playerBadgeIconUrl: badgeOption.iconUrl || '',
+                        playerTitle: titleValue
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(await readAccountApiMessage(response, 'Khong the luu Player Card.'));
+                }
+
+                const profile = await response.json();
+                syncAccountPlayerCardPreviewFromProfile(profile);
+                applyAuthUserProfile(profile);
+                setAccountPlayerCardMessage('Da luu Player Card.', 'success');
+                await loadAccountPlayerCardProfile({ force: true });
+            } catch (error) {
+                setAccountPlayerCardMessage(error.message || 'Khong the luu Player Card.', 'error');
+                renderAccountPage();
+            } finally {
+                accountPlayerCardState.saving = false;
+                renderAccountPage();
             }
         }
 

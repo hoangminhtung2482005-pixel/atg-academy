@@ -30,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -83,7 +84,7 @@ class EsportsDraftServiceTest {
                 null
         )))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("phai thuoc dung 2 doi cua esports match");
+                .hasMessageContaining("phải thuộc đúng 2 đội của esports match");
 
         verify(esportsGameDraftRepository, never()).save(any());
     }
@@ -112,7 +113,7 @@ class EsportsDraftServiceTest {
                 202
         )))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("gameNumber da ton tai");
+                .hasMessageContaining("gameNumber đã tồn tại");
     }
 
     @Test
@@ -146,7 +147,7 @@ class EsportsDraftServiceTest {
 
         assertThatThrownBy(() -> service.createGameDraft(10L, request))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Khong duoc trung hero");
+                .hasMessageContaining("Không được trùng hero");
 
         verify(esportsGameDraftRepository, never()).save(any());
     }
@@ -247,7 +248,7 @@ class EsportsDraftServiceTest {
                 null
         )))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("winnerTeamId phai la blue team hoac red team");
+                .hasMessageContaining("winnerTeamId phải là blue team hoặc red team");
     }
 
     @Test
@@ -346,6 +347,32 @@ class EsportsDraftServiceTest {
     }
 
     @Test
+    void exportGameDraftsCsvAllowsMissingWinnerAndDuration() {
+        EsportsMatch match = match(10L, "FS", "SGP");
+        match.setMatchDate(LocalDateTime.of(2026, 5, 11, 18, 30));
+        match.setTier("1");
+
+        EsportsTeam fs = team(1L, "FS");
+        fs.setTeamName("Flash Wolves");
+        EsportsTeam sgp = team(2L, "SGP");
+        sgp.setTeamName("Saigon Phantom");
+
+        EsportsGameDraft draft = exportDraft(match, 1, fs, sgp, null);
+        draft.setDurationSeconds(null);
+
+        when(esportsGameDraftRepository.findAllForExportScope(null, null, null, null, null)).thenReturn(List.of(draft));
+        when(heroRepository.findAllById(any())).thenReturn(heroes(101L, 120L));
+
+        EsportsDraftService service = service();
+
+        String csv = new String(service.exportGameDraftsCsv(null, null, null, null), StandardCharsets.UTF_8);
+        String[] lines = csv.split("\\r\\n");
+
+        assertThat(lines[1]).contains("Flash Wolves");
+        assertThat(lines[1]).endsWith(",,");
+    }
+
+    @Test
     void exportGameDraftsCsvUsesMatchIdFilterWhenProvided() {
         EsportsMatch match = match(10L, "FS", "SGP");
         match.setMatchDate(LocalDateTime.of(2026, 5, 12, 20, 0));
@@ -377,7 +404,7 @@ class EsportsDraftServiceTest {
         when(esportsTeamRepository.findAll()).thenReturn(List.of(fs, sgp));
         when(heroRepository.findAllByOrderByNameAsc()).thenReturn(importHeroes());
         when(esportsTournamentRepository.findAll()).thenReturn(List.of());
-        when(esportsMatchRepository.findAllByOrderByMatchDateAsc()).thenReturn(List.of());
+        when(esportsMatchRepository.findAllByOrderByMatchDateAscIdAsc()).thenReturn(List.of());
 
         EsportsDraftService service = service();
         var response = service.previewGameDraftImport(csvFile(csvBody("Missing Tournament", "Flash Wolves")), false);
@@ -403,7 +430,7 @@ class EsportsDraftServiceTest {
         when(esportsTeamRepository.findAll()).thenReturn(List.of(fs, sgp));
         when(heroRepository.findAllByOrderByNameAsc()).thenReturn(importHeroes());
         when(esportsTournamentRepository.findAll()).thenReturn(List.of(tournament));
-        when(esportsMatchRepository.findAllByOrderByMatchDateAsc()).thenReturn(List.of(existingMatch));
+        when(esportsMatchRepository.findAllByOrderByMatchDateAscIdAsc()).thenReturn(List.of(existingMatch));
         when(esportsGameDraftRepository.existsByMatchIdAndGameNumber(10L, 1)).thenReturn(true);
 
         EsportsDraftService service = service();
@@ -413,12 +440,12 @@ class EsportsDraftServiceTest {
         assertThat(response.summary().draftsToOverwrite()).isZero();
         assertThat(response.rows()).singleElement().satisfies(row -> {
             assertThat(row.matchId()).isEqualTo(10L);
-            assertThat(row.errors()).anyMatch(message -> message.contains("Bat overwrite"));
+            assertThat(row.errors()).anyMatch(message -> message.contains("Bật overwrite"));
         });
     }
 
     @Test
-    void previewAndConfirmImportCreatesMatchAndDraft() {
+    void previewAndConfirmImportGroupsThreeGamesIntoSingleSeriesMatch() {
         EsportsTeam fs = team(1L, "FS");
         fs.setTeamName("Flash Wolves");
         EsportsTeam sgp = team(2L, "SGP");
@@ -429,7 +456,392 @@ class EsportsDraftServiceTest {
         when(heroRepository.findAllByOrderByNameAsc()).thenReturn(importHeroes());
         when(heroRepository.findAllById(any())).thenReturn(importHeroes());
         when(esportsTournamentRepository.findAll()).thenReturn(List.of(tournament));
-        when(esportsMatchRepository.findAllByOrderByMatchDateAsc()).thenReturn(List.of());
+        when(esportsMatchRepository.findAllByOrderByMatchDateAscIdAsc()).thenReturn(List.of());
+        when(esportsTeamRepository.findById(1L)).thenReturn(Optional.of(fs));
+        when(esportsTeamRepository.findById(2L)).thenReturn(Optional.of(sgp));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"source\":\"import\"}");
+        when(esportsMatchRepository.save(any())).thenAnswer(invocation -> {
+            EsportsMatch saved = invocation.getArgument(0);
+            saved.setId(99L);
+            return saved;
+        });
+        when(esportsGameDraftRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        EsportsDraftService service = service();
+        var preview = service.previewGameDraftImport(
+                csvFile(seriesCsvBody("AOG Spring 2026", "playoff", List.of("Flash Wolves", "Flash Wolves", "Flash Wolves"))),
+                false
+        );
+
+        assertThat(preview.readyToImport()).isTrue();
+        assertThat(preview.summary().matchesToCreate()).isEqualTo(1);
+        assertThat(preview.summary().draftsToCreate()).isEqualTo(3);
+        assertThat(preview.rows()).hasSize(3).allSatisfy(row -> {
+            assertThat(row.matchId()).isNull();
+            assertThat(row.matchAction()).isEqualTo("Tao match moi");
+        });
+
+        var confirm = service.confirmGameDraftImport(
+                new com.example.demo.dto.esports.EsportsGameDraftImportConfirmRequest(preview.previewToken())
+        );
+
+        ArgumentCaptor<EsportsMatch> matchCaptor = ArgumentCaptor.forClass(EsportsMatch.class);
+        ArgumentCaptor<EsportsGameDraft> draftCaptor = ArgumentCaptor.forClass(EsportsGameDraft.class);
+        verify(esportsMatchRepository).save(matchCaptor.capture());
+        verify(esportsGameDraftRepository, times(3)).save(draftCaptor.capture());
+        verify(eloCalculationService).calculateAllRankings();
+
+        EsportsMatch savedMatch = matchCaptor.getValue();
+        assertThat(savedMatch.getTeam1Code()).isEqualTo("FS");
+        assertThat(savedMatch.getTeam2Code()).isEqualTo("SGP");
+        assertThat(savedMatch.getStage()).isEqualTo("playoff");
+        assertThat(savedMatch.getScore1()).isEqualTo(3);
+        assertThat(savedMatch.getScore2()).isZero();
+        assertThat(savedMatch.getTournament()).isSameAs(tournament);
+
+        assertThat(draftCaptor.getAllValues())
+                .extracting(EsportsGameDraft::getGameNumber)
+                .containsExactly(1, 2, 3);
+        assertThat(draftCaptor.getAllValues()).allSatisfy(draft -> {
+            assertThat(draft.getMatch()).isSameAs(savedMatch);
+            assertThat(draft.getBlueTeam()).isSameAs(fs);
+            assertThat(draft.getRedTeam()).isSameAs(sgp);
+            assertThat(draft.getWinnerTeam()).isSameAs(fs);
+        });
+
+        assertThat(confirm.importedRows()).isEqualTo(3);
+        assertThat(confirm.createdMatches()).isEqualTo(1);
+        assertThat(confirm.updatedMatches()).isZero();
+        assertThat(confirm.createdDrafts()).isEqualTo(3);
+        assertThat(confirm.overwrittenDrafts()).isZero();
+        assertThat(confirm.affectedMatchIds()).containsExactly(99L);
+        assertThat(confirm.affectedSeriesCount()).isEqualTo(1);
+        assertThat(confirm.rankingsRecalculated()).isTrue();
+    }
+
+    @Test
+    void previewAndConfirmImportAttachesThreeGamesToExistingSeriesParent() {
+        EsportsTeam fs = team(1L, "FS");
+        fs.setTeamName("Flash Wolves");
+        EsportsTeam sgp = team(2L, "SGP");
+        sgp.setTeamName("Saigon Phantom");
+        EsportsTournament tournament = tournament(7L, "AOG Spring 2026", "aog-spring-2026", "T1");
+        EsportsMatch existingMatch = match(10L, "FS", "SGP");
+        existingMatch.setTournament(tournament);
+        existingMatch.setStage("playoff");
+        existingMatch.setMatchDate(LocalDateTime.of(2026, 5, 11, 18, 30));
+        existingMatch.setScore1(0);
+        existingMatch.setScore2(0);
+
+        when(esportsTeamRepository.findAll()).thenReturn(List.of(fs, sgp));
+        when(heroRepository.findAllByOrderByNameAsc()).thenReturn(importHeroes());
+        when(heroRepository.findAllById(any())).thenReturn(importHeroes());
+        when(esportsTournamentRepository.findAll()).thenReturn(List.of(tournament));
+        when(esportsMatchRepository.findAllByOrderByMatchDateAscIdAsc()).thenReturn(List.of(existingMatch));
+        when(esportsMatchRepository.findById(10L)).thenReturn(Optional.of(existingMatch));
+        when(esportsTeamRepository.findById(1L)).thenReturn(Optional.of(fs));
+        when(esportsTeamRepository.findById(2L)).thenReturn(Optional.of(sgp));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"source\":\"import\"}");
+        when(esportsGameDraftRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(esportsMatchRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        EsportsDraftService service = service();
+        var preview = service.previewGameDraftImport(
+                csvFile(seriesCsvBody("AOG Spring 2026", "playoff", List.of("Flash Wolves", "Saigon Phantom", "Flash Wolves"))),
+                false
+        );
+
+        assertThat(preview.readyToImport()).isTrue();
+        assertThat(preview.summary().matchesToCreate()).isZero();
+        assertThat(preview.summary().matchesToUpdate()).isEqualTo(1);
+        assertThat(preview.summary().draftsToCreate()).isEqualTo(3);
+        assertThat(preview.rows()).hasSize(3).allSatisfy(row -> {
+            assertThat(row.matchId()).isEqualTo(10L);
+            assertThat(row.matchAction().toLowerCase()).contains("match #10");
+        });
+
+        var confirm = service.confirmGameDraftImport(
+                new com.example.demo.dto.esports.EsportsGameDraftImportConfirmRequest(preview.previewToken())
+        );
+
+        ArgumentCaptor<EsportsMatch> matchCaptor = ArgumentCaptor.forClass(EsportsMatch.class);
+        ArgumentCaptor<EsportsGameDraft> draftCaptor = ArgumentCaptor.forClass(EsportsGameDraft.class);
+        verify(esportsMatchRepository).save(matchCaptor.capture());
+        verify(esportsGameDraftRepository, times(3)).save(draftCaptor.capture());
+        verify(eloCalculationService).calculateAllRankings();
+
+        EsportsMatch savedMatch = matchCaptor.getValue();
+        assertThat(savedMatch.getId()).isEqualTo(10L);
+        assertThat(savedMatch.getScore1()).isEqualTo(2);
+        assertThat(savedMatch.getScore2()).isEqualTo(1);
+        assertThat(savedMatch.getStage()).isEqualTo("playoff");
+        assertThat(draftCaptor.getAllValues())
+                .extracting(draft -> draft.getMatch().getId(), EsportsGameDraft::getGameNumber)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(10L, 1),
+                        org.assertj.core.groups.Tuple.tuple(10L, 2),
+                        org.assertj.core.groups.Tuple.tuple(10L, 3)
+                );
+
+        assertThat(confirm.importedRows()).isEqualTo(3);
+        assertThat(confirm.createdMatches()).isZero();
+        assertThat(confirm.updatedMatches()).isEqualTo(1);
+        assertThat(confirm.createdDrafts()).isEqualTo(3);
+        assertThat(confirm.overwrittenDrafts()).isZero();
+        assertThat(confirm.affectedMatchIds()).containsExactly(10L);
+        assertThat(confirm.affectedSeriesCount()).isEqualTo(1);
+        assertThat(confirm.rankingsRecalculated()).isTrue();
+    }
+
+    @Test
+    void previewAndConfirmImportReusesCanonicalExactSeriesParent() {
+        EsportsTeam fs = team(1L, "FS");
+        fs.setTeamName("Flash Wolves");
+        EsportsTeam sgp = team(2L, "SGP");
+        sgp.setTeamName("Saigon Phantom");
+        EsportsTournament tournament = tournament(7L, "AOG Spring 2026", "aog-spring-2026", "T1");
+
+        EsportsMatch canonicalMatch = match(10L, "FS", "SGP");
+        canonicalMatch.setTournament(tournament);
+        canonicalMatch.setStage("playoff");
+        canonicalMatch.setMatchDate(LocalDateTime.of(2026, 5, 11, 8, 45));
+        canonicalMatch.setScore1(2);
+        canonicalMatch.setScore2(1);
+
+        EsportsMatch duplicateExactMatch = match(11L, "FS", "SGP");
+        duplicateExactMatch.setTournament(tournament);
+        duplicateExactMatch.setStage("playoff");
+        duplicateExactMatch.setMatchDate(LocalDateTime.of(2026, 5, 11, 21, 0));
+        duplicateExactMatch.setScore1(2);
+        duplicateExactMatch.setScore2(1);
+
+        EsportsGameDraft existingDraft = new EsportsGameDraft();
+        existingDraft.setId(501L);
+        existingDraft.setMatch(canonicalMatch);
+        existingDraft.setGameNumber(1);
+        existingDraft.setBlueTeam(fs);
+        existingDraft.setRedTeam(sgp);
+        existingDraft.setWinnerTeam(fs);
+
+        when(esportsTeamRepository.findAll()).thenReturn(List.of(fs, sgp));
+        when(heroRepository.findAllByOrderByNameAsc()).thenReturn(importHeroes());
+        when(heroRepository.findAllById(any())).thenReturn(importHeroes());
+        when(esportsTournamentRepository.findAll()).thenReturn(List.of(tournament));
+        when(esportsMatchRepository.findAllByOrderByMatchDateAscIdAsc()).thenReturn(List.of(canonicalMatch, duplicateExactMatch));
+        when(esportsMatchRepository.findById(10L)).thenReturn(Optional.of(canonicalMatch));
+        when(esportsGameDraftRepository.findById(501L)).thenReturn(Optional.of(existingDraft));
+        when(esportsGameDraftRepository.findByMatchId(10L)).thenReturn(List.of(existingDraft));
+        when(esportsGameDraftRepository.findByMatchId(11L)).thenReturn(List.of());
+        when(esportsGameDraftRepository.existsByMatchIdAndGameNumber(10L, 1)).thenReturn(true);
+        when(esportsTeamRepository.findById(1L)).thenReturn(Optional.of(fs));
+        when(esportsTeamRepository.findById(2L)).thenReturn(Optional.of(sgp));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"source\":\"import\"}");
+        when(esportsGameDraftRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        EsportsDraftService service = service();
+        var preview = service.previewGameDraftImport(
+                csvFile(seriesCsvBody("AOG Spring 2026", "playoff", List.of("Flash Wolves", "Saigon Phantom", "Flash Wolves"))),
+                true
+        );
+
+        assertThat(preview.readyToImport()).isTrue();
+        assertThat(preview.summary().matchesToCreate()).isZero();
+        assertThat(preview.summary().matchesToUpdate()).isZero();
+        assertThat(preview.summary().draftsToCreate()).isEqualTo(2);
+        assertThat(preview.summary().draftsToOverwrite()).isEqualTo(1);
+        assertThat(preview.rows()).hasSize(3).allSatisfy(row -> {
+            assertThat(row.matchId()).isEqualTo(10L);
+            assertThat(row.matchAction()).isEqualTo("Dùng match #10");
+        });
+        assertThat(preview.rows()).anySatisfy(row ->
+                assertThat(row.warnings()).anyMatch(message -> message.contains("nhiều esports_matches exact"))
+        );
+        assertThat(preview.rows().get(0).draftAction()).contains("Overwrite game draft #501");
+
+        var confirm = service.confirmGameDraftImport(
+                new com.example.demo.dto.esports.EsportsGameDraftImportConfirmRequest(preview.previewToken())
+        );
+
+        ArgumentCaptor<EsportsGameDraft> draftCaptor = ArgumentCaptor.forClass(EsportsGameDraft.class);
+        verify(esportsMatchRepository, never()).save(any());
+        verify(esportsGameDraftRepository, times(3)).save(draftCaptor.capture());
+        verify(eloCalculationService, never()).calculateAllRankings();
+
+        assertThat(draftCaptor.getAllValues())
+                .extracting(draft -> draft.getMatch().getId(), EsportsGameDraft::getGameNumber)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(10L, 1),
+                        org.assertj.core.groups.Tuple.tuple(10L, 2),
+                        org.assertj.core.groups.Tuple.tuple(10L, 3)
+                );
+        assertThat(draftCaptor.getAllValues().get(0).getId()).isEqualTo(501L);
+
+        assertThat(confirm.importedRows()).isEqualTo(3);
+        assertThat(confirm.createdMatches()).isZero();
+        assertThat(confirm.updatedMatches()).isZero();
+        assertThat(confirm.createdDrafts()).isEqualTo(2);
+        assertThat(confirm.overwrittenDrafts()).isEqualTo(1);
+        assertThat(confirm.affectedMatchIds()).containsExactly(10L);
+        assertThat(confirm.affectedSeriesCount()).isEqualTo(1);
+        assertThat(confirm.rankingsRecalculated()).isFalse();
+    }
+
+    @Test
+    void previewAndConfirmImportReusesExistingSeriesParentWhenTeamOrderIsReversed() {
+        EsportsTeam fs = team(1L, "FS");
+        fs.setTeamName("Flash Wolves");
+        EsportsTeam sgp = team(2L, "SGP");
+        sgp.setTeamName("Saigon Phantom");
+        EsportsTournament tournament = tournament(7L, "AOG Spring 2026", "aog-spring-2026", "T1");
+
+        EsportsMatch existingMatch = match(10L, "SGP", "FS");
+        existingMatch.setTournament(tournament);
+        existingMatch.setStage("playoff");
+        existingMatch.setMatchDate(LocalDateTime.of(2026, 5, 11, 22, 15));
+        existingMatch.setScore1(1);
+        existingMatch.setScore2(2);
+
+        when(esportsTeamRepository.findAll()).thenReturn(List.of(fs, sgp));
+        when(heroRepository.findAllByOrderByNameAsc()).thenReturn(importHeroes());
+        when(heroRepository.findAllById(any())).thenReturn(importHeroes());
+        when(esportsTournamentRepository.findAll()).thenReturn(List.of(tournament));
+        when(esportsMatchRepository.findAllByOrderByMatchDateAscIdAsc()).thenReturn(List.of(existingMatch));
+        when(esportsMatchRepository.findById(10L)).thenReturn(Optional.of(existingMatch));
+        when(esportsTeamRepository.findById(1L)).thenReturn(Optional.of(fs));
+        when(esportsTeamRepository.findById(2L)).thenReturn(Optional.of(sgp));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"source\":\"import\"}");
+        when(esportsGameDraftRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        EsportsDraftService service = service();
+        var preview = service.previewGameDraftImport(
+                csvFile(seriesCsvBody("AOG Spring 2026", "playoff", List.of("Flash Wolves", "Saigon Phantom", "Flash Wolves"))),
+                false
+        );
+
+        assertThat(preview.readyToImport()).isTrue();
+        assertThat(preview.summary().matchesToCreate()).isZero();
+        assertThat(preview.summary().matchesToUpdate()).isZero();
+        assertThat(preview.summary().draftsToCreate()).isEqualTo(3);
+        assertThat(preview.summary().draftsToOverwrite()).isZero();
+        assertThat(preview.rows()).hasSize(3).allSatisfy(row -> {
+            assertThat(row.matchId()).isEqualTo(10L);
+            assertThat(row.matchAction()).isEqualTo("Dùng match #10");
+        });
+
+        var confirm = service.confirmGameDraftImport(
+                new com.example.demo.dto.esports.EsportsGameDraftImportConfirmRequest(preview.previewToken())
+        );
+
+        ArgumentCaptor<EsportsGameDraft> draftCaptor = ArgumentCaptor.forClass(EsportsGameDraft.class);
+        verify(esportsMatchRepository, never()).save(any());
+        verify(esportsGameDraftRepository, times(3)).save(draftCaptor.capture());
+        verify(eloCalculationService, never()).calculateAllRankings();
+
+        assertThat(draftCaptor.getAllValues())
+                .extracting(draft -> draft.getMatch().getId(), EsportsGameDraft::getGameNumber)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(10L, 1),
+                        org.assertj.core.groups.Tuple.tuple(10L, 2),
+                        org.assertj.core.groups.Tuple.tuple(10L, 3)
+                );
+
+        assertThat(confirm.importedRows()).isEqualTo(3);
+        assertThat(confirm.createdMatches()).isZero();
+        assertThat(confirm.updatedMatches()).isZero();
+        assertThat(confirm.createdDrafts()).isEqualTo(3);
+        assertThat(confirm.overwrittenDrafts()).isZero();
+        assertThat(confirm.affectedMatchIds()).containsExactly(10L);
+        assertThat(confirm.affectedSeriesCount()).isEqualTo(1);
+        assertThat(confirm.rankingsRecalculated()).isFalse();
+    }
+
+    @Test
+    void previewAndConfirmImportOverwritesExistingDraftWhenEnabled() {
+        EsportsTeam fs = team(1L, "FS");
+        fs.setTeamName("Flash Wolves");
+        EsportsTeam sgp = team(2L, "SGP");
+        sgp.setTeamName("Saigon Phantom");
+        EsportsTournament tournament = tournament(7L, "AOG Spring 2026", "aog-spring-2026", "T1");
+        EsportsMatch existingMatch = match(10L, "FS", "SGP");
+        existingMatch.setTournament(tournament);
+        existingMatch.setStage("bang");
+        existingMatch.setMatchDate(LocalDateTime.of(2026, 5, 11, 18, 30));
+        existingMatch.setScore1(1);
+        existingMatch.setScore2(0);
+
+        EsportsGameDraft existingDraft = new EsportsGameDraft();
+        existingDraft.setId(501L);
+        existingDraft.setMatch(existingMatch);
+        existingDraft.setGameNumber(1);
+        existingDraft.setBlueTeam(fs);
+        existingDraft.setRedTeam(sgp);
+        existingDraft.setWinnerTeam(fs);
+
+        when(esportsTeamRepository.findAll()).thenReturn(List.of(fs, sgp));
+        when(heroRepository.findAllByOrderByNameAsc()).thenReturn(importHeroes());
+        when(heroRepository.findAllById(any())).thenReturn(importHeroes());
+        when(esportsTournamentRepository.findAll()).thenReturn(List.of(tournament));
+        when(esportsMatchRepository.findAllByOrderByMatchDateAscIdAsc()).thenReturn(List.of(existingMatch));
+        when(esportsMatchRepository.findById(10L)).thenReturn(Optional.of(existingMatch));
+        when(esportsGameDraftRepository.findById(501L)).thenReturn(Optional.of(existingDraft));
+        when(esportsGameDraftRepository.findByMatchId(10L)).thenReturn(List.of(existingDraft));
+        when(esportsGameDraftRepository.existsByMatchIdAndGameNumber(10L, 1)).thenReturn(true);
+        when(esportsTeamRepository.findById(1L)).thenReturn(Optional.of(fs));
+        when(esportsTeamRepository.findById(2L)).thenReturn(Optional.of(sgp));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"source\":\"import\"}");
+        when(esportsGameDraftRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        EsportsDraftService service = service();
+        var preview = service.previewGameDraftImport(
+                csvFile(seriesCsvBody("AOG Spring 2026", "bang", List.of("Flash Wolves")).replace(",19:15\r\n", ",18:00\r\n")),
+                true
+        );
+
+        assertThat(preview.readyToImport()).isTrue();
+        assertThat(preview.summary().draftsToOverwrite()).isEqualTo(1);
+        assertThat(preview.rows()).singleElement().satisfies(row -> {
+            assertThat(row.matchId()).isEqualTo(10L);
+            assertThat(row.draftAction()).contains("Overwrite game draft #501");
+        });
+
+        var confirm = service.confirmGameDraftImport(
+                new com.example.demo.dto.esports.EsportsGameDraftImportConfirmRequest(preview.previewToken())
+        );
+
+        ArgumentCaptor<EsportsGameDraft> draftCaptor = ArgumentCaptor.forClass(EsportsGameDraft.class);
+        verify(esportsGameDraftRepository).save(draftCaptor.capture());
+        verify(eloCalculationService, never()).calculateAllRankings();
+
+        EsportsGameDraft savedDraft = draftCaptor.getValue();
+        assertThat(savedDraft.getId()).isEqualTo(501L);
+        assertThat(savedDraft.getGameNumber()).isEqualTo(1);
+        assertThat(savedDraft.getDurationSeconds()).isEqualTo(1080);
+        assertThat(savedDraft.getWinnerTeam()).isSameAs(fs);
+
+        assertThat(confirm.importedRows()).isEqualTo(1);
+        assertThat(confirm.createdMatches()).isZero();
+        assertThat(confirm.updatedMatches()).isZero();
+        assertThat(confirm.createdDrafts()).isZero();
+        assertThat(confirm.overwrittenDrafts()).isEqualTo(1);
+        assertThat(confirm.affectedMatchIds()).containsExactly(10L);
+        assertThat(confirm.affectedSeriesCount()).isEqualTo(1);
+        assertThat(confirm.rankingsRecalculated()).isFalse();
+    }
+
+    @Test
+    void previewAndConfirmImportCreatesMatchAndDraft() {
+        EsportsTeam fs = team(1L, "FS");
+        fs.setTeamName("Flash Wolves");
+        EsportsTeam sgp = team(2L, "SGP");
+        sgp.setTeamName("Saigon Phantom");
+        EsportsTournament tournament = tournament(7L, "AOG Spring 2026", "aog-spring-2026", "T1");
+        tournament.setAerTier(2);
+
+        when(esportsTeamRepository.findAll()).thenReturn(List.of(fs, sgp));
+        when(heroRepository.findAllByOrderByNameAsc()).thenReturn(importHeroes());
+        when(heroRepository.findAllById(any())).thenReturn(importHeroes());
+        when(esportsTournamentRepository.findAll()).thenReturn(List.of(tournament));
+        when(esportsMatchRepository.findAllByOrderByMatchDateAscIdAsc()).thenReturn(List.of());
         when(esportsTeamRepository.findById(1L)).thenReturn(Optional.of(fs));
         when(esportsTeamRepository.findById(2L)).thenReturn(Optional.of(sgp));
         when(objectMapper.writeValueAsString(any())).thenReturn("{\"source\":\"import\"}");
@@ -463,6 +875,7 @@ class EsportsDraftServiceTest {
         assertThat(savedMatch.getScore1()).isEqualTo(1);
         assertThat(savedMatch.getScore2()).isZero();
         assertThat(savedMatch.getTournament()).isSameAs(tournament);
+        assertThat(savedMatch.getTier()).isEqualTo("2");
 
         assertThat(savedDraft.getGameNumber()).isEqualTo(1);
         assertThat(savedDraft.getBlueTeam()).isSameAs(fs);
@@ -473,8 +886,9 @@ class EsportsDraftServiceTest {
         assertThat(confirm.importedRows()).isEqualTo(1);
         assertThat(confirm.createdMatches()).isEqualTo(1);
         assertThat(confirm.createdDrafts()).isEqualTo(1);
-        assertThat(confirm.rankingsRecalculated()).isTrue();
         assertThat(confirm.affectedMatchIds()).containsExactly(99L);
+        assertThat(confirm.affectedSeriesCount()).isEqualTo(1);
+        assertThat(confirm.rankingsRecalculated()).isTrue();
     }
 
     private EsportsDraftService service() {
@@ -594,6 +1008,24 @@ class EsportsDraftServiceTest {
     private String csvBody(String tournamentName, String winnerName) {
         return "\uFEFFDate,Tournament,Match,Team_1,T1_Side,T1_DSL,T1_JGL,T1_MID,T1_ADL,T1_SUP,T1_Ban_1,T1_Ban_2,T1_Ban_3,T1_Ban_4,T1_Ban_5,Team_2,T2_Side,T2_DSL,T2_JGL,T2_MID,T2_ADL,T2_SUP,T2_Ban_1,T2_Ban_2,T2_Ban_3,T2_Ban_4,T2_Ban_5,Winner,Length\r\n"
                 + "2026-05-11," + tournamentName + ",1,Flash Wolves,Blue,Omen,Nakroth,Liliana,Hayate,Alice,Florentino,Ryoma,Yena,Richter,Maloch,Saigon Phantom,Red,Veres,Aoi,Krixi,Violet,Rouie,Aya,Zip,Helen,Cresht,Toro," + winnerName + ",19:15\r\n";
+    }
+
+    private String seriesCsvBody(String tournamentName, String stage, List<String> winners) {
+        StringBuilder builder = new StringBuilder();
+        builder.append('\uFEFF');
+        builder.append("Date,Tournament,Stage,Match,Team_1,T1_Side,T1_DSL,T1_JGL,T1_MID,T1_ADL,T1_SUP,T1_Ban_1,T1_Ban_2,T1_Ban_3,T1_Ban_4,T1_Ban_5,Team_2,T2_Side,T2_DSL,T2_JGL,T2_MID,T2_ADL,T2_SUP,T2_Ban_1,T2_Ban_2,T2_Ban_3,T2_Ban_4,T2_Ban_5,Winner,Length\r\n");
+        for (int index = 0; index < winners.size(); index++) {
+            builder.append("2026-05-11,")
+                    .append(tournamentName)
+                    .append(',')
+                    .append(stage)
+                    .append(',')
+                    .append(index + 1)
+                    .append(",Flash Wolves,Blue,Omen,Nakroth,Liliana,Hayate,Alice,Florentino,Ryoma,Yena,Richter,Maloch,Saigon Phantom,Red,Veres,Aoi,Krixi,Violet,Rouie,Aya,Zip,Helen,Cresht,Toro,")
+                    .append(winners.get(index))
+                    .append(",19:15\r\n");
+        }
+        return builder.toString();
     }
 
     private List<Hero> importHeroes() {

@@ -14,6 +14,7 @@ import com.example.demo.repository.EsportsTeamRepository;
 import com.example.demo.service.EsportsDataService;
 import com.example.demo.service.EsportsFranchiseService;
 import com.example.demo.service.EsportsTournamentService;
+import com.example.demo.util.EsportsTierSupport;
 import com.example.demo.util.EsportsTournamentCatalog;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
@@ -153,11 +154,33 @@ public class EsportsController {
         }
     }
 
+    @GetMapping("/data/top-red-banned-heroes")
+    public ResponseEntity<?> getTopRedBannedHeroes(
+            @RequestParam(required = false) Long tournamentId,
+            @RequestParam(required = false) String tournamentName,
+            @RequestParam(defaultValue = "5") Integer limit) {
+        try {
+            List<EsportsHeroBanStatResponse> payload = esportsDataService.getTopRedBannedHeroes(tournamentId, tournamentName, limit);
+            return ResponseEntity.ok(payload);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @GetMapping("/data/hero-stats")
     public ResponseEntity<?> getHeroStats(@RequestParam(required = false) Long tournamentId,
-                                          @RequestParam(required = false) String tournamentName) {
+                                          @RequestParam(required = false) String tournamentName,
+                                          @RequestParam(required = false) String teamCode,
+                                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+                                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
         try {
-            List<EsportsHeroStatResponse> payload = esportsDataService.getHeroStats(tournamentId, tournamentName);
+            List<EsportsHeroStatResponse> payload = esportsDataService.getHeroStats(
+                    tournamentId,
+                    tournamentName,
+                    teamCode,
+                    dateFrom,
+                    dateTo
+            );
             return ResponseEntity.ok(payload);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -199,7 +222,7 @@ public class EsportsController {
                 match.getScore2(),
                 resolveMatchTournamentName(match),
                 match.getTournamentId(),
-                match.getTier(),
+                EsportsTierSupport.resolveEffectiveTier(match),
                 match.getStage()
         );
     }
@@ -208,7 +231,7 @@ public class EsportsController {
         if (match != null && match.getTournament() != null && match.getTournament().getName() != null && !match.getTournament().getName().isBlank()) {
             return match.getTournament().getName();
         }
-        return EsportsTournamentCatalog.resolveTournamentName(match != null ? match.getTier() : null);
+        return EsportsTournamentCatalog.resolveTournamentName(EsportsTierSupport.resolveEffectiveTier(match));
     }
 
     private static String normalizeCode(String code) {

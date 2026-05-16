@@ -22,11 +22,14 @@ public class BanPickPresenceEventListener {
     private static final String ROOM_TOPIC_PREFIX = "/topic/ban-pick/";
 
     private final SimpMessagingTemplate messagingTemplate;
+    private final BanPickRoomService banPickRoomService;
     private final Map<String, SessionPresence> sessions = new ConcurrentHashMap<>();
     private final Map<String, Set<String>> roomEmails = new ConcurrentHashMap<>();
 
-    public BanPickPresenceEventListener(SimpMessagingTemplate messagingTemplate) {
+    public BanPickPresenceEventListener(SimpMessagingTemplate messagingTemplate,
+                                        BanPickRoomService banPickRoomService) {
         this.messagingTemplate = messagingTemplate;
+        this.banPickRoomService = banPickRoomService;
     }
 
     @EventListener
@@ -40,8 +43,13 @@ public class BanPickPresenceEventListener {
             return;
         }
 
+        boolean emailWasConnected = sessions.values().stream()
+                .anyMatch(session -> roomCode.equals(session.roomCode()) && email.equals(session.email()));
         sessions.put(sessionId, new SessionPresence(roomCode, email));
         roomEmails.computeIfAbsent(roomCode, ignored -> ConcurrentHashMap.newKeySet()).add(email);
+        if (!emailWasConnected) {
+            banPickRoomService.handlePresenceConnected(roomCode, email);
+        }
         broadcastPresence(roomCode);
     }
 
@@ -65,6 +73,7 @@ public class BanPickPresenceEventListener {
             if (emails != null) {
                 emails.remove(presence.email());
             }
+            banPickRoomService.handlePresenceDisconnected(presence.roomCode(), presence.email(), LocalDateTime.now());
         }
         broadcastPresence(presence.roomCode());
     }

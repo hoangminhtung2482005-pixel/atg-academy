@@ -100,16 +100,36 @@ button {
     padding: 18px 14px;
     display: grid;
     gap: 6px;
+    overflow-y: auto;
 }
 
 .nav-item {
     border: 1px solid transparent;
     border-radius: 12px;
+    display: block;
     padding: 12px 14px;
     color: #64748b;
     font-size: 0.9rem;
     font-weight: 700;
     text-decoration: none;
+}
+
+.sidebar-section-label {
+    color: #94a3b8;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    margin: 14px 10px 4px;
+    text-transform: uppercase;
+}
+
+.sidebar-section-label:first-child {
+    margin-top: 0;
+}
+
+.nav-item-subtle {
+    font-size: 0.84rem;
+    padding-left: 20px;
 }
 
 .nav-item:hover {
@@ -157,6 +177,11 @@ button {
 
 .admin-page {
     padding: 28px;
+}
+
+.admin-section[id],
+.panel-stack[id] {
+    scroll-margin-top: 82px;
 }
 
 .admin-page-header,
@@ -770,13 +795,28 @@ button {
     .checkbox-grid.attributes {
         grid-template-columns: 1fr;
     }
+
+    body[data-page="admin-dashboard"] > .flex-1 {
+        height: auto !important;
+        margin-left: 0 !important;
+        overflow: visible !important;
+    }
 }
 
 /* Admin dashboard page-specific ownership */
 body[data-page="admin-dashboard"] {
     background: #f8fafc;
     color: #0f172a;
+    display: block;
     font-family: Inter, sans-serif;
+    overflow-x: hidden;
+}
+
+body[data-page="admin-dashboard"] > .flex-1 {
+    display: flex;
+    flex-direction: column;
+    margin-left: 260px !important;
+    min-height: 100vh;
 }
 
 body[data-page="admin-dashboard"] ::-webkit-scrollbar {
@@ -832,6 +872,11 @@ body[data-page="admin-dashboard"] .nav-item svg {
     height: 18px;
     opacity: 0.6;
     width: 18px;
+}
+
+body[data-page="admin-dashboard"] .sidebar-section-label {
+    margin-left: 16px;
+    margin-right: 16px;
 }
 
 body[data-page="admin-dashboard"] .nav-item.active svg {
@@ -1095,6 +1140,11 @@ body[data-page="admin-esports-data"] .selected-summary.warning {
     border-color: #fed7aa;
 }
 
+body[data-page="admin-esports-data"] .selected-summary.danger-zone-summary {
+    background: #fff1f2;
+    border-color: #fecdd3;
+}
+
 body[data-page="admin-esports-data"] .selected-summary-grid {
     display: grid;
     gap: 14px;
@@ -1155,6 +1205,43 @@ body[data-page="admin-esports-data"] .bulk-import-meta .summary-note {
 
 body[data-page="admin-esports-data"] .import-preview-grid {
     margin-bottom: 20px;
+}
+
+body[data-page="admin-esports-data"] .danger-zone-section {
+    border-color: #fecdd3;
+}
+
+body[data-page="admin-esports-data"] .danger-zone-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.95fr);
+    margin-bottom: 18px;
+}
+
+body[data-page="admin-esports-data"] .danger-zone-banner {
+    background: linear-gradient(180deg, #fff7ed 0%, #fff1f2 100%);
+    border-color: #fdba74;
+}
+
+body[data-page="admin-esports-data"] .danger-zone-card {
+    border-color: #fecdd3;
+    background: #fffafb;
+}
+
+body[data-page="admin-esports-data"] .danger-note-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 16px;
+    color: #9f1239;
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+body[data-page="admin-esports-data"] .danger-note-list div {
+    border: 1px solid rgba(244, 114, 182, 0.18);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.68);
+    padding: 11px 12px;
 }
 
 body[data-page="admin-esports-data"] #import-file-input {
@@ -1502,6 +1589,7 @@ body[data-page="admin-esports-data"] .esports-match-filter-grid {
 @media (max-width: 980px) {
     body[data-page="admin-esports-data"] .admin-catalog-grid,
     body[data-page="admin-esports-data"] .admin-two-column,
+    body[data-page="admin-esports-data"] .danger-zone-grid,
     body[data-page="admin-esports-data"] .draft-phase-board,
     body[data-page="admin-esports-data"] .lineup-grid,
     body[data-page="admin-esports-data"] .selected-summary-grid {

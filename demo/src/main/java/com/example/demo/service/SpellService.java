@@ -3,7 +3,6 @@ package com.example.demo.service;
 import com.example.demo.dto.wiki.SpellDto;
 import com.example.demo.repository.GuideRepository;
 import com.example.demo.util.SlugUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -22,7 +21,6 @@ public class SpellService {
     private final GuideRepository guideRepository;
     private final ObjectMapper objectMapper;
 
-    @Autowired
     public SpellService(WikiJsonStorageService wikiJsonStorageService,
                         GuideRepository guideRepository,
                         ObjectMapper objectMapper) {

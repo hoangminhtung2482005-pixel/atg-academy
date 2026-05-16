@@ -84,6 +84,35 @@ class EsportsDataServiceTest {
         }
 
         @Test
+        void getTopRedBannedHeroesUsesFlatGameDraftsAndSanitizesLimit() {
+                EsportsGameDraft draftA = draft("0", 1L, 2L);
+                draftA.setBlueBan1HeroId(7L);
+                draftA.setRedBan1HeroId(11L);
+                draftA.setRedBan2HeroId(13L);
+
+                EsportsGameDraft draftB = draft("0", 1L, 2L);
+                draftB.setBlueBan1HeroId(7L);
+                draftB.setRedBan1HeroId(11L);
+                draftB.setRedBan2HeroId(11L);
+
+                when(esportsGameDraftRepository.findAllForAnalyticsScope(null, "0", null, null, null))
+                                .thenReturn(List.of(draftA, draftB));
+                when(heroRepository.findAllById(any())).thenReturn(List.of(
+                                hero(7L, "Hayate"),
+                                hero(11L, "Toro"),
+                                hero(13L, "Alice")));
+
+                List<EsportsHeroBanStatResponse> result = service().getTopRedBannedHeroes("AER International", 99);
+
+                verify(esportsGameDraftRepository).findAllForAnalyticsScope(null, "0", null, null, null);
+                assertThat(result).containsExactly(
+                                new EsportsHeroBanStatResponse(11L, "Toro", "/images/heroes/Toro.jpg", 3L,
+                                                "AER International"),
+                                new EsportsHeroBanStatResponse(13L, "Alice", "/images/heroes/Alice.jpg", 1L,
+                                                "AER International"));
+        }
+
+        @Test
         void getHeroStatsAcceptsExistingRawTournamentTierFromDraftCatalog() {
                 when(esportsTournamentRepository.findByNameIgnoreCase("TEST_OTHER_DRAFT_2026")).thenReturn(java.util.Optional.empty());
                 when(esportsTournamentRepository.findBySlugIgnoreCase("TEST_OTHER_DRAFT_2026")).thenReturn(java.util.Optional.empty());
@@ -109,7 +138,7 @@ class EsportsDataServiceTest {
                 when(esportsTournamentRepository.findBySlugIgnoreCase("Unknown League")).thenReturn(java.util.Optional.empty());
                 assertThatThrownBy(() -> service().getTopBannedHeroes("Unknown League", 5))
                                 .isInstanceOf(IllegalArgumentException.class)
-                                .hasMessageContaining("tournamentName khong hop le");
+                                .hasMessageContaining("tournamentName không hợp lệ");
         }
 
         @Test
@@ -120,7 +149,7 @@ class EsportsDataServiceTest {
                                 LocalDate.of(2026, 5, 9),
                                 LocalDate.of(2026, 5, 1)))
                                 .isInstanceOf(IllegalArgumentException.class)
-                                .hasMessageContaining("date range khong hop le");
+                                .hasMessageContaining("date range không hợp lệ");
         }
 
         @Test
@@ -167,6 +196,43 @@ class EsportsDataServiceTest {
                 assertThat(result.teamOptions())
                                 .extracting(EsportsDashboardResponse.TeamOption::teamCode)
                                 .containsExactly("FS", "SGP");
+        }
+
+        @Test
+        void getHeroStatsSupportsFiltersAndDoesNotConvertMissingWinnerIntoLoss() {
+                LocalDate scopeDate = LocalDate.of(2026, 5, 1);
+                LocalDateTime dateFrom = scopeDate.atStartOfDay();
+                LocalDateTime dateTo = LocalDateTime.of(2026, 5, 1, 23, 59, 59, 999_999_999);
+
+                EsportsGameDraft draft = draft("1", 1L, 2L);
+                draft.setBlueDslHeroId(7L);
+
+                when(esportsGameDraftRepository.findAllForAnalyticsScope(null, "1", "FS", dateFrom, dateTo))
+                                .thenReturn(List.of(draft));
+                when(heroRepository.findAllById(any())).thenReturn(List.of(hero(7L, "Hayate")));
+
+                List<EsportsHeroStatResponse> result = service().getHeroStats(
+                                null,
+                                "AER Pro League",
+                                "fs",
+                                scopeDate,
+                                scopeDate);
+
+                verify(esportsGameDraftRepository).findAllForAnalyticsScope(null, "1", "FS", dateFrom, dateTo);
+                assertThat(result).singleElement().satisfies(item -> {
+                        assertThat(item.heroName()).isEqualTo("Hayate");
+                        assertThat(item.pickCount()).isEqualTo(1L);
+                        assertThat(item.pickWins()).isZero();
+                        assertThat(item.pickLosses()).isZero();
+                        assertThat(item.pickWinRate()).isZero();
+                        assertThat(item.pickRate()).isEqualTo(100.0D);
+                        assertThat(item.bluePickWins()).isZero();
+                        assertThat(item.bluePickLosses()).isZero();
+                        assertThat(item.bluePickWinRate()).isZero();
+                        assertThat(item.presenceCount()).isEqualTo(1L);
+                        assertThat(item.presenceRate()).isEqualTo(100.0D);
+                        assertThat(item.heroIconUrl()).isEqualTo("/images/heroes/Hayate.jpg");
+                });
         }
 
         private EsportsDataService service() {

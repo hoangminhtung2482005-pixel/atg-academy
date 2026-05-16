@@ -167,7 +167,6 @@ INSERT INTO esports_tournaments (
     description
 ) VALUES
     ((SELECT id FROM esports_franchises WHERE code = 'AOG'), 'AOG Spring 2026', 'aog-spring-2026', 2026, 'Spring', 'T1', 1, 'UPCOMING', 'Seed tournament'),
-    ((SELECT id FROM esports_franchises WHERE code = 'AOG'), 'AOG Winter 2026', 'aog-winter-2026', 2026, 'Winter', 'T1', 1, 'UPCOMING', 'Seed tournament'),
     ((SELECT id FROM esports_franchises WHERE code = 'RPL'), 'RPL Summer 2026', 'rpl-summer-2026', 2026, 'Summer', 'T1', 1, 'UPCOMING', 'Seed tournament'),
     ((SELECT id FROM esports_franchises WHERE code = 'GCS'), 'GCS Spring 2026', 'gcs-spring-2026', 2026, 'Spring', 'T1', 1, 'UPCOMING', 'Seed tournament')
 ON DUPLICATE KEY UPDATE
@@ -188,102 +187,38 @@ WHERE aer_tier IS NULL
 ALTER TABLE esports_tournaments
     MODIFY COLUMN aer_tier INT NOT NULL DEFAULT 1;
 
--- Starter tournament rosters. Inserts are skipped when the source team does not exist.
-INSERT IGNORE INTO esports_tournament_teams (tournament_id, team_id, seed_number, status)
-SELECT tournament.id, team.id, 1, 'ACTIVE'
-FROM esports_tournaments tournament
-JOIN esports_teams team ON team.team_code = 'SGP'
-WHERE tournament.slug = 'aog-spring-2026';
-
-INSERT IGNORE INTO esports_tournament_teams (tournament_id, team_id, seed_number, status)
-SELECT tournament.id, team.id, 2, 'ACTIVE'
-FROM esports_tournaments tournament
-JOIN esports_teams team ON team.team_code = 'FPT'
-WHERE tournament.slug = 'aog-spring-2026';
-
-INSERT IGNORE INTO esports_tournament_teams (tournament_id, team_id, seed_number, status)
-SELECT tournament.id, team.id, 3, 'ACTIVE'
-FROM esports_tournaments tournament
-JOIN esports_teams team ON team.team_code = '1S'
-WHERE tournament.slug = 'aog-spring-2026';
-
-INSERT IGNORE INTO esports_tournament_teams (tournament_id, team_id, seed_number, status)
-SELECT tournament.id, team.id, 4, 'ACTIVE'
-FROM esports_tournaments tournament
-JOIN esports_teams team ON team.team_code = 'BOX'
-WHERE tournament.slug = 'aog-spring-2026';
-
-INSERT IGNORE INTO esports_tournament_teams (tournament_id, team_id, seed_number, status)
-SELECT tournament.id, team.id, 1, 'ACTIVE'
-FROM esports_tournaments tournament
-JOIN esports_teams team ON team.team_code = 'SGP'
-WHERE tournament.slug = 'aog-winter-2026';
-
-INSERT IGNORE INTO esports_tournament_teams (tournament_id, team_id, seed_number, status)
-SELECT tournament.id, team.id, 2, 'ACTIVE'
-FROM esports_tournaments tournament
-JOIN esports_teams team ON team.team_code = 'GAM'
-WHERE tournament.slug = 'aog-winter-2026';
-
-INSERT IGNORE INTO esports_tournament_teams (tournament_id, team_id, seed_number, status)
-SELECT tournament.id, team.id, 3, 'ACTIVE'
-FROM esports_tournaments tournament
-JOIN esports_teams team ON team.team_code = 'TS'
-WHERE tournament.slug = 'aog-winter-2026';
-
-INSERT IGNORE INTO esports_tournament_teams (tournament_id, team_id, seed_number, status)
-SELECT tournament.id, team.id, 4, 'ACTIVE'
-FROM esports_tournaments tournament
-JOIN esports_teams team ON team.team_code = 'SPN'
-WHERE tournament.slug = 'aog-winter-2026';
-
-INSERT IGNORE INTO esports_tournament_teams (tournament_id, team_id, seed_number, status)
-SELECT tournament.id, team.id, 1, 'ACTIVE'
-FROM esports_tournaments tournament
-JOIN esports_teams team ON team.team_code = 'FS'
-WHERE tournament.slug = 'rpl-summer-2026';
-
-INSERT IGNORE INTO esports_tournament_teams (tournament_id, team_id, seed_number, status)
-SELECT tournament.id, team.id, 2, 'ACTIVE'
-FROM esports_tournaments tournament
-JOIN esports_teams team ON team.team_code = 'BAC'
-WHERE tournament.slug = 'rpl-summer-2026';
-
-INSERT IGNORE INTO esports_tournament_teams (tournament_id, team_id, seed_number, status)
-SELECT tournament.id, team.id, 3, 'ACTIVE'
-FROM esports_tournaments tournament
-JOIN esports_teams team ON team.team_code = 'BRU'
-WHERE tournament.slug = 'rpl-summer-2026';
-
-INSERT IGNORE INTO esports_tournament_teams (tournament_id, team_id, seed_number, status)
-SELECT tournament.id, team.id, 4, 'ACTIVE'
-FROM esports_tournaments tournament
-JOIN esports_teams team ON team.team_code = 'SLX'
-WHERE tournament.slug = 'rpl-summer-2026';
-
-INSERT IGNORE INTO esports_tournament_teams (tournament_id, team_id, seed_number, status)
-SELECT tournament.id, team.id, 1, 'ACTIVE'
-FROM esports_tournaments tournament
-JOIN esports_teams team ON team.team_code = 'FW'
-WHERE tournament.slug = 'gcs-spring-2026';
-
-INSERT IGNORE INTO esports_tournament_teams (tournament_id, team_id, seed_number, status)
-SELECT tournament.id, team.id, 2, 'ACTIVE'
-FROM esports_tournaments tournament
-JOIN esports_teams team ON team.team_code = 'HKA'
-WHERE tournament.slug = 'gcs-spring-2026';
-
-INSERT IGNORE INTO esports_tournament_teams (tournament_id, team_id, seed_number, status)
-SELECT tournament.id, team.id, 3, 'ACTIVE'
-FROM esports_tournaments tournament
-JOIN esports_teams team ON team.team_code = 'ONE'
-WHERE tournament.slug = 'gcs-spring-2026';
-
-INSERT IGNORE INTO esports_tournament_teams (tournament_id, team_id, seed_number, status)
-SELECT tournament.id, team.id, 4, 'ACTIVE'
-FROM esports_tournaments tournament
-JOIN esports_teams team ON team.team_code = 'DCG'
-WHERE tournament.slug = 'gcs-spring-2026';
+-- Full tournament rosters. Inserts are skipped when the source team does not exist
+-- or the tournament/team mapping already exists.
+INSERT IGNORE INTO esports_tournament_teams (tournament_id, team_id, group_name, seed_number, status, note)
+SELECT tournament.id, team.id, NULL, roster.seed_number, 'ACTIVE', NULL
+FROM (
+    SELECT 'aog-spring-2026' AS tournament_slug, 'SGP' AS team_code, 1 AS seed_number
+    UNION ALL SELECT 'aog-spring-2026', 'FPT', 2
+    UNION ALL SELECT 'aog-spring-2026', '1S', 3
+    UNION ALL SELECT 'aog-spring-2026', 'BOX', 4
+    UNION ALL SELECT 'aog-spring-2026', 'FPL', 5
+    UNION ALL SELECT 'aog-spring-2026', 'GAM', 6
+    UNION ALL SELECT 'aog-spring-2026', 'SPN', 7
+    UNION ALL SELECT 'aog-spring-2026', 'TS', 8
+    UNION ALL SELECT 'rpl-summer-2026', 'FS', 1
+    UNION ALL SELECT 'rpl-summer-2026', 'BAC', 2
+    UNION ALL SELECT 'rpl-summer-2026', 'BRU', 3
+    UNION ALL SELECT 'rpl-summer-2026', 'SLX', 4
+    UNION ALL SELECT 'rpl-summer-2026', 'eA', 5
+    UNION ALL SELECT 'rpl-summer-2026', 'GJC', 6
+    UNION ALL SELECT 'rpl-summer-2026', 'HD', 7
+    UNION ALL SELECT 'rpl-summer-2026', 'KOG', 8
+    UNION ALL SELECT 'rpl-summer-2026', 'TEN', 9
+    UNION ALL SELECT 'gcs-spring-2026', 'FW', 1
+    UNION ALL SELECT 'gcs-spring-2026', 'HKA', 2
+    UNION ALL SELECT 'gcs-spring-2026', 'ONE', 3
+    UNION ALL SELECT 'gcs-spring-2026', 'DCG', 4
+    UNION ALL SELECT 'gcs-spring-2026', 'ANK', 5
+    UNION ALL SELECT 'gcs-spring-2026', 'BMG', 6
+    UNION ALL SELECT 'gcs-spring-2026', 'LIT', 7
+) roster
+JOIN esports_tournaments tournament ON tournament.slug = roster.tournament_slug
+JOIN esports_teams team ON team.team_code = roster.team_code;
 
 -- Verification queries
 SELECT id, code, name, tier_level, active

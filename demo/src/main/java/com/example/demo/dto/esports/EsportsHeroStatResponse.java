@@ -19,6 +19,16 @@ public record EsportsHeroStatResponse(
         Long banCount,
         Long blueBanCount,
         Long redBanCount,
-        Long presenceCount
+        Long presenceCount,
+        String heroIconUrl,
+        Double pickRate,
+        Long bluePickWins,
+        Long bluePickLosses,
+        Double bluePickWinRate,
+        Long redPickWins,
+        Long redPickLosses,
+        Double redPickWinRate,
+        Double banRate,
+        Double presenceRate
 ) {
 }

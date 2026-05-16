@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.banpick.BanPickConfirmRequest;
+import com.example.demo.dto.banpick.BanPickCreateRoomRequest;
 import com.example.demo.dto.banpick.BanPickLineupConfirmRequest;
 import com.example.demo.dto.banpick.BanPickLineupReorderRequest;
 import com.example.demo.entity.BanPickAction;
@@ -12,6 +13,7 @@ import com.example.demo.entity.BanPickRoomParticipant;
 import com.example.demo.entity.BanPickRoomStatus;
 import com.example.demo.entity.BanPickSeriesType;
 import com.example.demo.entity.BanPickTeamSide;
+import com.example.demo.entity.DraftHistoryEndReason;
 import com.example.demo.entity.Hero;
 import com.example.demo.entity.User;
 import com.example.demo.repository.BanPickActionRepository;
@@ -38,7 +40,9 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -171,7 +175,7 @@ class BanPickRoomServiceTest {
     }
 
     @Test
-    void expiredBanPhaseAutoSkipsAndAdvances() {
+    void currentTurnTimeoutFinishesDraftAndRecordsDodgeLoss() {
         User host = user(1L, "host@example.com");
         User guest = user(2L, "guest@example.com");
         BanPickRoom room = startedRoom(host, guest);
@@ -182,36 +186,65 @@ class BanPickRoomServiceTest {
 
         service.confirmAction(ROOM_CODE, banRequest(1L), principal(host));
 
-        assertThat(room.getCurrentPhaseIndex()).isEqualTo(1);
-        assertThat(room.getCurrentPhaseSelectedCount()).isZero();
+        assertThat(room.getStatus()).isEqualTo(BanPickRoomStatus.FINISHED);
+        assertThat(host.getBanPickCooldownUntil()).isAfter(LocalDateTime.now().plusMinutes(4));
         verify(actionRepository, never()).saveAndFlush(any(BanPickAction.class));
+        verify(banPickHistoryService).recordFinishedDraft(
+                room,
+                List.of(),
+                guest,
+                DraftHistoryEndReason.DODGE_TIMEOUT,
+                host
+        );
     }
 
     @Test
-    void expiredPickPhaseAutoPicksAvailableHero() {
+    void disconnectGraceExpiryFinishesDraftAndRecordsDisconnectDodge() {
         User host = user(1L, "host@example.com");
         User guest = user(2L, "guest@example.com");
         BanPickRoom room = startedRoom(host, guest);
-        room.setCurrentPhaseIndex(4);
-        room.setPhaseDeadlineAt(LocalDateTime.now().minusSeconds(1));
+        LocalDateTime disconnectedAt = LocalDateTime.now();
 
-        Hero hero = hero(10L, "Aoi");
         when(roomRepository.findByRoomCodeForUpdate(ROOM_CODE)).thenReturn(Optional.of(room));
-        when(heroRepository.findAll()).thenReturn(List.of(hero));
-        when(actionRepository.saveAndFlush(any(BanPickAction.class))).thenAnswer(invocation -> {
-            BanPickAction action = invocation.getArgument(0);
-            action.setId(100L);
-            return action;
-        });
 
-        service.resolveExpiredPhase(ROOM_CODE);
+        service.handlePresenceDisconnected(ROOM_CODE, host.getEmail(), disconnectedAt);
+        List<?> resolvedRooms = service.resolveExpiredDisconnectGraceWindows(disconnectedAt.plusSeconds(10));
 
-        ArgumentCaptor<BanPickAction> actionCaptor = ArgumentCaptor.forClass(BanPickAction.class);
-        verify(actionRepository).saveAndFlush(actionCaptor.capture());
-        assertThat(actionCaptor.getValue().getActionType()).isEqualTo(BanPickActionType.PICK);
-        assertThat(actionCaptor.getValue().getHeroId()).isEqualTo(10L);
-        assertThat(actionCaptor.getValue().getPhaseIndex()).isEqualTo(4);
-        assertThat(room.getCurrentPhaseIndex()).isEqualTo(5);
+        assertThat(resolvedRooms).hasSize(1);
+        assertThat(room.getStatus()).isEqualTo(BanPickRoomStatus.FINISHED);
+        assertThat(host.getBanPickCooldownUntil()).isAfter(disconnectedAt.plusMinutes(4));
+        verify(banPickHistoryService).recordFinishedDraft(
+                room,
+                List.of(),
+                guest,
+                DraftHistoryEndReason.DODGE_DISCONNECT,
+                host
+        );
+    }
+
+    @Test
+    void reconnectInsideGraceWindowDoesNotTriggerDodgePenalty() {
+        User host = user(1L, "host@example.com");
+        User guest = user(2L, "guest@example.com");
+        BanPickRoom room = startedRoom(host, guest);
+        LocalDateTime disconnectedAt = LocalDateTime.now();
+
+        when(roomRepository.findByRoomCodeForUpdate(ROOM_CODE)).thenReturn(Optional.of(room));
+
+        service.handlePresenceDisconnected(ROOM_CODE, host.getEmail(), disconnectedAt);
+        service.handlePresenceConnected(ROOM_CODE, host.getEmail());
+        List<?> resolvedRooms = service.resolveExpiredDisconnectGraceWindows(disconnectedAt.plusSeconds(10));
+
+        assertThat(resolvedRooms).isEmpty();
+        assertThat(room.getStatus()).isEqualTo(BanPickRoomStatus.IN_PROGRESS);
+        assertThat(host.getBanPickCooldownUntil()).isNull();
+        verify(banPickHistoryService, never()).recordFinishedDraft(
+                any(BanPickRoom.class),
+                anyList(),
+                any(User.class),
+                any(DraftHistoryEndReason.class),
+                any(User.class)
+        );
     }
 
     @Test
@@ -344,6 +377,75 @@ class BanPickRoomServiceTest {
 
         assertThat(result).isPresent();
         assertThat(room.getStatus()).isEqualTo(BanPickRoomStatus.FINISHED);
+        verify(banPickHistoryService).recordFinishedDraft(eq(room), anyList());
+        verify(banPickHistoryService, never()).recordFinishedDraft(
+                any(BanPickRoom.class),
+                anyList(),
+                any(User.class),
+                any(DraftHistoryEndReason.class),
+                any(User.class)
+        );
+    }
+
+    @Test
+    void getRoomStateForFinishedRoomDoesNotRecordHistoryAgain() {
+        User host = user(1L, "host@example.com");
+        User guest = user(2L, "guest@example.com");
+        BanPickRoom room = lineupRoom(host, guest);
+        room.setStatus(BanPickRoomStatus.FINISHED);
+        room.setBlueLineupConfirmed(true);
+        room.setRedLineupConfirmed(true);
+        room.setLineupDeadlineAt(null);
+        room.setPhaseDeadlineAt(null);
+
+        when(userRepository.findByEmail(host.getEmail())).thenReturn(Optional.of(host));
+        when(roomRepository.findByRoomCodeForUpdate(ROOM_CODE)).thenReturn(Optional.of(room));
+
+        var state = service.getRoomState(ROOM_CODE, principal(host));
+
+        assertThat(state.status()).isEqualTo(BanPickRoomStatus.FINISHED);
+        verify(banPickHistoryService, never()).recordFinishedDraft(any(BanPickRoom.class), anyList());
+    }
+
+    @Test
+    void resetIsRejectedWhileRoomIsInProgress() {
+        User host = user(1L, "host@example.com");
+        User guest = user(2L, "guest@example.com");
+        BanPickRoom room = startedRoom(host, guest);
+
+        when(userRepository.findByEmail(host.getEmail())).thenReturn(Optional.of(host));
+        when(roomRepository.findByRoomCodeForUpdate(ROOM_CODE)).thenReturn(Optional.of(room));
+
+        assertThatThrownBy(() -> service.resetRoom(ROOM_CODE, principal(host)))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
+                    assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(exception.getReason()).contains("Không thể reset khi phòng solo đang diễn ra");
+                });
+    }
+
+    @Test
+    void resetReadyLobbyRoomDoesNotCreateDodgeHistory() {
+        User host = user(1L, "host@example.com");
+        User guest = user(2L, "guest@example.com");
+        BanPickRoom room = readyRoom(host, guest);
+        room.setBlueUser(host);
+        room.setRedUser(guest);
+        room.setHostReady(true);
+        room.setGuestReady(true);
+
+        when(userRepository.findByEmail(host.getEmail())).thenReturn(Optional.of(host));
+        when(roomRepository.findByRoomCodeForUpdate(ROOM_CODE)).thenReturn(Optional.of(room));
+
+        service.resetRoom(ROOM_CODE, principal(host));
+
+        assertThat(room.getStatus()).isEqualTo(BanPickRoomStatus.READY);
+        verify(banPickHistoryService, never()).recordFinishedDraft(
+                any(BanPickRoom.class),
+                anyList(),
+                any(User.class),
+                any(DraftHistoryEndReason.class),
+                any(User.class)
+        );
     }
 
     @Test
@@ -361,6 +463,42 @@ class BanPickRoomServiceTest {
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
                     assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
                     assertThat(exception.getReason()).isEqualTo("Cả hai người chơi phải sẵn sàng.");
+                });
+    }
+
+    @Test
+    void cooldownBlocksCreateJoinAndStartRoom() {
+        User host = user(1L, "host@example.com");
+        host.setBanPickCooldownUntil(LocalDateTime.now().plusMinutes(5));
+        User guest = user(2L, "guest@example.com");
+        guest.setBanPickCooldownUntil(LocalDateTime.now().plusMinutes(5));
+
+        when(userRepository.findByEmail(host.getEmail())).thenReturn(Optional.of(host));
+        assertThatThrownBy(() -> service.createRoom(principal(host), new BanPickCreateRoomRequest(BanPickSeriesType.BO1)))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
+                    assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(exception.getReason()).contains("cooldown Solo Ban/Pick");
+                });
+
+        BanPickRoom joinRoom = waitingRoom(user(3L, "other-host@example.com"));
+        when(userRepository.findByEmail(guest.getEmail())).thenReturn(Optional.of(guest));
+        when(roomRepository.findByRoomCodeForUpdate(ROOM_CODE)).thenReturn(Optional.of(joinRoom));
+        assertThatThrownBy(() -> service.joinRoom(ROOM_CODE, principal(guest)))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
+                    assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(exception.getReason()).contains("cooldown Solo Ban/Pick");
+                });
+
+        BanPickRoom startRoom = readyRoom(host, guest);
+        startRoom.setBlueUser(host);
+        startRoom.setRedUser(guest);
+        startRoom.setHostReady(true);
+        startRoom.setGuestReady(true);
+        when(roomRepository.findByRoomCodeForUpdate(ROOM_CODE)).thenReturn(Optional.of(startRoom));
+        assertThatThrownBy(() -> service.startRoom(ROOM_CODE, principal(host)))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
+                    assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(exception.getReason()).contains("cooldown Solo Ban/Pick");
                 });
     }
 

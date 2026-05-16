@@ -42,11 +42,52 @@
                 <h1>Solo Ban/Pick 1v1 Online</h1>
             </div>
             <div class="online-login-gate is-hidden" id="online-login-gate">
-                <strong>Bạn cần đăng nhập để tạo hoặc tham gia phòng solo.</strong>
-                <p>Đăng nhập Google ở góc phải, sau đó quay lại phòng online.</p>
+                <strong>Bạn cần đăng nhập để tạo phòng, tham gia phòng và xem thống kê solo.</strong>
+                <p>Đăng nhập Google ở góc phải để xem rating, W/L và draft gần đây của bạn.</p>
                 <button type="button" class="control-btn primary" onclick="handleCustomGoogleLogin()">Đăng
                     nhập</button>
             </div>
+            <section class="online-player-stats-card" id="online-player-stats-card"
+                aria-labelledby="online-player-stats-title">
+                <div class="online-player-stats-head">
+                    <div>
+                        <span class="phase-progress">Player Card</span>
+                        <h2 id="online-player-stats-title">Hồ sơ Solo Ban/Pick</h2>
+                    </div>
+                    <a class="online-player-stats-link" href="/ban-pick/leaderboard">Bảng xếp hạng</a>
+                </div>
+                <p class="online-player-stats-summary" id="online-player-stats-summary">Đăng nhập để xem Player Card.</p>
+                <div class="online-player-profile-layout">
+                    <section class="online-player-card-module" id="online-player-card-module" hidden aria-label="Player Card">
+                        <div class="online-player-card-slot" id="solo-player-card"></div>
+                    </section>
+                    <section class="online-player-stats-panel" id="online-player-stats-panel" hidden aria-labelledby="online-player-stats-panel-title">
+                        <div class="online-player-stats-panel-head">
+                            <div>
+                                <span class="phase-progress">Thống kê 50 trận gần nhất</span>
+                                <h3 id="online-player-stats-panel-title">Solo stats</h3>
+                            </div>
+                        </div>
+                        <div class="online-player-stats-metrics" id="online-player-stats-metrics"></div>
+                        <div class="online-player-stats-detail" id="online-player-stats-detail">
+                            <section class="online-player-stats-block">
+                                <div class="online-player-stats-block-head">
+                                    <h3>Tướng pick nhiều</h3>
+                                    <small>Top 4 trong 50 draft gần nhất</small>
+                                </div>
+                                <div class="online-player-pills" id="online-player-pills"></div>
+                            </section>
+                            <section class="online-player-stats-block">
+                                <div class="online-player-stats-block-head">
+                                    <h3>Draft gần đây</h3>
+                                    <small>3 room mới nhất của bạn</small>
+                                </div>
+                                <div class="online-player-history" id="online-player-history"></div>
+                            </section>
+                        </div>
+                    </section>
+                </div>
+            </section>
             <div class="online-room-shell" id="online-room-shell">
                 <div class="online-room-actions" id="online-room-actions">
                     <article class="online-action-card">
@@ -186,12 +227,18 @@
                     </div>
                 </article>
             </div>
+            <div class="draft-balance-panel draft-balance-panel--summary is-hidden" id="summary-draft-balance-panel" aria-live="polite">
+                <span class="draft-balance-title">Đánh giá đội hình</span>
+                <div class="draft-balance-list">
+                    <span class="draft-balance-item blue" id="summary-draft-balance-blue">Xanh: 0.00 điểm · 50.0%</span>
+                    <span class="draft-balance-item red" id="summary-draft-balance-red">Đỏ: 0.00 điểm · 50.0%</span>
+                </div>
+                <p class="draft-balance-outcome" id="summary-draft-balance-outcome">Hai đội bằng điểm. Hệ thống không tự chọn winner.</p>
+            </div>
             <div class="draft-controls">
                 <button type="button" class="control-btn primary" id="online-series-action-btn"
                     onclick="handleOnlineSeriesSummaryAction()">Ván tiếp theo</button>
                 <button type="button" class="control-btn primary" onclick="restartPvpDraft()">Draft lại</button>
-                <button type="button" class="control-btn primary" id="share-draft-btn" onclick="shareDraftResult()">Chia
-                    sẻ draft</button>
             </div>
         </section>
 
@@ -235,7 +282,7 @@
                                 onclick="pauseTimer()">Tạm dừng</button>
                             <button type="button" class="control-btn standard-only" id="manual-next-phase-btn"
                                 onclick="manualNextPhase()">Tiếp</button>
-                            <button type="button" class="control-btn danger" onclick="resetDraft()">Làm lại</button>
+                            <button type="button" class="control-btn danger" id="draft-reset-btn" onclick="resetDraft()">Làm lại</button>
                         </div>
                     </div>
                 </div>
@@ -268,7 +315,7 @@
             <article class="lineup-modal" id="lineup-modal">
                 <div class="lineup-team-header">
                     <span class="lineup-team-badge" id="lineup-team-label">Đội Xanh</span>
-                    <span id="lineup-confirmed-state">Chưa xác nhận</span>
+                    <span class="lineup-team-state" id="lineup-confirmed-state">Chưa xác nhận</span>
                 </div>
                 <div class="lineup-modal-title">
                     <h2 id="lineup-modal-title">Xác nhận đội hình</h2>
@@ -389,7 +436,7 @@
         </div>
 
         <div class="draft-page-actions" aria-label="Hành động nhanh Ban/Pick">
-            <button type="button" class="control-btn danger" onclick="resetDraft()">Làm lại</button>
+            <button type="button" class="control-btn danger" id="draft-page-reset-btn" onclick="resetDraft()">Làm lại</button>
         </div>
     </main>
 

@@ -4,6 +4,7 @@ import com.example.demo.entity.EsportsMatch;
 import com.example.demo.entity.EsportsTeam;
 import com.example.demo.repository.EsportsMatchRepository;
 import com.example.demo.repository.EsportsTeamRepository;
+import com.example.demo.util.EsportsTierSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -146,7 +147,7 @@ public class EloCalculationService {
         }
 
         // ====== BƯỚC 2: XỬ LÝ TRẬN ĐẤU ======
-        List<EsportsMatch> matches = matchRepository.findAllByOrderByMatchDateAsc();
+        List<EsportsMatch> matches = matchRepository.findAllByOrderByMatchDateAscIdAsc();
         log.info(">> Tổng số trận đấu: {}", matches.size());
 
         for (EsportsMatch match : matches) {
@@ -154,7 +155,7 @@ public class EloCalculationService {
             String doi2 = match.getTeam2Code();
             int ts1 = match.getScore1();
             int ts2 = match.getScore2();
-            String tierIn = match.getTier() != null ? match.getTier() : "1";
+            String tierIn = EsportsTierSupport.resolveEffectiveTier(match);
             String stageIn = match.getStage() != null ? match.getStage() : "bang";
 
             double tierVal = TIER_CONF.getOrDefault(tierIn, DEFAULT_TIER);

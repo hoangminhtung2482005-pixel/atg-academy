@@ -59,14 +59,30 @@ class EsportsControllerTest {
     void getTopBlueBannedHeroesReturnsBadRequestWhenTournamentInvalid() {
         EsportsDataService esportsDataService = mock(EsportsDataService.class);
         when(esportsDataService.getTopBlueBannedHeroes(null, "Bad League", 5))
-                .thenThrow(new IllegalArgumentException("tournamentName khong hop le."));
+                .thenThrow(new IllegalArgumentException("tournamentName không hợp lệ."));
 
         EsportsController controller = controller(esportsDataService);
 
         ResponseEntity<?> response = controller.getTopBlueBannedHeroes(null, "Bad League", 5);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(400));
-        assertThat(response.getBody()).isEqualTo(Map.of("error", "tournamentName khong hop le."));
+        assertThat(response.getBody()).isEqualTo(Map.of("error", "tournamentName không hợp lệ."));
+    }
+
+    @Test
+    void getTopRedBannedHeroesReturnsOkPayload() {
+        EsportsDataService esportsDataService = mock(EsportsDataService.class);
+        List<EsportsHeroBanStatResponse> payload = List.of(
+                new EsportsHeroBanStatResponse(15L, "Zata", "/images/heroes/Zata.jpg", 6L, "AER Pro League")
+        );
+        when(esportsDataService.getTopRedBannedHeroes(null, "AER Pro League", 5)).thenReturn(payload);
+
+        EsportsController controller = controller(esportsDataService);
+
+        ResponseEntity<?> response = controller.getTopRedBannedHeroes(null, "AER Pro League", 5);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(200));
+        assertThat(response.getBody()).isEqualTo(payload);
     }
 
     @Test
@@ -92,14 +108,36 @@ class EsportsControllerTest {
                         7L,
                         4L,
                         3L,
-                        16L
+                        16L,
+                        "/images/heroes/Liliana.jpg",
+                        64.3D,
+                        3L,
+                        1L,
+                        75.0D,
+                        3L,
+                        2L,
+                        60.0D,
+                        50.0D,
+                        114.3D
                 )
         );
-        when(esportsDataService.getHeroStats(null, "AER International")).thenReturn(payload);
+        when(esportsDataService.getHeroStats(
+                null,
+                "AER International",
+                "FS",
+                LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 5, 9)
+        )).thenReturn(payload);
 
         EsportsController controller = controller(esportsDataService);
 
-        ResponseEntity<?> response = controller.getHeroStats(null, "AER International");
+        ResponseEntity<?> response = controller.getHeroStats(
+                null,
+                "AER International",
+                "FS",
+                LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 5, 9)
+        );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(200));
         assertThat(response.getBody()).isEqualTo(payload);

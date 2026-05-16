@@ -57,9 +57,9 @@ ATG Academy (module Maven: demo)
 │  └─ Luồng tổng quát: HTML/JS -> /api/* -> controller -> service/repository -> MySQL; riêng ban/pick online thêm /ws
 ├─ Chức năng người dùng
 │  ├─ Đăng nhập Google; file: static/js/auth.js, security/GoogleJwt*
-│  ├─ Quản lý tài khoản: hồ sơ + panel `Nội dung của bạn` đếm/list content chính chủ; file: UserProfileController, UserProfileService, static/html/account.html
+│  ├─ Quản lý tài khoản: hồ sơ + Player Card preview dùng chung với Solo Ban/Pick + panel `Nội dung của bạn` đếm/list content chính chủ; file: UserProfileController, UserProfileService, static/html/account.html, static/js/components/player-card.js
 │  ├─ Trang chủ feed; file: HomeFeedController, HomeFeedService, static/html/index.html
-│  ├─ Wiki tướng + hero pool data cho Ban/Pick; dropdown `Wiki` trỏ đến `wiki.html`, deep-link `?tab=spells`, `?tab=enchantments`, và `Esports Data`; file: WikiController, SpellController, EnchantmentController, static/html/wiki.html, header.html, header-loader.js
+│  ├─ Wiki tướng + hero pool data cho Ban/Pick; dropdown `Wiki` trỏ đến `wiki.html`, deep-link `?tab=spells`, `?tab=enchantments`; dropdown `Esports` tách riêng để chứa `esports.html` và `Esports Data`; file: WikiController, SpellController, EnchantmentController, static/html/wiki.html, header.html, header-loader.js
 │  ├─ Tier List chính thức: `tier-list.html` là trang gốc của module Tier List, hiển thị Meta chính thức ở trên và tối đa 6 Community Tier List nổi bật ở dưới; file: TierListController, TierListCommunityService, static/html/tier-list.html
 │  ├─ Tier List cộng đồng: giữ 2 static page `tier-list-all.html`, `tier-list-mine.html`; `tier-list.html` tiếp tục là trang gốc hiển thị Meta + community highlight, còn route cũ `/tier-list/recommended` chỉ redirect an toàn về trang gốc; detail dùng một rating panel chung, user lưu community rating còn Admin lưu admin rating; file: TierListController, AdminTierListController, static/html/tier-list-community-shell.html, static/js/tier-list-community-page.js, static/js/tier-list-app.js, tier-list-detail.js
 │  ├─ Guides: list/filter/detail/tạo; file: GuideController, static/html/giao-an.html, create-guide.html
@@ -72,8 +72,8 @@ ATG Academy (module Maven: demo)
 │  ├─ Quản lý wiki hero + điểm Ban/Pick; file: AdminWikiHeroController, AdminWikiHeroService
 │  ├─ Quản lý hero attributes; file: AdminWikiAttributeController, HeroAttributeController
 │  ├─ Quản lý tier list chính thức và admin rating; file: TierListController, AdminTierListController
-│  ├─ AER Data admin: teams/matches/import/reset Elo trên `admin.html#aer-data`; file: EsportsAdminController, EsportsAdminService, static/html/admin.html
-│  ├─ Esports Data admin: quan ly `upload file -> preview import -> confirm import` va `match -> game draft records -> validate` tren `admin-esports-data.html`; file: EsportsAdminController, EsportsAdminService, EsportsDraftService, static/html/admin-esports-data.html, static/js/admin-esports-data.js
+│  ├─ AER Data admin: teams/matches/import trên `admin.html#aer-data`; match history cũ vẫn xem/sửa/xóa từng trận tại đây, còn reset dữ liệu đã chuyển sang `admin-esports-data.html`; file: EsportsAdminController, EsportsAdminService, static/html/admin.html
+│  ├─ Esports Data admin: quan ly `upload file -> preview import -> ap dung vao DB`, recalculate AER/Elo truc tiep tu `esports_matches` + `esports_game_drafts` theo `affectedMatchIds` ngay sau khi confirm import, va `match -> game draft records -> validate` tren `admin-esports-data.html`; file: EsportsAdminController, EsportsAdminService, EsportsDraftService, static/html/admin-esports-data.html, static/js/admin-esports-data.js
 │  └─ Không tìm thấy trong codebase: guide moderation/admin guide hoàn chỉnh
 ├─ Chức năng nghiệp vụ chính
 │  ├─ Wiki Hero
@@ -111,10 +111,10 @@ ATG Academy (module Maven: demo)
 │     ├─ API: /api/ban-pick/rooms/*, /api/ban-pick/history*, /api/ban-pick/profile, /api/ban-pick/leaderboard
 │     ├─ WebSocket: /ws, /app/ban-pick/{roomCode}/*, /topic/ban-pick/{roomCode}
 │     ├─ DB: ban_pick_rooms, ban_pick_room_participants, ban_pick_actions, draft_histories, player_stats
-│     └─ Luồng: create room -> join -> roll side -> ready -> 15 phase draft -> frontend dùng hero pool `/api/wiki/heroes` để cộng `banPickScore` cho tướng đã pick -> hiển thị tổng điểm/tỷ lệ thắng dự đoán -> lineup adjustment -> finish -> history/stats
+│     └─ Luồng: create room -> join -> roll side -> ready -> lobby Solo render Player Card nhỏ riêng và Stats Panel 50 trận riêng ngay trên trang khi user đã đăng nhập, guest chỉ thấy message yêu cầu login -> 15 phase draft -> frontend dùng hero pool `/api/wiki/heroes` để cộng `banPickScore` cho tướng đã pick -> lineup adjustment -> cả 2 đội confirm lineup cuối -> mới hiển thị tổng điểm/tỷ lệ thắng dự đoán -> finish -> hệ thống tự xác định winner theo tổng điểm lineup cuối, nếu hòa thì không chọn bừa winner và không cập nhật W/L/rating -> trước khi save history backend chốt Macro Economy snapshot của ngày hiện tại (window 30 ngày tính tới mốc 00:00, active pool là top 50% người chơi có nhiều completed matches nhất, so average rating với mốc 1500, mỗi lệch 10 điểm điều chỉnh 2% win delta, floor +20) -> sau đó áp thêm ELO gap modifier theo rating trước trận của winner/loser (10 điểm lệch = 2%, cap 50%; cửa dưới thắng được thưởng thêm và cửa trên thua bị phạt nặng hơn, cửa trên thắng bị giảm điểm nhận và cửa dưới thua bị phạt nhẹ hơn) -> trước khi chốt snapshot rating backend kiểm tra anti-win-trading theo unordered pair `(minUserId, maxUserId)`: trong cửa sổ 48 giờ, 2 lần gặp đầu vẫn tính điểm, từ lần gặp thứ 3 trở đi override snapshot thành `0/0`, history vẫn lưu nhưng ELO không đổi; quá 48 giờ thì reset pair window -> lưu `win_rating_delta/loss_rating_delta` cuối cùng vào `draft_histories` -> `BanPickHistoryService` rebuild `player_stats` theo 50 draft gần nhất của từng player với base rating khởi tạo 1000, replay winner/loser theo delta snapshot đã lưu, tie không đổi W/L/rating và match bị anti-win-trading cũng không cộng trừ rating nhờ snapshot `0/0` -> backend đồng thời compute percentile rank `S/A/B/C/D` từ `player_stats.rating`, Player Card/leaderboard chỉ render `rankCode`/`rankLabel` trả về -> retention cleanup chỉ xóa history khi row đó đã out top 50 của cả 2 participant
 ├─ Authentication & Authorization
 │  ├─ Backend: stateless bearer auth, validate issuer/audience/email_verified của Google token
-│  ├─ Public GET: wiki heroes, spells, enchantments, guides, tier-lists, esports, một phần ban-pick result/leaderboard
+│  ├─ Public GET: wiki heroes, spells, enchantments, guides, tier-lists, esports, một phần ban-pick result read-only legacy route/leaderboard
 │  ├─ Auth required: create guide, create/rate/comment tier list, profile, ban-pick room APIs
 │  ├─ Admin required: /api/admin/**
 │  └─ Frontend guest role "Custom" chỉ là quy ước UI trong auth.js; backend role thực tế là Admin/Staff/User
@@ -128,7 +128,7 @@ ATG Academy (module Maven: demo)
 │  ├─ Start: mvnw.cmd spring-boot:run
 │  ├─ Startup hook: EsportsDataSeeder seed teams/matches nếu DB esports trống
 │  ├─ Startup hook: HeroDataStartupLogger cảnh báo nếu chưa seed hero
-│  └─ Static routes: StaticPageRedirectController redirect /, /guides, /tier-list, /tier-list/all, /tier-list/mine; route cũ `/tier-list/recommended`, `/tier-list-recommended.html`, `/html/tier-list-recommended.html` redirect an toàn về `tier-list.html`; `/tactics-guides.html` và `/html/tactics-guides.html` redirect an toàn về `giao-an.html`; `/ban-pick`, `/ban-pick.html`, `/html/ban-pick.html` chuyển an toàn về mode phù hợp/default Free Mode, còn các route `/ban-pick/*` profile/result/leaderboard vẫn sang static/html như cũ; admin shell `/html/admin.html` giữ module `AER Data` tại hash `#aer-data` và vẫn alias `#teams`/`#esports`, còn `/html/admin-esports-data.html` phục vụ module `Esports Data` nhập draft chi tiết; placeholder `content.html` đã bị xóa khỏi codebase và không giữ redirect legacy
+│  └─ Static routes: StaticPageRedirectController redirect /, /guides, /tier-list, /tier-list/all, /tier-list/mine; route cũ `/tier-list/recommended`, `/tier-list-recommended.html`, `/html/tier-list-recommended.html` redirect an toàn về `tier-list.html`; `/tactics-guides.html` và `/html/tactics-guides.html` redirect an toàn về `giao-an.html`; `/ban-pick`, `/ban-pick.html`, `/html/ban-pick.html` chuyển an toàn về mode phù hợp/default Free Mode; `/ban-pick/profile`, `/ban-pick-profile.html`, và `/html/ban-pick-profile.html` đều là legacy redirect về `/html/ban-pick-solo.html`; `/ban-pick/leaderboard` vẫn sang static/html; còn `/ban-pick/result/{id}`, `/ban-pick-result.html`, `/html/ban-pick-result.html` chỉ giữ để tương thích link cũ và đều redirect an toàn về `/html/ban-pick-solo.html`, không còn hiển thị result page riêng; admin shell `/html/admin.html` giữ module `AER Data` tại hash `#aer-data` và vẫn alias `#teams`/`#esports`, còn `/html/admin-esports-data.html` phục vụ module `Esports Data` nhập draft chi tiết; placeholder `content.html` đã bị xóa khỏi codebase và không giữ redirect legacy
 └─ Điểm cần lưu ý
    ├─ GuideController lọc guide bằng findAll().stream(); rủi ro scale
    ├─ Có 2 API admin attribute với semantics xóa khác nhau; cần xác minh thêm
@@ -145,22 +145,22 @@ ATG Academy (module Maven: demo)
 | Nhóm chức năng | Chức năng cụ thể | Mô tả | File/thư mục liên quan | API/route | Entity/database | Ghi chú |
 |---|---|---|---|---|---|---|
 | Xác thực | Đăng nhập Google | Frontend nhận Google credential, lưu localStorage, tự gắn Bearer token vào `/api/**` | `static/js/auth.js`, `security/*` | toàn bộ `/api/**` private | `users` | Guest UI dùng role `Custom` |
-| Tài khoản | Xem/sửa hồ sơ cá nhân + nội dung của bạn | Đổi `displayName`, `level`; sidebar dashboard hiển thị số guide đã đăng và community tier list đã đăng của user hiện tại | `UserProfileController`, `UserProfileService`, `GuideRepository`, `TierListRepository`, `static/html/account.html` | `/api/users/me/profile`, `/api/users/me/content-summary` | `users`, `guides`, `tier_lists` | Content summary dùng security principal, chỉ tính guide published và tier list không official của chính user; frontend account dashboard render count Community Tier List theo dang `n/5` |
+| Tài khoản | Xem/sửa hồ sơ cá nhân + nội dung của bạn | Đổi `displayName`, `level`; sidebar dashboard hiển thị Player Card preview dùng chung component với Solo Ban/Pick, có form chọn preset `badge` + sửa `player title`, kèm số guide đã đăng và community tier list đã đăng của user hiện tại | `UserProfileController`, `UserProfileService`, `GuideRepository`, `TierListRepository`, `static/html/account.html`, `static/js/components/player-card.js`, `static/css/player-card.css` | `/api/users/me/profile`, `/api/users/me/content-summary`, `/api/ban-pick/profile` | `users`, `guides`, `tier_lists`, `player_stats`, `draft_histories` | Content summary dùng security principal, chỉ tính guide published và tier list không official của chính user; preview Player Card đọc avatar/display name từ `users`, ELO/rank từ snapshot solo 50 trận; Player Card config persist ở `users.player_badge_code`, `users.player_badge_name`, `users.player_badge_icon_url`, `users.player_title`; frontend account dashboard render count Community Tier List theo dạng `n/5` |
 | Trang chủ | Community feed | Section homepage dùng 3 Tier List cộng đồng nổi bật; feed hỗn hợp cũ vẫn giữ cho backend | `HomeFeedController`, `HomeFeedService`, `TierListRatingRepository`, `TierListAdminRatingRepository`, `static/html/index.html` | `/api/home/feed`, `/api/home/community-tier-highlights` | `tier_lists`, `guides`, `tier_list_ratings`, `tier_list_admin_ratings` | `/api/home/community-tier-highlights` bỏ official, tránh trùng và có thể trả ít hơn 3 item |
 | Wiki | Danh mục tướng + gameplay data | Trả catalog tướng, class/role/attribute, skill, matchup, guide liên quan; hero summary kèm `banPickScore`; cùng page `wiki.html` hiện runtime chỉ còn tab `Tướng`, `Bổ trợ`, `Phù hiệu` đọc từ API/JSON thật | `WikiController`, `SpellController`, `EnchantmentController`, `SpellService`, `EnchantmentService`, `WikiJsonStorageService`, `static/html/wiki.html`, `static/html/header.html`, `static/js/header-loader.js`, `static/css/wiki.css` | `/api/wiki/heroes*`, `/api/spells*`, `/api/enchantments*`, `wiki.html?tab=spells`, `wiki.html?tab=enchantments` | `heroes`, `hero_skills`, `hero_matchups`, `static/data/spells.json`, `static/data/enchantments.json` | Dropdown `Wiki` deep-link vào `wiki.html`, `wiki.html?tab=spells`, `wiki.html?tab=enchantments`; runtime không còn tab/frontend reference `items/arcana`; legacy DB `phu_hieu` có thể còn tồn tại trong SQL thủ công nhưng không còn là runtime dependency |
 | Tier list | Meta chính thức | Official meta duoc generate tu `heroes.ban_pick_score`; public doc tren `tier-list.html`; Admin save/regenerate de persist vao `tier_lists.contentData`; trang goc van hien board official o tren va 6 community noi bat o duoi | `TierListController`, `AdminTierListController`, `TierListCommunityService`, `HeroContentDataService`, `static/html/tier-list.html`, `static/js/tier-list-app.js` | `/api/tier-lists/official`, `POST /api/admin/tier-lists/official/regenerate-from-hero-scores` | `tier_lists`, `heroes` | Rule tier: `>9 S`, `>7.5 A`, `>5 B`, `>2.5 C`, else `D`; role columns giu DSL/JGL/MID/ADL/SUP; section community tren trang goc van dung `GET /api/tier-lists/community` |
 | Tier list | Community tier list | User tạo tier list; danh sách cộng đồng giữ 2 page `tier-list-all.html`, `tier-list-mine.html`; dropdown `Tier List` trên header giữ `Tier List Meta`, `Tất cả Tier List`, `Tier List của bạn`; page `tier-list-recommended.html` đã bị xóa, còn route cũ chỉ redirect về `tier-list.html`; xem detail, rate, comment; Admin dùng cùng rating panel trên detail page để lưu admin rating | `TierListController`, `AdminTierListController`, `TierListCommunityService`, `TierListRatingRepository`, `TierListAdminRatingRepository`, `static/html/tier-list-community-shell.html`, `static/html/tier-list-all.html`, `static/html/tier-list-mine.html`, `static/js/tier-list-community-page.js`, `static/js/tier-list-app.js`, `static/html/tier-list-detail.html`, `tier-list-detail.js` | `/api/tier-lists/*`, `/api/admin/tier-lists/{id}/admin-rating` | `tier_lists`, `tier_list_ratings`, `tier_list_comments`, `tier_list_admin_ratings` | Guest chi co 1 draft tam trong `sessionStorage` key `atg_guest_tier_list_draft`; logged-in user duoc tao/luu toi da 5 Community Tier List non-official; update tier list da ton tai khong tinh them quota; official/admin tier list khong bi ap limit nay |
 | Guide | Danh sách/chi tiết guide | Search/filter theo `status`, `heroId`, `lane`, `category`, `search`, `sort` | `GuideController`, `GuideRepository`, `static/js/tactics-guides.js` | `GET /api/guides*` | `guides` | Filter đang chạy in-memory |
 | Guide | Tạo guide | Tạo giáo án từ form frontend; lưu metadata + `contentData` JSON | `GuideController`, `static/html/create-guide.html` | `POST /api/guides` | `guides`, `users`, `heroes` | Không thấy update/delete/moderation |
-| Esports | BXH public | Trả danh sách đội xếp theo Elo và recent matches | `EsportsController`, `static/html/esports.html` | `/api/esports/teams`, `/matches/recent` | `esports_teams`, `esports_matches` | `esports.html` hiện dùng team list; recent feed cần xác minh thêm |
-| Esports | Esports Data | Dashboard analytics public cho draft esports theo model game-level moi | `EsportsController`, `EsportsDataService`, `EsportsGameDraftRepository`, `static/html/esports-data.html`, `static/js/esports-data.js`, `static/css/esports.css` | `/esports/data`, `/api/esports/data/*` | `heroes`, `esports_matches`, `esports_game_drafts` | Public page doc tu `esports_game_drafts`; KPI/top bans/top picks/side WR/hero stats khong con aggregate runtime tu cac bang draft cu |
-| Ban/Pick | Room draft online | Create room, join, ready, roll side, start, confirm pick/ban, reorder lineup, next game, reset; UI có panel compact hiển thị tổng điểm đội hình và tỷ lệ thắng dự đoán từ các tướng đã pick | `BanPickRoomController`, `BanPickRoomService`, `BanPickRoomWebSocketController`, `ban-pick-free.html`, `ban-pick-standard.html`, `ban-pick-solo.html`, `ban-pick-shell.html`, `ban-pick.js` | `/api/ban-pick/rooms/*`, `/ws`, `/api/wiki/heroes` | `ban_pick_rooms`, `ban_pick_actions`, `ban_pick_room_participants`, `heroes` | Navbar dropdown là luồng chuyển mode chính; chỉ còn legacy entry route `/ban-pick*` redirect/fallback; không cộng điểm tướng bị ban |
-| Ban/Pick | L?ch s?/BXH c? nh?n | Luu draft finished, ghi ngu?i th?ng, profile, leaderboard | `BanPickHistoryController`, `BanPickHistoryService`, `ban-pick-profile.html`, `ban-pick-result.html` | `/api/ban-pick/history*`, `/leaderboard`, `/profile` | `draft_histories`, `player_stats` | Rating ngu?i choi tang/gi?m ?15 |
+| Esports | BXH public | Trả danh sách đội xếp theo Elo và recent matches | `EsportsController`, `static/html/esports.html` | `/api/esports/teams`, `/matches/recent` | `esports_teams`, `esports_matches` | `esports.html` hiện dùng team list; cột leaderboard `Series W/L` đọc từ `matchWins/matchLosses`, không phải `gameWins/gameLosses`; recent feed cần xác minh thêm |
+| Esports | Esports Data | Dashboard analytics public cho draft esports theo model `1 series = 1 esports_matches`, `1 game = 1 esports_game_drafts` | `EsportsController`, `EsportsDataService`, `EsportsGameDraftRepository`, `static/html/esports-data.html`, `static/js/esports-data.js`, `static/css/esports.css` | `/esports/data`, `/api/esports/data/*` | `heroes`, `esports_matches`, `esports_game_drafts` | Public page đọc từ `esports_game_drafts`; `Total Games` = số row game draft, `Total Series` = distinct `match_id`; KPI/top bans/top picks/side WR/hero stats không còn aggregate runtime từ các bảng draft cũ |
+| Ban/Pick | Room draft online | Create room, join, ready, roll side, start, confirm pick/ban, reorder lineup, next game, reset; Free/Standard giữ panel compact hiển thị tổng điểm đội hình và tỷ lệ thắng dự đoán trong lúc draft, còn Solo Online chỉ hiện sau khi room finish và cả 2 đội confirm lineup cuối; màn tổng kết không còn nút chia sẻ draft | `BanPickRoomController`, `BanPickRoomService`, `BanPickRoomWebSocketController`, `ban-pick-free.html`, `ban-pick-standard.html`, `ban-pick-solo.html`, `ban-pick-shell.html`, `ban-pick.js` | `/api/ban-pick/rooms/*`, `/ws`, `/api/wiki/heroes` | `ban_pick_rooms`, `ban_pick_actions`, `ban_pick_room_participants`, `heroes` | Navbar dropdown là luồng chuyển mode chính; chỉ còn legacy entry route `/ban-pick*` redirect/fallback; không cộng điểm tướng bị ban |
+| Ban/Pick | Lịch sử/BXH/solo stats | Lưu draft finished, auto-resolve winner theo Ban/Pick Score, leaderboard public, và panel thống kê cá nhân gắn thẳng vào Solo page; route/profile page cũ chỉ còn legacy redirect về Solo | `BanPickHistoryController`, `BanPickHistoryService`, `BanPickMacroEconomyService`, `ban-pick-solo.html`, `ban-pick-shell.html`, `ban-pick.js` | `/api/ban-pick/history*`, `/leaderboard`, `/profile` | `draft_histories`, `player_stats` | Stats current user chỉ lấy 50 draft gần nhất; `player_stats` được rebuild theo 50 draft gần nhất của từng player sau mỗi Solo draft finished; rating khởi tạo `1000`, floor `0`; winner trước hết dùng macro-adjusted `currentWinDelta` từ snapshot ngày 00:00 dựa trên average rating của top 50% active players trong 30 ngày gần nhất, mỗi lệch `10` điểm so với mốc `1500` điều chỉnh `2%`, floor `+20`, rồi áp ELO gap modifier theo rating trước trận của 2 người chơi với rule `10 điểm = 2%`, cap `50%`; cửa dưới thắng được tăng win delta và cửa trên thua bị phạt nặng hơn, cửa trên thắng bị giảm win delta và cửa dưới thua bị phạt nhẹ hơn; sau đó anti-win-trading kiểm tra unordered pair trong cửa sổ `48 giờ`, cho phép 2 lần gặp đầu giữ nguyên delta và từ lần gặp thứ 3 override snapshot về `0/0`; `draft_histories` lưu snapshot `win_rating_delta/loss_rating_delta` cuối cùng để replay chính xác; history cũ chỉ bị xóa khi đã nằm ngoài top 50 của cả blue lẫn red participant; score hòa thì không cập nhật W/L/rating; chưa làm dodge penalty hay seasonal reset |
 | Admin | Quản lý user | List/search/filter user, chỉnh `name/avatar/role/status/note` | `AdminUserController`, `AdminUserService`, `static/html/admin.html` | `/api/admin/users*` | `users` | Admin không thể tự hạ role/khoá chính mình |
 | Admin | Quản lý hero wiki | Sửa basic info, class, role, attribute, difficulty, `banPickScore`; admin panel validate min/max/2 chữ số thập phân trước khi lưu DB | `AdminWikiHeroController`, `AdminWikiHeroService`, `static/html/admin-heroes.html`, `static/js/admin-heroes.js` | `/api/admin/wiki/heroes*` | `heroes`, join tables hero_* | Có gợi ý role theo class; user thường không có quyền sửa |
 | Admin | Quản lý hero attributes | Có 2 API admin attribute khác nhau | `AdminWikiAttributeController`, `HeroAttributeController`, `AdminWikiHeroService`, `HeroAttributeService` | `/api/admin/wiki/attributes*`, `/api/admin/attributes*` | `hero_attributes`, `hero_attribute_mapping` | Hành vi delete không nhất quán |
-| Admin | AER Data | CRUD team/match, bulk import, recalculation Elo cho workflow ranking/AER tổng quát | `EsportsAdminController`, `EsportsAdminService`, `static/html/admin.html`, `static/css/admin.css` | `/api/admin/esports/teams*`, `/api/admin/esports/matches*`, `/api/admin/esports/teams/matches/bulk-import` | `esports_teams`, `esports_matches` | Sidebar admin có entry `AER Data`; canonical route là `admin.html#aer-data`, vẫn alias `#teams` và `#esports` để không gãy flow cũ |
-| Admin | Esports Data | Quan ly tung van dau theo `game draft record`, preview import Excel/CSV truoc khi commit DB, export CSV cho thong ke public `/esports/data`, va co `Tournament Management` de admin chinh `aerTier`/roster | `EsportsAdminController`, `EsportsAdminService`, `EsportsDraftService`, `static/html/admin-esports-data.html`, `static/js/admin-esports-data.js`, `static/css/admin.css` | `/api/admin/esports/franchises*`, `/api/admin/esports/tournaments*`, `/api/admin/esports/tournaments/{id}/teams*`, `/api/admin/esports/matches*`, `/api/admin/esports/matches/{matchId}/game-drafts`, `/api/admin/esports/game-drafts/{id}`, `/api/admin/esports/game-drafts/export`, `/api/admin/esports/game-drafts/import/preview`, `/api/admin/esports/game-drafts/import/confirm` | `esports_franchises`, `esports_tournaments`, `esports_tournament_teams`, `esports_matches`, `esports_game_drafts` | Sidebar admin co entry `Esports Data`; page admin them workflow tournament management + upload file -> preview ket qua -> danh sach loi/warning -> confirm import; task hien tai chi lam tournament management, khong doi CSV/JSON/TXT flow |
+| Admin | AER Data | CRUD team/match, bulk import, recalculation Elo cho workflow ranking/AER tổng quát; không còn nút reset dữ liệu legacy trên trang này | `EsportsAdminController`, `EsportsAdminService`, `static/html/admin.html`, `static/css/admin.css` | `/api/admin/esports/teams*`, `/api/admin/esports/matches*`, `/api/admin/esports/teams/matches/bulk-import` | `esports_teams`, `esports_matches` | Sidebar admin có entry `AER Data`; canonical route là `admin.html#aer-data`, vẫn alias `#teams` và `#esports` để không gãy flow cũ; reset full esports data phải dùng `admin-esports-data.html` |
+| Admin | Esports Data | Quản lý từng ván đấu theo `game draft record`, preview import Excel/CSV trước khi commit DB, group các dòng game thành series cha trước khi ghi DB, export CSV cho thống kê public `/esports/data`, và cập nhật ranking AER/Elo trực tiếp từ DB ngay sau khi confirm import | `EsportsAdminController`, `EsportsAdminService`, `EsportsDraftService`, `EsportsTournamentService`, `static/html/admin-esports-data.html`, `static/js/admin-esports-data.js`, `static/css/admin.css` | `/api/admin/esports/franchises*`, `/api/admin/esports/tournaments*`, `/api/admin/esports/tournaments/{id}/teams*`, `/api/admin/esports/matches*`, `/api/admin/esports/matches/{matchId}/game-drafts`, `/api/admin/esports/game-drafts/{id}`, `/api/admin/esports/game-drafts/export`, `/api/admin/esports/game-drafts/import/preview`, `/api/admin/esports/game-drafts/import/confirm` | `esports_franchises`, `esports_tournaments`, `esports_tournament_teams`, `esports_matches`, `esports_game_drafts` | Sidebar admin có entry `Esports Data`; import file hiểu `Match = game_number`, group series theo `Date + Tournament + Stage + team pair`, sau đó resolve parent theo `date-only + tournament_id + stage + unordered team pair + score`; nếu có nhiều parent exact thì ưu tiên parent đã có draft rồi mới tới `id` nhỏ hơn; `esports_tournaments.aer_tier` là source of truth, `esports_matches.tier` chỉ là fallback/legacy snapshot, tier hợp lệ gồm `0/1/2`; stage canonical lưu trong DB chỉ được là `ck/playoff/bang/vongloai`, admin create/update match sẽ normalize alias như `final/group/qualifier/play-off` về canonical, và unknown stage bị reject để tránh Elo fallback sai; update `aer_tier` sẽ sync snapshot match link và recalculate ranking, UI chính chỉ hiện summary import/ranking, không có AER JSON trung gian, và không có bước preview/download file riêng |
 
 **5. Bảng API**
 
@@ -190,11 +190,11 @@ ATG Academy (module Maven: demo)
 | GET | `/api/esports/teams` | `EsportsController` | repo trực tiếp | none | `EsportsTeam[]` | BXH public |
 | GET | `/api/esports/matches/recent` | `EsportsController` | repo tr?c ti?p | `limit` | `RecentMatchDto[]` | Feed tr?n g?n d?y |
 | GET | `/api/esports/franchises`, `/api/esports/franchises/{code}` | `EsportsController` | `EsportsFranchiseService` | detail: `code` | `EsportsFranchiseResponse[]` / detail | Public franchise catalog; seed mac dinh RPL, AOG, GCS, APL, AIC |
-| GET | `/api/esports/tournaments`, `/api/esports/tournaments/{id}`, `/api/esports/tournaments/{id}/teams` | `EsportsController` | `EsportsTournamentService` | list: `franchiseId, franchiseCode`; detail/team: `id` | tournament list/detail/team payload co `aerTier` | Public tournament catalog va roster team tham gia; `esports_tournaments.aer_tier` la nguon tier cho workflow AER JSON sau nay |
-| GET | `/api/esports/data/tournaments` | `EsportsController` | `EsportsDataService` | none | `EsportsTournamentOptionResponse[]` | Danh sach tournament scope co du lieu draft cho filter public page |
-| GET | `/api/esports/data/top-banned-heroes` | `EsportsController` | `EsportsDataService` | `tournamentId, tournamentName, limit` | `EsportsHeroBanStatResponse[]` | Top hero bi ban nhieu nhat, aggregate tu 10 cot ban cua `esports_game_drafts`; van fallback tier legacy neu `tournament_id` chua co |
+| GET | `/api/esports/tournaments`, `/api/esports/tournaments/{id}`, `/api/esports/tournaments/{id}/teams` | `EsportsController` | `EsportsTournamentService` | list: `franchiseId, franchiseCode`; detail/team: `id` | tournament list/detail/team payload co `aerTier` | Public tournament catalog va roster team tham gia; `esports_tournaments.aer_tier` la nguon tier chuan cho ranking AER doc truc tiep tu DB sau import |
+| GET | `/api/esports/data/tournaments` | `EsportsController` | `EsportsDataService` | none | `EsportsTournamentOptionResponse[]` | Danh sách tournament scope có dữ liệu draft cho filter public page |
+| GET | `/api/esports/data/top-banned-heroes` | `EsportsController` | `EsportsDataService` | `tournamentId, tournamentName, limit` | `EsportsHeroBanStatResponse[]` | Top hero bị ban nhiều nhất, aggregate từ 10 cột ban của `esports_game_drafts`; vẫn fallback tier legacy nếu `tournament_id` chưa có |
 | GET | `/api/esports/data/top-blue-banned-heroes` | `EsportsController` | `EsportsDataService` | `tournamentId, tournamentName, limit` | `EsportsHeroBanStatResponse[]` | Top hero bi blue side ban nhieu nhat |
-| GET | `/api/esports/data/hero-stats` | `EsportsController` | `EsportsDataService` | `tournamentId, tournamentName` | `EsportsHeroStatResponse[]` | Picks, bans, presence, wins, WR tu lineup + bans cua `esports_game_drafts` |
+| GET | `/api/esports/data/hero-stats` | `EsportsController` | `EsportsDataService` | `tournamentId, tournamentName, teamCode, dateFrom, dateTo` | `EsportsHeroStatResponse[]` | Payload chi tiet cho Hero Statistics: pick/ban/presence rates, Blue Side, Red Side, va `heroIconUrl`/`heroAvatarUrl` tu `esports_game_drafts` |
 | GET | `/api/esports/data/dashboard` | `EsportsController` | `EsportsDataService` | `tournamentId, tournamentName, teamCode, dateFrom, dateTo` | `EsportsDashboardResponse` | KPI/tables/charts data cho page public; runtime doc tu `esports_game_drafts` |
 | POST | `/api/ban-pick/rooms` | `BanPickRoomController` | `BanPickRoomService` | `seriesType` | `BanPickCreateRoomResponse` | Tạo phòng online |
 | GET | `/api/ban-pick/rooms/{roomCode}` | `BanPickRoomController` | `BanPickRoomService` | `roomCode` | `BanPickRoomStateResponse` | State phòng |
@@ -203,21 +203,21 @@ ATG Academy (module Maven: demo)
 | POST | `/api/ban-pick/rooms/{roomCode}/lineup/reorder`, `/lineup/confirm` | `BanPickRoomController` | `BanPickRoomService` | reorder: `heroIds`; confirm: `teamSide` | `BanPickRoomStateResponse` | Sắp xếp/xác nhận lineup |
 | POST | `/api/ban-pick/rooms/{roomCode}/next-game`, `/reset` | `BanPickRoomController` | `BanPickRoomService` | none | `BanPickRoomStateResponse` | Sang ván mới / reset |
 | GET | `/api/ban-pick/history`, `/api/ban-pick/history/{id}` | `BanPickHistoryController` | `BanPickHistoryService` | `id` optional | `DraftHistoryResponse[]` / `DraftHistoryResponse` | Lịch sử draft |
-| POST | `/api/ban-pick/history/{id}/winner` | `BanPickHistoryController` | `BanPickHistoryService` | `winnerSide` | `DraftHistoryResponse` | Ghi nhận người thắng |
-| GET | `/api/ban-pick/leaderboard`, `/api/ban-pick/profile` | `BanPickHistoryController` | `BanPickHistoryService` | none | `PlayerStatsResponse[]`, `BanPickProfileResponse` | BXH và hồ sơ ban/pick |
+| POST | `/api/ban-pick/history/{id}/winner` | `BanPickHistoryController` | `BanPickHistoryService` | legacy request | `DraftHistoryResponse` | Endpoint legacy bị reject với message winner được tính tự động theo Ban/Pick score |
+| GET | `/api/ban-pick/leaderboard`, `/api/ban-pick/profile` | `BanPickHistoryController` | `BanPickHistoryService` | none | `PlayerStatsResponse[]`, `BanPickProfileResponse` | BXH public và stats cá nhân trên Solo page; `BanPickProfileResponse` gồm `user`, `stats`, `playerCard`, `history` để Solo page và Account preview dùng chung |
 | GET, PUT | `/api/admin/users`, `/api/admin/users/{id}` | `AdminUserController` | `AdminUserService` | list filters; update `name/avatarUrl/role/status/note` | page/detail DTO | Quản lý user |
 | GET, PUT | `/api/admin/wiki/heroes`, `/api/admin/wiki/heroes/{id}` | `AdminWikiHeroController` | `AdminWikiHeroService` | update basic info + `banPickScore` | hero list/detail DTO kèm `banPickScore` | Quản lý hero |
 | PUT | `/api/admin/wiki/heroes/{id}/roles`, `/api/admin/wiki/heroes/{id}/attributes` | `AdminWikiHeroController` | `AdminWikiHeroService` | `roles[]`, `attributes[]` | hero detail DTO | Gán role/attribute |
 | GET, POST, PUT, DELETE | `/api/admin/wiki/attributes*` | `AdminWikiAttributeController` | `AdminWikiHeroService` | attribute upsert | list/detail/204 | Attribute admin chuẩn wiki |
 | GET, POST, PATCH, DELETE | `/api/admin/attributes*` | `HeroAttributeController` | `HeroAttributeService` | attribute upsert | list/detail/204 | API legacy cho attribute |
 | GET | `/api/admin/esports/game-drafts/export` | `EsportsAdminController` | `EsportsDraftService` | `tournamentId, tournamentName, matchId, dateFrom, dateTo` | CSV attachment UTF-8 BOM | Export game draft records theo format Excel mau; moi dong = 1 row trong `esports_game_drafts` |
-| POST | `/api/admin/esports/game-drafts/import/preview` | `EsportsAdminController` | `EsportsDraftService` | multipart `file`, `overwriteExisting` | `EsportsGameDraftImportPreviewResponse` | Parse CSV/Excel, map tournament/team/hero, resolve parent match, validate duplicate `(match_id, game_number)`, va tra preview token + summary truoc khi import that |
-| POST | `/api/admin/esports/game-drafts/import/confirm` | `EsportsAdminController` | `EsportsDraftService` | `previewToken` | `EsportsGameDraftImportConfirmResponse` | Confirm preview hop le de tao/cap nhat `esports_matches` va `esports_game_drafts`; recalculate Elo neu match cha bi tao moi hoac doi ty so |
+| POST | `/api/admin/esports/game-drafts/import/preview` | `EsportsAdminController` | `EsportsDraftService` | multipart `file`, `overwriteExisting` | `EsportsGameDraftImportPreviewResponse` | Parse CSV/Excel, map tournament/team/hero, resolve parent match theo `date-only + tournament + stage + unordered team pair + score`, validate duplicate `(match_id, game_number)`, va tra preview token + summary truoc khi import that |
+| POST | `/api/admin/esports/game-drafts/import/confirm` | `EsportsAdminController` | `EsportsDraftService` | `previewToken` | `EsportsGameDraftImportConfirmResponse` | Confirm preview hop le de tao/cap nhat `esports_matches` va `esports_game_drafts`; neu parent exact da ton tai thi reuse parent cu thay vi tao match moi, overwrite draft theo `(match_id, game_number)` khi admin bat overwrite, recalculate Elo neu match cha bi tao moi hoac doi ty so, va tra summary DB/ranking gom `affectedMatchIds`, `affectedSeriesCount`, `rankingsRecalculated` |
 | GET, POST, PUT, DELETE | `/api/admin/esports/franchises*` | `EsportsAdminController` | `EsportsFranchiseService` | franchise body | list/detail/message | Admin CRUD/deactivate franchise catalog |
 | GET, POST, PUT, DELETE | `/api/admin/esports/tournaments*` | `EsportsAdminController` | `EsportsTournamentService` | list: `franchiseId, franchiseCode`; request body tournament co `aerTier` | list/detail/message | Admin CRUD tournament catalog, sua duoc `aerTier`; xoa bi chan neu da link vao `esports_matches` |
 | GET, POST, DELETE | `/api/admin/esports/tournaments/{id}/teams*` | `EsportsAdminController` | `EsportsTournamentService` | team body / `teamId` | roster/message | Admin quan ly team tham gia tung tournament |
 | GET, POST, PUT, DELETE | `/api/admin/esports/teams*`, `/api/admin/esports/teams/matches/bulk-import` | `EsportsAdminController` | `EsportsAdminService` | team body / raw text import | team/list/message | Quản lý/import team |
-| GET, POST, PUT, DELETE | `/api/admin/esports/matches*`, `DELETE /api/admin/esports/matches` | `EsportsAdminController` | `EsportsAdminService` | match body | match/list/message | Quản lý/reset match history; co the set `tournamentId` nhung flow cu van chay khi de null |
+| GET, POST, PUT, DELETE | `/api/admin/esports/matches*` | `EsportsAdminController` | `EsportsAdminService` | `EsportsMatchRequest` | match/list/message | Quản lý match history; `stage` ghi DB chi hop le `ck/playoff/bang/vongloai`, alias hop le se duoc normalize truoc khi save, unknown stage bi reject; `DELETE /api/admin/esports/matches/{id}` vẫn dùng để xóa từng trận, còn reset toàn bộ đã chuyển sang `POST /api/admin/esports/reset-data`; co the set `tournamentId` nhung flow cu van chay khi de null |
 | GET | `/api/admin/esports/matches/{matchId}/game-drafts` | `EsportsAdminController` | `EsportsDraftService` | none | `EsportsGameDraftResponse[]` | List game draft records thuoc mot match |
 | POST | `/api/admin/esports/matches/{matchId}/game-drafts` | `EsportsAdminController` | `EsportsDraftService` | `EsportsGameDraftRequest` | `EsportsGameDraftResponse` | Tao 1 game draft record moi |
 | GET | `/api/admin/esports/game-drafts/{id}` | `EsportsAdminController` | `EsportsDraftService` | none | `EsportsGameDraftResponse` | Lay chi tiet 1 game draft record |
@@ -250,16 +250,16 @@ Ghi chú realtime:
 | `tier_list_comments` | `id,tier_list_id,user_id,content,createdAt,updatedAt` | N-1 `tier_lists`, N-1 `users` | `TierListCommentRepository` | Bình luận community |
 | `tier_list_admin_ratings` | `id,tier_list_id,admin_user_id,ratingValue,note` | N-1 `tier_lists`, N-1 `users` | `TierListAdminRatingRepository` | Đánh giá admin |
 | `esports_franchises` | `id,code,name,tier_level,region,display_order,active` | 1-N `esports_tournaments` | `EsportsFranchiseRepository` | He thong giai dau me/franchise; seed mac dinh RPL, AOG, GCS, APL, AIC |
-| `esports_tournaments` | `id,franchise_id,name,slug,season_year,split_name,tier_level,aer_tier,start_date,end_date,status` | N-1 `esports_franchises`; 1-N `esports_tournament_teams`; optional 1-N `esports_matches` qua `tournament_id` | `EsportsTournamentRepository` | Tung mua/giai cu the nhu `AOG Spring 2026`, `RPL Summer 2026`; `aer_tier` la tier so cho workflow CSV -> AER JSON sau nay |
-| `esports_tournament_teams` | `id,tournament_id,team_id,group_name,seed_number,status,note` | N-1 `esports_tournaments`, N-1 `esports_teams` | `EsportsTournamentTeamRepository` | Roster team tham gia tung tournament |
-| `esports_teams` | `id,teamCode,teamName,logoUrl,region,score,gameWins,gameLosses,matchWins,matchLosses` | Khong FK truc tiep toi `esports_matches`; lien he bang `teamCode`; co the duoc map vao `esports_tournament_teams` | `EsportsTeamRepository` | BXH esports va nguon roster cho tournament |
-| `esports_matches` | `id,matchDate,team1Code,team2Code,score1,score2,tier,stage,tournament_id(optional)` | Quan he logic qua `teamCode`; optional N-1 `esports_tournaments` qua `tournament_id` | `EsportsMatchRepository` | Lich su tran va input tinh Elo; flow cu van fallback `tier` neu match chua link tournament, con match co tournament chinh thuc se dong bo fallback tier theo `esports_tournaments.aer_tier` |
-| `esports_game_drafts` | `id,match_id,game_number,blue_team_id,red_team_id,winner_team_id,duration_seconds,draft_format_code,source,10 ban hero ids,10 lineup hero ids,raw_draft_json` | N-1 `esports_matches`; N-1 `esports_teams` cho blue/red/winner; hero refs luu dang flat columns | `EsportsGameDraftRepository` | Nguon game-level moi cho public Esports Data va admin draft workflow; 1 row = 1 van dau; van giu 5 ban moi ben cho export/admin |
+| `esports_tournaments` | `id,franchise_id,name,slug,season_year,split_name,tier_level,aer_tier,start_date,end_date,status` | N-1 `esports_franchises`; 1-N `esports_tournament_teams`; optional 1-N `esports_matches` qua `tournament_id` | `EsportsTournamentRepository` | Tung mua/giai cu the nhu `AOG Spring 2026`, `RPL Summer 2026`; `aer_tier` la source of truth cho ranking AER/Elo, hop le `0/1/2`, va `0` dung cho T0/global tournament nhu `APL`/`AIC` |
+| `esports_tournament_teams` | `id,tournament_id,team_id,group_name,seed_number,status,note` | N-1 `esports_tournaments`, N-1 `esports_teams` | `EsportsTournamentTeamRepository` | Full roster team tham gia tung tournament, duoc sync theo cac doi thuc te xuat hien trong `esports_matches` cua tournament do |
+| `esports_teams` | `id,teamCode,teamName,logoUrl,region,score,gameWins,gameLosses,matchWins,matchLosses` | Khong FK truc tiep toi `esports_matches`; lien he bang `teamCode`; co the duoc map vao `esports_tournament_teams` | `EsportsTeamRepository` | BXH esports va nguon roster cho tournament; leaderboard public dung `matchWins/matchLosses` cho `Series W/L`, khong dung `gameWins/gameLosses` |
+| `esports_matches` | `id,matchDate,team1Code,team2Code,score1,score2,tier,stage,tournament_id(optional)` | Quan he logic qua `teamCode`; optional N-1 `esports_tournaments` qua `tournament_id` | `EsportsMatchRepository` | 1 row = 1 series/tran cha; dung cho Elo/AER ranking, match-level dashboard, va scope `affectedMatchIds` sau import; `score1/score2` la series score, khong phai score cua tung game; `tier` khong co FK tier-to-tier ma chi la fallback/legacy snapshot, chi duoc dung khi match khong co `tournament_id`; `stage` canonical bat buoc la `ck`, `playoff`, `bang`, hoac `vongloai` |
+| `esports_game_drafts` | `id,match_id,game_number,blue_team_id,red_team_id,winner_team_id,duration_seconds,draft_format_code,source,10 ban hero ids,10 lineup hero ids,raw_draft_json` | N-1 `esports_matches`; N-1 `esports_teams` cho blue/red/winner; hero refs luu dang flat columns | `EsportsGameDraftRepository` | 1 row = 1 game/van con thuoc series `esports_matches`; dung cho hero stats, pick/ban, blue-red side stats, va export/admin draft workflow |
 | `ban_pick_rooms` | `id,roomCode,status,phaseType,seriesType,currentGameNumber,host/guest/blue/red user,ready flags,deadline fields,pick history` | N-1 nhiều lần về `users`; 1-N `ban_pick_actions`, `ban_pick_room_participants` | `BanPickRoomRepository` | Trạng thái draft room |
 | `ban_pick_room_participants` | `id,room_id,user_id,role,teamSide,joinedAt` | N-1 `ban_pick_rooms`, N-1 `users` | `BanPickRoomParticipantRepository` | Thành viên phòng |
 | `ban_pick_actions` | `id,room_id,user_id,teamSide,actionType,heroId,phaseIndex,confirmedAt` | N-1 `ban_pick_rooms`, N-1 `users` | `BanPickActionRepository` | Log ban/pick từng phase |
-| `draft_histories` | `id,roomCode,blue_user_id,red_user_id,winner_user_id,bluePicks,redPicks,blueBans,redBans,resultRecordedAt` | N-1 `users` | `DraftHistoryRepository` | Lịch sử draft đã hoàn tất |
-| `player_stats` | `id,user_id,totalMatches,wins,losses,rating,pickedHeroCounts` | 1-1 `users` | `PlayerStatsRepository` | Profile/BXH ban-pick |
+| `draft_histories` | `id,roomCode,blue_user_id,red_user_id,winner_user_id,bluePicks,redPicks,blueBans,redBans,resultRecordedAt,win_rating_delta,loss_rating_delta` | N-1 `users` | `DraftHistoryRepository` | Lịch sử draft đã hoàn tất; mỗi row lưu snapshot delta rating cuối cùng của trận sau macro + ELO gap, và nếu bị anti-win-trading thì snapshot bị override thành `0/0`; rolling-50 replay vì vậy giữ đúng lịch sử rating kể cả match bị block; retention cleanup chỉ xóa row khi history đó không còn nằm trong top 50 gần nhất của cả 2 participant |
+| `player_stats` | `id,user_id,totalMatches,wins,losses,rating,pickedHeroCounts` | 1-1 `users` | `PlayerStatsRepository` | Aggregate Ban/Pick synced theo 50 draft gần nhất của từng user để phục vụ profile/leaderboard; rating base khởi tạo `1000`, floor `0`, tie không đổi W/L/rating; winner/loss penalty đều đọc lại snapshot `win_rating_delta/loss_rating_delta` đã lưu sau Macro Economy 30 ngày + ELO gap modifier (`10 điểm = 2%`, cap `50%`), rồi bị giữ nguyên `0/0` nếu match đã bị anti-win-trading block; rank `S/A/B/C/D` được backend tính động theo percentile từ pool rating hiện tại, không hardcode ở frontend và chưa gồm anti-cheat, dodge penalty hay seasonal reset |
 
 **7. Kết luận**
 
@@ -303,13 +303,14 @@ UI/UX Design System
 |  |- CSS variables: `--atg-primary`, `--atg-primary-focus`, `--atg-canvas`, `--atg-canvas-parchment`, `--atg-ink`, `--atg-hairline`
 |  |- Spacing/radius/shadow/font tokens: `--atg-space-*`, `--atg-radius-*`, `--atg-shadow-*`, `--atg-font-*`
 |  |- Legacy aliases: `--blue-color`, `--red-color`, `--bg-color`, `--panel-bg`, `--text-color`, `--gold-color`
-|  |- Shared navbar dropdown pattern: `header.html` + `header-loader.js` dung cho `Ban/Pick` va `Tier List`
+|  |- Shared navbar dropdown pattern: `header.html` + `header-loader.js` dung cho `Tier List`, `Ban/Pick`, `Esports`, va `Wiki`
 |  |- Shared compact draft evaluation component: `draft-balance-panel`, `draft-balance-item` cho score + win-rate cua hai doi
 |  `- Base classes: `.atg-page`, `.atg-section`, `.atg-section-header`, `.atg-card`, `.atg-button-*`, `.atg-search`, `.atg-table`, `.atg-modal`, `.atg-empty-state`, `.atg-error-state`
 |- CSS ownership sau refactor
 |  |- `style.css` chi giu token, reset/base, shared typography, layout utilities, buttons, cards, search/input, modal/toast/empty/error, header/footer shared
 |  |- `tier-list.css` own `tier-list.html`, `tier-list-all.html`, `tier-list-mine.html`, `tier-list-detail.html`
-|  |- `ban-pick.css` own `ban-pick-free.html`, `ban-pick-standard.html`, `ban-pick-solo.html`, `ban-pick-profile.html`, `ban-pick-result.html`, `ban-pick-leaderboard.html`
+|  |- `ban-pick.css` own layout/page chrome của `ban-pick-free.html`, `ban-pick-standard.html`, `ban-pick-solo.html`, `ban-pick-leaderboard.html`
+|  |- `player-card.css` own shared Player Card component cho `ban-pick-solo.html` và `account.html`
 |  |- `account.css` own `account.html`; `wiki.css` own `wiki.html`; `esports.css` own `esports.html`, `esports-data.html`
 |  |- `guides.css` own `giao-an.html`, `create-guide.html`, `guide-detail.html`
 |  |- `admin.css` own `admin.html`, `admin-heroes.html`, `admin-attributes.html`, `admin-esports-data.html`
@@ -367,18 +368,19 @@ Esports Data
 |- API endpoints
 |  |- `GET /api/esports/data/tournaments`
 |  |- `GET /api/esports/data/dashboard?tournamentName=&teamCode=&dateFrom=&dateTo=` -> tra summary, sideAdvantage, heroStats, topBannedHeroes, topBlueBannedHero, teamOptions
-|  |- `GET /api/esports/data/hero-stats` -> picks, bans, presence, wins, WR tu `esports_game_drafts`
+|  |- `GET /api/esports/data/hero-stats?tournamentId=&tournamentName=&teamCode=&dateFrom=&dateTo=` -> tra payload Hero Statistics day du cho `Picks`, `Blue Side`, `Red Side`, `Bans`, `Picks & Bans`
 |  |- `GET /api/esports/data/top-banned-heroes?tournamentName=...&limit=5`
-|  `- `GET /api/esports/data/top-blue-banned-heroes?tournamentName=...&limit=5`
+|  |- `GET /api/esports/data/top-blue-banned-heroes?tournamentName=...&limit=5`
+|  `- `GET /api/esports/data/top-red-banned-heroes?tournamentName=...&limit=5`
 |- Database table or entity
 |  |- `heroes`
 |  |- `esports_matches`
 |  |- `esports_game_drafts`
 |  `- `esports_match_games`, `esports_match_draft_actions`, `esports_match_game_lineups` da duoc retire khoi runtime; source of truth la `esports_game_drafts`
 |- Header / Navigation
-|  |- Shared header bo menu top-level rieng `Esports Data`; top-level chi con `Wiki` dang dropdown
-|  |- Dropdown `Wiki` gom item `Wiki`, deep-link `Bo tro` (`/html/wiki.html?tab=spells`), `Phu hieu` (`/html/wiki.html?tab=enchantments`), va `Esports Data`
-|  `- Active state duoc nhan dien tren trigger `Wiki` khi dang o `wiki.html`, `wiki.html?tab=spells`, `wiki.html?tab=enchantments`, hoac `/esports/data`; item `Esports Data` van active dung tren `esports-data.html`
+|  |- Shared header bo menu top-level rieng `Esports Data`; trigger top-level `Esports` da doi thanh dropdown
+|  |- Dropdown `Esports` gom item `Esports Ranking` (`/html/esports.html`) va `Esports Data` (`/esports/data`); dropdown `Wiki` giu nguyen `Tướng`, `Bổ trợ`, `Phù hiệu`
+|  `- Active state duoc nhan dien tren trigger `Esports` khi dang o `esports.html`, `/esports`, `/esports/data`, hoac `esports-data.html`; item con tuong ung active theo page hien tai
 |- Routing / Static Pages
 |  |- Them page `esports-data.html`
 |  |- Them route dep `/esports/data` -> redirect `/html/esports-data.html`
@@ -386,13 +388,13 @@ Esports Data
 |- Main workflow
 |  |- User mo `/esports/data` hoac `esports-data.html`
 |  |- Frontend load danh sach giai dau tu `GET /api/esports/data/tournaments`
-|  |- Frontend hien tournament filter, KPI cards, bang top bans, bang top picks, side win rate, va hero statistics; UI giu tinh than Apple-like toi gian theo `docs/ui-style-guide.md`
+|  |- Frontend hien tournament filter, KPI cards, bang top bans, bang top blue/red side bans, bang top picks, side win rate, va hero statistics; UI giu tinh than Apple-like toi gian theo `docs/ui-style-guide.md`
 |  |- `GET /api/esports/data/dashboard` la nguon chinh cho summary, side advantage, hero stats, team options, top banned hero, va top blue banned hero
-|  |- `GET /api/esports/data/hero-stats` va dashboard deu aggregate tu `esports_game_drafts`: 10 cot ban cho bans, 10 cot lineup cho picks, `winner_team_id` so voi `blue_team_id`/`red_team_id` cho side WR va hero wins
+|  |- `GET /api/esports/data/hero-stats` va dashboard deu aggregate tu `esports_game_drafts`: 10 cot ban cho bans, 10 cot lineup cho picks, `winner_team_id` so voi `blue_team_id`/`red_team_id` cho side WR va hero wins; response hien gom `pickCount/pickWins/pickLosses/pickWinRate/pickRate`, `bluePick*`, `redPick*`, `banCount/banRate`, `presenceCount/presenceRate`, va `heroIconUrl` (giu `heroAvatarUrl` de tuong thich nguoc)
 |  |- Filter `tournamentName` tiep tuc di theo convention `tier`; backend van chap nhan `teamCode/dateFrom/dateTo` cho reuse sau nay
 |  |- Top picked heroes duoc suy ra tu lineup theo lane `DSL/JGL/MID/ADL/SUP`, khong can draft-phase data
-|  |- Bang Hero Statistics tren `esports-data.html` co loading state, empty state, sort client-side theo `Picks Σ`, `Picks WR`, `Bans Σ`, `Picks & Bans Σ`, va header tach ro `Hero` / `Picks` / `Blue side Picks` / `Red side Picks` / `Bans` / `Picks & Bans`
-|  |- `GET /api/esports/data/top-banned-heroes` va `GET /api/esports/data/top-blue-banned-heroes` duoc giu de page co the render bang rieng va empty-state ro rang
+|  |- Bang Hero Statistics tren `esports-data.html` co loading state, empty state, grouped headers `Picks` / `Blue Side` / `Red Side` / `Bans` / `Picks & Bans`, cot `Details` voi nut `Show` an toan, va sort mac dinh tu backend theo `pickCount desc -> presenceCount desc -> heroName asc`
+|  |- `GET /api/esports/data/top-banned-heroes`, `GET /api/esports/data/top-blue-banned-heroes`, va `GET /api/esports/data/top-red-banned-heroes` duoc giu de page co the render bang rieng va empty-state ro rang
 |  |- UI public hien tai uu tien tournament filter; team/date filters giu o backend cho reuse sau nay
 |  |- Backend van dung `EsportsTournamentCatalog`, nhung neu UI gui raw `tournamentTier` dang ton tai trong data thi van chap nhan de tranh empty sai
 |  `- Empty state hien khi chua co `esports_game_drafts` hoac scope filter khong tra ve data
@@ -404,7 +406,7 @@ Esports Data
    |- Can test default scope khi bo trong `tournamentName`: hien dung toan bo draft data, khong tu dong khoa vao giai moi nhat
    |- Can test `tournamentName` invalid tra 400 va UI khong crash
    |- Can test empty state khi chua co `esports_game_drafts`
-   |- Can test top bans, top blue bans, top picks, side WR, hero stats tren data that sau migration
+   |- Can test top bans, top blue bans, top red bans, top picks, side WR, hero stats tren data that sau migration
    |- Can test responsive/table density tren desktop-mobile, nhat la card border mong + shadow nhe theo style guide
    `- Can test trang `esports.html`, Elo ranking, match feed, va AER workflow khong bi anh huong
 ```
@@ -468,16 +470,17 @@ Esports Match Game Draft History
 |- Esports Ranking
 |  |- Elo/ranking workflow cu van tiep tuc doc `esports_matches` va `teamCode`, khong refactor model ranking
 |  |- Refactor nay khong doi business logic `EloCalculationService` va khong xoa `esports_matches`
+|  |- Regression test `demo/src/test/java/com/example/demo/service/EloCalculationServiceTest.java` mo phong `docs/tinhtoan.py` de khoa tier 0/1/2, protected min, tier 2 safe mode, shockwave, RDP, Champion Point, game/match stats, va ordering `match_date ASC, id ASC`
 |  `- `esports_game_drafts` chi bo sung game-level data cho Esports Data, khong chen vao tinh Elo/ranking
 |- Admin Esports
-|  |- Admin tiep tuc CRUD team/match/import/reset Elo nhu truoc qua `EsportsAdminService`
+|  |- Admin tiep tuc CRUD team/match/import qua `EsportsAdminService`; nut reset data legacy da bo khoi `admin.html`
 |  |- Admin giu `Bulk Import` + team roster + match history/ranking o module `AER Data` (`/html/admin.html#aer-data`)
-|  |- Admin dung page `/html/admin-esports-data.html` cho workflow `upload file -> preview import -> confirm import` va `match -> game draft records` qua `EsportsDraftService`
+|  |- Admin dung page `/html/admin-esports-data.html` cho workflow `upload file -> preview import -> ap dung vao DB` va `match -> game draft records` qua `EsportsDraftService`
 |  |- Sidebar/admin dashboard tach ro `AER Data` va `Esports Data`; hash cu `#teams`/`#esports` van mo lai AER Data de giu flow cu
-|  |- Form series tren page admin nhap `match_date`, `team 1`, `team 2`, `score1`, `score2`, `giai/tier`, va `stage`; `stage` cho phep nhap custom, khong bi khoa vao 4 preset
+|  |- Form series tren page admin nhap `match_date`, `team 1`, `team 2`, `score1`, `score2`, `giai/tier`, va `stage`; UI goi y 4 stage canonical `bang/playoff/ck/vongloai`, frontend se doi alias quen tay ve canonical truoc khi goi API, va backend van reject unknown stage
 |  |- Chon 1 match se load list game draft records cua series, selected match card, editor form, va validation summary
 |  |- Nut `Xuat CSV` goi `GET /api/admin/esports/game-drafts/export`; neu dang chon match thi uu tien `matchId`, neu khong thi co the dung `tournamentName/dateFrom/dateTo`
-|  |- Import UI moi co file input `.csv/.xlsx/.xls`, checkbox overwrite ro rang, status card preview, summary cards, bang preview tung dong, danh sach error/warning, va nut `Confirm Import`
+|  |- Import UI moi co file input `.csv/.xlsx/.xls`, checkbox overwrite ro rang, status card preview, summary cards, bang preview tung dong, danh sach error/warning, va nut `Ap dung vao DB`
 |  |- UI moi theo `docs/ui-style-guide.md`: card vien mong, shadow rat nhe, content-first, button pill, khong dua framework moi vao frontend
 |  |- Form game draft cho phep nhap `gameNumber`, `blueTeam`, `redTeam`, `winnerTeam`, `duration`, `draftFormatCode`, `source`, 5 blue bans, 5 red bans, lineup `DSL/JGL/MID/ADL/SUP`
 |  |- Validate service layer:
@@ -495,20 +498,24 @@ Esports Match Game Draft History
 |  |- Duplicate `(match_id, game_number)` chi duoc overwrite khi admin bat overwrite truoc luc preview
 |  `- Completeness summary tren admin page tong hop so game complete/incomplete, tong bans/picks, missing winner, missing lineup, missing bans
 |- Main workflow
-|  |- Admin co the `Bulk Import` match history ngay tren `/html/admin.html#aer-data`; API va format raw text giu nguyen workflow cu
-|  |- Admin tao/sua series bang form match: `match_date` + `team1/team2` + `score1/score2` + `tier` + `stage`
+|  |- Admin có thể `Bulk Import` match history ngay trên `/html/admin.html#aer-data`; API và format raw text giữ nguyên workflow cũ
+|  |- Admin tao/sua series bang form match: `match_date` + `team1/team2` + `score1/score2` + `tier` + `stage`; stage alias hop le nhu `final`, `group`, `qualifier`, `play-off`, `vòng bảng`, `chung kết` se duoc normalize ve `ck/playoff/bang/vongloai`
 |  |- Admin co the upload file Excel/CSV tren `/html/admin-esports-data.html` -> backend preview map tournament/team/hero -> hien summary + error/warning list -> chi cho Confirm khi preview sach loi
 |  |- Confirm import co the:
-|  |- Dung `esports_matches` hien co neu khop ngay + tournament + cap doi
+|  |- Dung `esports_matches` hien co neu khop `DATE(match_date) + Tournament + Stage + unordered team pair + series score`; khac `match_time` hoac dao team order van phai reuse parent cu
 |  |- Gan `tournament_id` vao match cu dang null neu file match entity tournament
-|  |- Tao match cha moi neu chua co, score series suy ra tu cot `Winner`, stage mac dinh `bang`, va gio match mac dinh `12:00`
-|  |- Tao draft moi hoac overwrite draft trung `game_number` neu admin da bat overwrite
+|  |- Tao 1 match cha moi neu chua co, score series suy ra tu cot `Winner`, stage lay tu file neu co hoac fallback `bang`, va gio match mac dinh `12:00`
+|  |- Cot `Match` trong file import duoc hieu la `game_number`, khong phai `match_id`
+|  |- Nhieu dong cung `Date + Tournament + Stage + team pair` se duoc group thanh 1 series cha va nhieu row `esports_game_drafts`
+|  |- Neu co nhieu parent exact thi preview chon canonical parent: uu tien match da co draft, neu van hoa thi lay `id` nho hon
+|  |- Tao draft moi hoac overwrite draft trung `game_number` theo khoa `(match_id, game_number)` neu admin da bat overwrite
 |  |- Sau import, page refresh data va admin co the mo `/esports/data` de verify public analytics doc du lieu moi
 |  |- Frontend gui payload draft editor thu cong: `blueBans[]`, `redBans[]`, `blueLineup{DSL..SUP}`, `redLineup{DSL..SUP}`, `winnerTeamId`, `durationSeconds`
 |  |- `Length` co the nhap dang `mm:ss` hoac seconds; frontend normalize truoc khi goi API editor tay va backend convert khi import file
 |  |- Save xong, page reload list draft cua match, render status chip, va cap nhat validation summary
 |  |- Export CSV doc truc tiep tu `esports_game_drafts`; Team_1 = blue side, Team_2 = red side, moi dong = 1 van, `Length` = `mm:ss`
 |  |- Public/frontend runtime Esports Data chi con doc `/api/esports/data/*`; admin runtime chi con doc `/api/admin/esports/*/game-drafts`
+|  |- Dashboard public hien `Total Games` = so row `esports_game_drafts` va `Total Series` = distinct `match_id`
 |  `- Xoa game draft record khong anh huong `esports_matches`; series parent van duoc giu nguyen cho AER/Ranking
 |- Access permissions
 |  |- `GET /api/esports/**` lien quan public read la guest-friendly theo `SecurityConfig`
@@ -521,7 +528,55 @@ Esports Match Game Draft History
    |- Can smoke-test import `.csv` va `.xlsx`: preview header, map team/hero/tournament, convert `Length`, warning match moi, va button Confirm chi mo khi khong con error
    |- Can test duplicate `(match_id, game_number)` voi 2 case: overwrite tat -> vao danh sach loi; overwrite bat -> preview thanh overwrite action
    |- Can test row khong map duoc tournament/team/hero thi bi chan truoc confirm va khong ghi DB
-   `- Can smoke-test `admin.html#aer-data` cho bulk import/match history va `admin-esports-data.html` cho upload preview/confirm import, chon match, create/update/delete game draft record, duplicate validation, va link verify sang `/esports/data`
+   `- Can smoke-test `admin.html#aer-data` cho bulk import/match history va `admin-esports-data.html` cho upload preview/ap dung vao DB, chon match, create/update/delete game draft record, duplicate validation, va link verify sang `/esports/data`
+```
+
+## 2026-05-16 - Solo Ban/Pick Dodge Penalty v1
+
+- Scope:
+  - Chi ap dung cho room `IN_PROGRESS` + `phaseType = DRAFT`.
+  - Khong phat lobby `WAITING/READY`.
+  - Khong phat room da `FINISHED`.
+  - Khong phat `LINEUP_ADJUSTMENT` trong v1.
+
+- Runtime:
+  - Current-turn player timeout trong draft -> room finish theo forfeit.
+  - Current-turn player disconnect trong draft -> grace window `10s`; reconnect trong grace thi khong phat.
+  - `resetRoom()` khi room dang `IN_PROGRESS` bi reject de dong escape hatch.
+
+- Rating / stats:
+  - Dodge van di qua pipeline da co: macro economy, ELO gap modifier, anti-win-trading, rating delta snapshot, rolling-50 replay.
+  - History dodge van duoc luu de audit; neu anti-win-trading block rating thi delta co the la `0/0`.
+
+- Persistence / DB:
+  - `users.ban_pick_cooldown_until`
+  - `draft_histories.end_reason`
+  - `draft_histories.dodged_user_id`
+  - Cooldown v1 = `5 minutes`.
+
+**20. Elo Replay Ordering**
+
+```text
+Elo Replay Ordering
+|- Feature name
+|  `- Elo Replay Ordering
+|- Purpose
+|  |- Giu Elo replay/recalculate deterministic khi nhieu series co cung `match_date`
+|  `- Tranh sai lech ranking do Elo phu thuoc thu tu xu ly tran
+|- Related controller, service, entity, and repository files
+|  |- Service: `demo/src/main/java/com/example/demo/service/EloCalculationService.java`
+|  |- Service: `demo/src/main/java/com/example/demo/service/EsportsDraftService.java`
+|  |- Repository: `demo/src/main/java/com/example/demo/repository/EsportsMatchRepository.java`
+|  `- Entity: `demo/src/main/java/com/example/demo/entity/EsportsMatch.java`
+|- Main workflow
+|  |- Moi lan replay/recalculate ranking, backend doc `esports_matches` theo `match_date ASC, id ASC`
+|  |- Neu 2 match cung timestamp thi match co `id` nho hon duoc tinh truoc
+|  `- `id ASC` dong vai tro tie-breaker deterministic vi Elo phu thuoc thu tu tran, trong khi formula/tier/stage logic giu nguyen
+|- Database table or entity
+|  `- `esports_matches` la nguon replay cho Elo; khong doi schema va khong can migration
+`- Risk notes or manual testing areas
+   |- Can test 2 match cung `matchDate` nhung `id` khac nhau de verify service tinh match `id` nho truoc
+   `- Can smoke-test ranking workflow sau create/update/import match de dam bao moi luong replay deu dung ordering nay
 ```
 
 **16. Esports Franchise / Tournament Catalog**
@@ -533,7 +588,7 @@ Esports Franchise / Tournament Catalog
 |- Purpose
 |  |- Tach "franchise" (giai me) khoi "tournament" (mua giai cu the)
 |  |- Quan ly roster team tham gia tung tournament ma khong pha `esports_teams`, `esports_matches`, `esports_game_drafts`
-|  |- `esports_tournaments.aer_tier` la nguon tier so chuan cho workflow CSV -> AER JSON o task sau
+|  |- `esports_tournaments.aer_tier` la nguon tier so chuan cho ranking AER doc truc tiep tu DB
 |  `- Cho phep filter analytics/export theo `tournamentId` trong khi van fallback `tier` cho data legacy
 |- Related users
 |  |- Public users xem danh sach franchise, tournament, va team tham gia
@@ -569,22 +624,25 @@ Esports Franchise / Tournament Catalog
 |- Database / Entity / Migration
 |  |- Tables/entities: `esports_franchises`, `esports_tournaments`, `esports_tournament_teams`
 |  |- Optional match link: `esports_matches.tournament_id -> esports_tournaments.id`
+|  |- Khong co FK tier-to-tier giua `esports_matches.tier` va `esports_tournaments.aer_tier`
 |  |- SQL migration: `demo/sql/esports_franchises_tournaments_migration.sql`, `demo/sql/add_aer_tier_to_esports_tournaments.sql`
+|  |- Data backfill script da duoc them cho case import draft GCS ngay `2026-03-27`: `demo/sql/backfill_gcs_spring_2026_match_tournament_id_20260327.sql`
 |  |- Seed franchise bat buoc: `RPL`, `AOG`, `GCS`, `APL`, `AIC`
-|  |- Seed tournament toi thieu: `AOG Spring 2026`, `AOG Winter 2026`, `RPL Summer 2026`, `GCS Spring 2026`
-|  |- `esports_tournaments.aer_tier` mac dinh `1`; admin co the sua truc tiep tren Tournament Management
-|  `- Starter roster seed chi insert khi `esports_teams.team_code` da ton tai
+|  |- Seed tournament toi thieu: `AOG Spring 2026`, `RPL Summer 2026`, `GCS Spring 2026`
+|  |- `esports_tournaments.aer_tier` mac dinh `1`, hop le `0/1/2`; admin co the sua truc tiep tren Tournament Management ma khong duoc ep `0` thanh `1`
+|  `- `esports_tournament_teams` la full roster seed/runtime sync; chi insert khi `esports_teams.team_code` da ton tai
 |- Main workflow
 |  |- Public page load franchise/tournament catalog -> user chon scope -> analytics API goi `tournamentId`
-|  |- Admin vao `Tournament Management` -> filter theo franchise -> tao/sua tournament -> set `aerTier` + `tierLevel` -> gan team tham gia
-|  |- Task CSV -> AER JSON chua lam trong feature nay; task sau se lookup tier tu `esports_tournaments.aer_tier` va bao loi neu tournament trong CSV chua ton tai
-|  `- Match cu van hop le neu `tournament_id` de null; service/export fallback ve `tier`, con match co tournament se uu tien `aer_tier`
+|  |- Admin vao `Tournament Management` -> filter theo franchise -> tao/sua tournament -> set `aerTier` + `tierLevel` -> gan team tham gia; neu sua `aerTier` thi linked `esports_matches.tier` duoc sync lai snapshot va ranking duoc recalculate
+|  |- Sau khi `ap dung vao DB`, backend lookup `esports_tournaments.aer_tier`, recalculate ranking AER/Elo truc tiep tu DB theo `affectedMatchIds`, va UI chi hien summary import/ranking
+|  `- Match cu van hop le neu `tournament_id` de null; service/export fallback ve `tier`, con match co tournament se uu tien `aer_tier`; chi can khai bao tournament `APL/AIC` voi `aer_tier = 0` la moi match link vao tournament do se tinh theo Tier 0
 |- Access permissions
 |  |- `GET /api/esports/**` la public read
 |  `- `POST/PUT/DELETE /api/admin/esports/**` can role `ADMIN`
 `- Risk notes or manual testing areas
-   |- Production DB can chay SQL migration hoac de Hibernate `ddl-auto=update` tao schema; task nay khong chay SQL that va chua verify du lieu tren MySQL local vi may hien tai khong co `mysql` CLI
+   |- Production DB can chay SQL migration hoac de Hibernate `ddl-auto=update` tao schema; local MySQL hien da co `mysql`/`mysqldump` CLI va du lieu backfill `tournament_id` can duoc backup + verify bang SQL truc tiep truoc khi import XLSX that
    |- `tournament_id` tren `esports_matches` la optional; can smoke-test admin create/update match voi ca 2 truong hop null va co gia tri
+   |- `EsportsDataSeeder` dang gan `matchDate` theo `now().minusDays(30) + i minutes`, nen du lieu seed co the trung ngay that cua file XLSX; neu cung cap doi xuat hien nhieu lan va `tournament_id` con null thi preview import game draft co the bao ambiguous parent cho den khi duoc backfill
    |- Roster seed phu thuoc data team hien co; neu DB that thieu `team_code` thi row mapping se bi skip co chu y
    `- Export CSV game draft hien co khong doi; task nay khong import CSV vao `esports_matches`/`esports_game_drafts` va khong tao JSON/TXT
 ```
@@ -657,17 +715,25 @@ Ban/Pick Navigation & Routing
 |- Ban/Pick Standard Mode
 |  |- Wrapper page: `demo/src/main/resources/static/html/ban-pick-standard.html`
 |  |- Hero pool van lay tu `GET /api/wiki/heroes`; moi hero co `banPickScore` tu backend/database
-|  `- Khong con nut `Đổi chế độ` / `Thoát` chi de quay ve route legacy `/ban-pick`; luong pick/ban, timer, reset giu nguyen, panel `Đánh giá đội hình` cap nhat realtime khi pick/huy/reset
+|  `- Khong con nut `Đổi chế độ` / `Thoát` chi de quay ve route legacy `/ban-pick`; luong pick/ban, timer, reset giu nguyen, panel `Đánh giá đội hình` cap nhat realtime trong draft va lineup adjustment local
 |- Ban/Pick Solo Online
 |  |- Wrapper page: `demo/src/main/resources/static/html/ban-pick-solo.html`
 |  |- Khong con nut quay ve landing page trong lobby/summary/status shell
 |  |- Shareable room link di thang toi `/html/ban-pick-solo.html?room={roomCode}`
+|  |- Player stats khong con page rieng; lobby render `Player Card` nho tach rieng module stats 50 tran
+|  |- `Player Card` chi hien avatar Google, IGN/display name, rank, ELO, badge, title; layout/logic dung chung `static/js/components/player-card.js` + `static/css/player-card.css`
+|  |- Badge/title cua `Player Card` doc tu DB (`users.player_badge_*`, `users.player_title`) qua `GET /api/ban-pick/profile`; Solo page chi render, khong co UI chinh truc tiep
+|  |- `rankCode`/`rankLabel` cua Player Card do backend tinh theo percentile rank tren pool `player_stats.rating`; frontend khong tu map rank theo nguong ELO
+|  |- Stats Panel rieng hien W/L, win rate, tong tran, top hero pick, va 3 recent draft; khong tron vao Player Card
+|  |- Guest tren Solo page chi thay message gon yeu cau dang nhap de xem thong ke; khong co menu/link noi bo tro toi `ban-pick-profile.html`
 |  |- Hero pool van lay tu `GET /api/wiki/heroes`; moi hero co `banPickScore` tu backend/database
-|  `- Cac nut nghiep vu room nhu join, ready, start, reset, next game, lineup confirm van giu nguyen; panel `Đánh giá đội hình` cap nhat khi room state doi, pick/huy/reset/sang van moi
+|  `- Cac nut nghiep vu room nhu join, ready, start, reset, next game, lineup confirm van giu nguyen; panel `Đánh giá đội hình` bi an trong suot draft/lineup adjustment va chi mo lai o man tong ket sau khi ca 2 doi confirm lineup cuoi
 |- CSS ownership
-|  |- `ban-pick-free.html`, `ban-pick-standard.html`, `ban-pick-solo.html`, `ban-pick-profile.html`, `ban-pick-result.html`, `ban-pick-leaderboard.html` deu load `style.css` + `ban-pick.css`
-|  |- `style.css` giu token/base va mot so hero-pool primitive shared; `ban-pick.css` own draft board, pick/ban slots, team panel, status, profile/result/leaderboard layout
-|  `- `ban-pick-shell.html` tiep tuc la shell DOM chung; khong doi JS state machine, API, hay DB
+|  |- `ban-pick-free.html`, `ban-pick-standard.html`, `ban-pick-solo.html`, `ban-pick-leaderboard.html` deu load `style.css` + `ban-pick.css`
+|  |- `ban-pick-solo.html` va `account.html` load them `player-card.css` khi can render component Player Card dung chung
+|  |- `style.css` giu token/base va mot so hero-pool primitive shared; `ban-pick.css` own draft board, pick/ban slots, team panel, status, solo-player-stats, va leaderboard layout
+|  |- Cac page Ban/Pick dat body flag de `header-loader.js` bo qua shared footer, giu them khong gian thao tac draft; shared header van duoc inject nhu cu
+|  `- `ban-pick-shell.html` tiep tuc la shell DOM chung; khong doi JS state machine, route API, hay DB room flow; `GET /api/ban-pick/profile` giu payload `playerCard` va nay lay badge/title tu DB thay vi fallback hardcode
 |- Routing / Static Pages
 |  |- `/ban-pick` redirect ve `/html/ban-pick-free.html` khi khong co query
 |  |- `/ban-pick?mode=standard|solo|free` redirect den mode tuong ung
@@ -709,6 +775,7 @@ Community Tier List Pages
 |- CSS ownership
 |  |- `style.css` giu token, shared card/button/modal/header va hero-pool selectors duoc tai su dung boi modal tao tier list
 |  `- `tier-list.css` own official meta board, community grid/card, detail panel, rating/comment/download UI va guest draft notice trong modal
+|  `- Community creator modal chi doi layout cho flow Tier List cong dong: desktop/tablet lon dung 2 cot board trai + hero list phai, mobile stack doc va giu scroll noi bo
 |- Related controller, service, entity, and repository files
 |  |- Controller: `demo/src/main/java/com/example/demo/controller/StaticPageRedirectController.java`
 |  |- Controller: `demo/src/main/java/com/example/demo/controller/TierListController.java`
@@ -772,6 +839,27 @@ Community Tier List Pages
    |- Can test case `user rating 4 + admin rating 3` de card/detail/summary hien average `3.5` va count `2`
    |- Can test modal `Tao Tier List` tren official page va 2 page community de chac rang hero pool community van load dung, guest notice hien dung va `sessionStorage` loi/quota khong lam crash UI
    `- Cần test guest reload cùng tab khôi phục draft, đóng tab/session mới mất draft, không xuất hiện row mới trong `tier_lists`, không vào Community list/Account dashboard và không phát sinh API save/publish/export khi chưa đăng nhập
+
+**11B. Community Creator Layout**
+
+Community Creator Layout
+|- Feature name
+|  `- Community Tier List Creator Modal Layout
+|- Scope
+|  `- Chi ap dung cho modal tao/sua Community Tier List tren `tier-list.html`, `tier-list-all.html`, va `tier-list-mine.html`; khong doi official meta board
+|- Main HTML, JavaScript, and CSS files
+|  |- `demo/src/main/resources/static/html/tier-list.html`
+|  |- `demo/src/main/resources/static/html/tier-list-community-shell.html`
+|  |- `demo/src/main/resources/static/html/tier-list-mine-shell.html`
+|  `- `demo/src/main/resources/static/css/tier-list.css`
+|- Main workflow
+|  |- Desktop/tablet lon: modal creator dung layout ngang 2 cot voi board trai va panel `Danh sach tuong` phai
+|  |- Hero panel phai giu search, role filter, hero grid scroll rieng, va van la source drag/drop cho board
+|  |- Footer `Huy` / `Dang Tier List` nam ngoai vung body scroll de luon de thay khi thao tac
+|  `- Mobile: modal creator stack doc board tren / hero list duoi, khong tran ngang viewport
+`- Risk notes or manual testing areas
+   |- Can test search, role filter, drag tu hero list sang tier, drag giua cac tier, va drag tra ve list van hoat dong sau khi doi layout
+   `- Can test mobile width de chac rang hero grid co scroll rieng va footer action van thay duoc
 
 **12. Tier List Saved Reference**
 
@@ -1034,4 +1122,147 @@ Wiki Gameplay Data - Enchantments
    |- Cần test `wiki.html?tab=enchantments` không làm hỏng tab `heroes` và `spells`
    |- Cần test `/api/admin/enchantments` thêm/sửa/xóa cập nhật JSON đúng và giữ `branchName/level/iconUrl`
    `- Cần test dropdown `Wiki` active đúng khi mở `wiki.html?tab=enchantments`
+```
+
+**17. Admin Esports Import DB-First AER Ranking**
+
+```text
+Admin Esports Import DB-First AER Ranking
+|- Feature name
+|  `- Admin Esports Import DB-First AER Ranking
+|- Purpose
+|  |- Sau khi Admin confirm import Excel/CSV vào DB, hệ thống cập nhật ranking AER/Elo trực tiếp từ DB trong cùng workflow
+|  |- Read source chinh tu `esports_matches`, `esports_game_drafts`, va lay tier chuan tu `esports_tournaments.aer_tier`
+|  |- UI chi hien status summary cho import, series bi anh huong, va trang thai recalculate ranking
+|  `- Khong tao AER JSON/file trung gian rieng, khong preview/download file rieng, va REST API van tra payload JSON binh thuong cho web app
+|- Related users
+|  `- Admin users tren `admin-esports-data.html`
+|- Main HTML, JavaScript, and CSS files
+|  |- `demo/src/main/resources/static/html/admin-esports-data.html`
+|  |- `demo/src/main/resources/static/js/admin-esports-data.js`
+|  `- `demo/src/main/resources/static/css/admin.css`
+|- Related controller, service, dto, entity, and repository files
+|  |- Controller: `demo/src/main/java/com/example/demo/controller/EsportsAdminController.java`
+|  |- Service: `demo/src/main/java/com/example/demo/service/EsportsDraftService.java`
+|  |- Service reused: `demo/src/main/java/com/example/demo/service/EloCalculationService.java`
+|  |- DTO: `demo/src/main/java/com/example/demo/dto/esports/EsportsGameDraftImportConfirmResponse.java`
+|  |- Repository: `demo/src/main/java/com/example/demo/repository/EsportsMatchRepository.java`
+|  |- Repository: `demo/src/main/java/com/example/demo/repository/EsportsGameDraftRepository.java`
+|  |- Entity reused: `demo/src/main/java/com/example/demo/entity/EsportsMatch.java`
+|  `- Entity reused: `demo/src/main/java/com/example/demo/entity/EsportsGameDraft.java`
+|- API endpoints
+|  `- `POST /api/admin/esports/game-drafts/import/confirm`
+|- Request / response behavior
+|  |- Confirm import success: tra `EsportsGameDraftImportConfirmResponse` gom `importedRows`, `createdMatches`, `updatedMatches`, `createdDrafts`, `overwrittenDrafts`, `affectedMatchIds`, `affectedSeriesCount`, `rankingsRecalculated`
+|  `- Khong con endpoint utility rieng cho export du lieu trung gian; API khac cua he thong van tra JSON nhu binh thuong
+|- Database table or entity
+|  |- Write source chinh: `esports_matches`
+|  |- Write source chinh: `esports_game_drafts`
+|  |- Read-only field tier chuan: `esports_tournaments.aer_tier`
+|  |- Public/Admin ranking tiep tuc doc du lieu tu DB/API
+|  |- Khong tao bang moi
+|  `- Khong doi schema DB trong task nay
+|- Main workflow
+|  |- Import Excel/CSV/XLSX vao DB van di theo flow rieng `upload file -> preview import -> ap dung vao DB`
+|  |- Import confirm se group game theo series cha, create/update `esports_matches`, va create/overwrite `esports_game_drafts`
+|  |- Neu series cha bi tao moi hoac doi score/tournament link thi `EloCalculationService.calculateAllRankings()` chay lai tu DB
+|  |- Frontend hien imported rows, created matches/drafts, overwritten drafts, `affectedSeriesCount`, `affectedMatchIds`, va `rankingsRecalculated`
+|  |- Public dashboard/ranking tiep tuc doc du lieu tu DB/API hien co
+|  `- Khong co buoc tao file trung gian, khong co preview/download file rieng, va khong phuc hoi luong file -> projection rieng
+|- Access permissions
+|  `- `/api/admin/esports/game-drafts/import/confirm` can role `ADMIN`
+`- Risk notes or manual testing areas
+   |- Can test import moi tao series cha + draft moi va verify ranking duoc recalculate khi score series thay doi
+   |- Can test import vao parent da co san nhung khong doi score de dam bao `rankingsRecalculated=false`
+   |- Can test public `/esports/data` va export CSV van doc du lieu DB dung sau import
+   `- Can test reset xong import lai de verify workflow DB-first van hoat dong on dinh
+```
+
+**18. Exact Duplicate Esports Series Cleanup**
+
+```text
+Exact Duplicate Esports Series Cleanup
+|- Feature name
+|  `- Exact Duplicate Esports Series Cleanup
+|- Purpose
+|  |- Remove 8 exact duplicate `esports_matches` parent rows left by a previous import run after exact parent reuse was fixed
+|  `- Keep canonical old parents and leave the 12 stage-conflict rows for a separate task
+|- Related files
+|  |- `demo/sql/cleanup_8_exact_duplicate_esports_series.sql`
+|  `- `demo/sql/backups/aov_tactics_before_cleanup_8_exact_duplicate_series_*.sql`
+|- Database / Entity / Migration
+|  |- Data-only cleanup in `esports_matches` and `esports_game_drafts`
+|  |- Canonical mapping: `1682->1618`, `1683->1623`, `1684->1627`, `1685->1631`, `1686->1635`, `1687->1639`, `1688->1644`, `1689->1648`
+|  |- Safe rule: delete duplicate child drafts only when the canonical parent already has the same `game_number` and the draft payload matches exactly; then delete the orphan duplicate parent
+|  |- No schema change, no entity change, no code change to Import Excel/CSV/XLSX, ranking recalculation logic, or Export CSV
+|  `- Explicitly excludes stage-conflict ids `1674..1681` and `1690..1693`
+|- Main workflow
+|  |- Backup local DB with `mysqldump` before any mutation
+|  |- Run pre-cleanup audit for the 16 scoped ids and build temp tables to mark `safe_to_cleanup` pairs only
+|  |- Delete duplicate draft rows and duplicate parent rows inside a transaction
+|  `- Verify `total_games`, `total_series`, duplicate `(match_id, game_number)`, score mismatch via `winner_team_id`, and that ids `1682..1689` are gone
+`- Risk notes or manual testing areas
+   |- If any duplicate parent is missing a canonical `game_number` or has draft payload mismatch, leave that pair blocked instead of partially deleting it
+   `- The 12 stage-conflict ids still need their own cleanup workflow outside Task 6B
+```
+
+**19. Admin Esports Reset Data**
+
+```text
+Admin Esports Reset Data
+|- Feature name
+|  `- Admin Esports Reset Data
+|- Purpose
+|  |- Thêm Danger Zone riêng cho admin để xóa sạch dataset import esports và cho phép import lại XLSX/CSV từ đầu
+|  |- Chi xoa du lieu import trong `esports_matches` va `esports_game_drafts`, khong xoa toan bo database
+|  `- Bat buoc backup DB + confirmation text truoc khi reset, va chan production profile neu khong co flag ro rang
+|- Related users
+|  `- Admin users tren `admin-esports-data.html`
+|- Main HTML, JavaScript, and CSS files
+|  |- `demo/src/main/resources/static/html/admin-esports-data.html`
+|  |- `demo/src/main/resources/static/js/admin-esports-data.js`
+|  |- `demo/src/main/resources/static/css/admin.css`
+|  `- `demo/src/main/resources/static/html/admin.html` (legacy endpoint reset cu da bi khoa o backend va nut reset legacy da duoc go khoi UI; admin phai dung trang `admin-esports-data.html` cho flow reset moi)
+|- Related controller, service, dto, entity, and repository files
+|  |- Controller: `demo/src/main/java/com/example/demo/controller/EsportsAdminController.java`
+|  |- Service: `demo/src/main/java/com/example/demo/service/EsportsAdminMaintenanceService.java`
+|  |- Service: `demo/src/main/java/com/example/demo/service/EsportsDatabaseBackupService.java`
+|  |- Service: `demo/src/main/java/com/example/demo/service/MySqlEsportsDatabaseBackupService.java`
+|  |- DTO: `demo/src/main/java/com/example/demo/dto/esports/EsportsResetDataRequest.java`
+|  |- DTO: `demo/src/main/java/com/example/demo/dto/esports/EsportsResetDataResponse.java`
+|  |- Repository: `demo/src/main/java/com/example/demo/repository/EsportsGameDraftRepository.java`
+|  |- Repository: `demo/src/main/java/com/example/demo/repository/EsportsMatchRepository.java`
+|  `- Repository: `demo/src/main/java/com/example/demo/repository/EsportsTeamRepository.java`
+|- API endpoints
+|  |- `POST /api/admin/esports/reset-data`
+|  `- Legacy `DELETE /api/admin/esports/matches` khong con cho reset truc tiep; endpoint nay tra loi huong admin sang flow moi co confirmation
+|- Request / response behavior
+|  |- Request body: `{"confirmationText":"RESET ESPORTS DATA","backupBeforeReset":true}`
+|  |- Sai `confirmationText` hoặc `backupBeforeReset=false` -> `400`, không xóa gì
+|  |- Backup fail -> `500`, reset bi huy va khong xoa gi
+|  |- Production profile khong co `app.admin.esports-reset.allow-production=true` -> `403`
+|  `- Success response tra `reset`, `backupFile`, `deletedGameDrafts`, `deletedMatches`, `deletedPlayerStats`, `remainingGameDrafts`, `remainingMatches`, `playerStatsCleared`, `playerStatsRetainedReason`
+|- Database table or entity
+|  |- Delete runtime data: `esports_game_drafts`
+|  |- Delete runtime data: `esports_matches`
+|  |- Preserve rows: `esports_teams`, `esports_tournaments`, `esports_franchises`, `esports_tournament_teams`, `heroes`, `users`, `guides`, `tier_lists`, `meta_tier_lists`, `ban_pick_rooms`, `ban_pick_actions`, `draft_histories`
+|  |- `player_stats` duoc audit la Ban/Pick leaderboard theo user, khong derived tu `esports_matches`, nen khong bi xoa trong reset nay
+|  |- `esports_teams` khong bi delete, nhung cac field ranking/stat derived (`score`, `game_wins`, `game_losses`, `match_wins`, `match_losses`) duoc reset ve baseline `1200/0/0/0/0`
+|  `- Backup file runtime: `demo/sql/backups/aov_tactics_before_reset_esports_data_YYYYMMDD_HHMMSS.sql`
+|- Main workflow
+|  |- Admin mo `admin-esports-data.html` -> xuong section `Danger Zone`
+|  |- Doc canh bao rang reset chi xoa `esports_matches` + `esports_game_drafts`, khong xoa teams/heroes/tournaments, va sau do phai import lai XLSX/CSV
+|  |- Bam `Reset Esports Data` -> frontend prompt admin nhap chinh xac `RESET ESPORTS DATA`
+|  |- Backend count dataset hien tai -> backup DB bang `mysqldump` -> delete `esports_game_drafts` truoc -> delete `esports_matches` sau -> reset ranking fields tren `esports_teams`
+|  |- Backend verify `remainingGameDrafts = 0` va `remainingMatches = 0` roi tra response kem duong dan backup
+|  |- Frontend hien rows deleted, backup file, remaining counts, va note `player_stats` duoc giu nguyen
+|  `- Sau reset, admin co the upload preview/apply lai file XLSX/CSV; workflow cap nhat ranking AER truc tiep tu DB sau import van giu nguyen
+|- Access permissions
+|  `- `/api/admin/esports/reset-data` can role `ADMIN`
+`- Risk notes or manual testing areas
+   |- Can test backup tool `mysqldump` co san va tao file SQL truoc khi delete
+   |- Can test sai confirmation text de dam bao khong mutate DB
+   |- Can test remaining counts ve 0 sau reset va row counts cua `esports_teams`, `esports_tournaments`, `heroes` khong bi giam
+   |- Can test import lai XLSX/CSV sau reset va verify summary import/ranking van cap nhat tu DB
+   `- Can test production profile guard truoc khi cho phep dung tren moi truong nhay cam
 ```

@@ -18,6 +18,6 @@ public class ApiAccessDeniedHandler implements AccessDeniedHandler {
                        AccessDeniedException accessDeniedException) throws IOException {
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.getWriter().write("{\"error\":\"Forbidden\",\"message\":\"Ban khong co quyen truy cap endpoint nay.\"}");
+        response.getWriter().write("{\"error\":\"Forbidden\",\"message\":\"Bạn không có quyền truy cập endpoint này.\"}");
     }
 }

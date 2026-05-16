@@ -55,28 +55,28 @@ public class EsportsFranchiseService {
     public EsportsFranchiseResponse getFranchiseByCode(String code) {
         seedDefaultsIfMissing();
         EsportsFranchise franchise = esportsFranchiseRepository.findByCodeIgnoreCase(normalizeCode(code))
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay franchise voi code: " + code));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy franchise với code: " + code));
         if (!Boolean.TRUE.equals(franchise.getActive())) {
-            throw new IllegalArgumentException("Franchise dang khong hoat dong.");
+            throw new IllegalArgumentException("Franchise đang không hoạt động.");
         }
         return mapFranchises(List.of(franchise)).get(0);
     }
 
     public EsportsFranchise findEntityById(Long id) {
         return esportsFranchiseRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay franchise voi ID: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy franchise với ID: " + id));
     }
 
     public EsportsFranchise findEntityByCode(String code) {
         return esportsFranchiseRepository.findByCodeIgnoreCase(normalizeCode(code))
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay franchise voi code: " + code));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy franchise với code: " + code));
     }
 
     @Transactional
     public EsportsFranchiseResponse createFranchise(EsportsFranchiseRequest request) {
         String code = requireCode(request);
         if (esportsFranchiseRepository.existsByCodeIgnoreCase(code)) {
-            throw new IllegalArgumentException("code franchise da ton tai.");
+            throw new IllegalArgumentException("code franchise đã tồn tại.");
         }
 
         EsportsFranchise franchise = new EsportsFranchise();
@@ -89,7 +89,7 @@ public class EsportsFranchiseService {
         EsportsFranchise franchise = findEntityById(id);
         String code = requireCode(request);
         if (esportsFranchiseRepository.existsByCodeIgnoreCaseAndIdNot(code, id)) {
-            throw new IllegalArgumentException("code franchise da ton tai.");
+            throw new IllegalArgumentException("code franchise đã tồn tại.");
         }
         applyRequest(franchise, request, code);
         return mapFranchises(List.of(esportsFranchiseRepository.save(franchise))).get(0);

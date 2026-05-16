@@ -9,6 +9,8 @@ public record PlayerStatsResponse(
         Integer losses,
         Double winRate,
         Integer rating,
+        String rankCode,
+        String rankLabel,
         List<HeroPickStatResponse> mostPickedHeroes
 ) {
 }

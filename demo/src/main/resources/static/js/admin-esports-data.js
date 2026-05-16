@@ -1,17 +1,39 @@
 const LEGACY_TOURNAMENT_OPTIONS = [
-    { value: '0', label: 'AER International' },
-    { value: '1', label: 'AER Pro League' },
-    { value: '2', label: 'AER Challenger' }
+    { value: '0', label: 'T0 / Tier 0' },
+    { value: '1', label: 'T1 / Tier 1' },
+    { value: '2', label: 'T2 / Tier 2' }
 ];
 
 const STAGE_OPTIONS = [
-    { value: 'bang', label: 'Vong bang' },
+    { value: 'bang', label: 'Vòng bảng' },
     { value: 'playoff', label: 'Playoff' },
-    { value: 'ck', label: 'Chung ket' },
-    { value: 'vongloai', label: 'Vong loai' }
+    { value: 'ck', label: 'Chung kết' },
+    { value: 'vongloai', label: 'Vòng loại' }
 ];
+const STAGE_ALIAS_MAP = new Map([
+    ['bang', 'bang'],
+    ['group', 'bang'],
+    ['groups', 'bang'],
+    ['groupstage', 'bang'],
+    ['vongbang', 'bang'],
+    ['playoff', 'playoff'],
+    ['playoffs', 'playoff'],
+    ['playoff', 'playoff'],
+    ['po', 'playoff'],
+    ['ck', 'ck'],
+    ['final', 'ck'],
+    ['finals', 'ck'],
+    ['grandfinal', 'ck'],
+    ['grandfinals', 'ck'],
+    ['chungket', 'ck'],
+    ['vongloai', 'vongloai'],
+    ['qualifier', 'vongloai'],
+    ['qualifiers', 'vongloai'],
+    ['qualifying', 'vongloai']
+]);
 
 const LANE_ROLES = ['DSL', 'JGL', 'MID', 'ADL', 'SUP'];
+const RESET_ESPORTS_CONFIRMATION_TEXT = 'RESET ESPORTS DATA';
 const HERO_SELECT_IDS = [
     'blue-ban-1', 'blue-ban-2', 'blue-ban-3', 'blue-ban-4', 'blue-ban-5',
     'red-ban-1', 'red-ban-2', 'red-ban-3', 'red-ban-4', 'red-ban-5',
@@ -33,6 +55,8 @@ const state = {
     selectedMatchId: null,
     selectedGameDraftId: null,
     importPreview: createDefaultImportPreviewState(),
+    lastImportResult: null,
+    lastResetResult: null,
     matchFilters: {
         search: '',
         tournamentScope: '',
@@ -74,13 +98,26 @@ function normalizeTeamCode(code) {
 }
 
 function normalizeStageValue(value) {
-    return String(value == null ? '' : value).trim();
+    const trimmed = String(value == null ? '' : value).trim();
+    if (!trimmed) return '';
+    const normalizedKey = trimmed
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[đĐ]/g, 'd')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '');
+    return STAGE_ALIAS_MAP.get(normalizedKey) || trimmed;
 }
 
 function toNullableNumber(value) {
     if (value == null || value === '') return null;
     const numeric = Number(value);
     return Number.isFinite(numeric) ? numeric : null;
+}
+
+function isValidAerTierValue(value) {
+    const numeric = toNullableNumber(value);
+    return numeric != null && numeric >= 0 && numeric <= 2;
 }
 
 function parseApiErrorMessage(rawText, response) {
@@ -138,7 +175,7 @@ function resolveDownloadFilename(contentDisposition) {
 }
 
 async function downloadGameDraftsCsv() {
-    setButtonLoading('btn-export-admin-esports', true, 'Dang xuat CSV...');
+    setButtonLoading('btn-export-admin-esports', true, 'Đang xuất CSV...');
     try {
         const response = await fetch(buildCsvExportUrl(), { cache: 'no-store' });
         if (!response.ok) {
@@ -155,10 +192,10 @@ async function downloadGameDraftsCsv() {
         link.click();
         link.remove();
         window.setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 1000);
-        showToast('Da bat dau tai file CSV.', 'ok');
+        showToast('Đã bắt đầu tải file CSV.', 'ok');
     } catch (error) {
         console.error('Cannot export esports game drafts CSV:', error);
-        showToast('Khong the xuat du lieu. Vui long thu lai.', 'err');
+        showToast('Không thể xuất dữ liệu. Vui lòng thử lại.', 'err');
     } finally {
         setButtonLoading('btn-export-admin-esports', false);
     }
@@ -255,6 +292,36 @@ function createDefaultImportPreviewState() {
     };
 }
 
+function normalizeImportConfirmResult(response) {
+    const payload = response && typeof response === 'object' ? response : {};
+    const affectedMatchIds = Array.isArray(payload.affectedMatchIds) ? payload.affectedMatchIds.filter(value => value != null) : [];
+    return {
+        importedRows: Number(payload.importedRows || 0),
+        createdMatches: Number(payload.createdMatches || 0),
+        updatedMatches: Number(payload.updatedMatches || 0),
+        createdDrafts: Number(payload.createdDrafts || 0),
+        overwrittenDrafts: Number(payload.overwrittenDrafts || 0),
+        affectedMatchIds,
+        affectedSeriesCount: Number(payload.affectedSeriesCount != null ? payload.affectedSeriesCount : affectedMatchIds.length),
+        rankingsRecalculated: Boolean(payload.rankingsRecalculated)
+    };
+}
+
+function normalizeResetResult(response) {
+    const payload = response && typeof response === 'object' ? response : {};
+    return {
+        reset: Boolean(payload.reset),
+        backupFile: String(payload.backupFile || ''),
+        deletedGameDrafts: Number(payload.deletedGameDrafts || 0),
+        deletedMatches: Number(payload.deletedMatches || 0),
+        deletedPlayerStats: Number(payload.deletedPlayerStats || 0),
+        remainingGameDrafts: Number(payload.remainingGameDrafts || 0),
+        remainingMatches: Number(payload.remainingMatches || 0),
+        playerStatsCleared: Boolean(payload.playerStatsCleared),
+        playerStatsRetainedReason: String(payload.playerStatsRetainedReason || '')
+    };
+}
+
 function setPanelError(targetId, message) {
     const node = byId(targetId);
     if (!node) return;
@@ -269,7 +336,7 @@ function setButtonLoading(buttonId, loading, loadingText) {
         button.dataset.originalText = button.textContent;
     }
     button.disabled = Boolean(loading);
-    button.textContent = loading ? (loadingText || 'Dang xu ly...') : button.dataset.originalText;
+    button.textContent = loading ? (loadingText || 'Đang xử lý...') : button.dataset.originalText;
 }
 
 function showToast(message, type) {
@@ -294,8 +361,12 @@ function legacyTournamentLabel(tier) {
     return matched ? matched.label : String(tier == null ? '1' : tier);
 }
 
+function formatAerTierLabel(aerTier) {
+    return legacyTournamentLabel(aerTier == null ? '1' : aerTier);
+}
+
 function tournamentScopeLabel(scope) {
-    if (!scope) return 'Tat ca giai dau';
+    if (!scope) return 'Tất cả giải đấu';
     const suffix = scope.legacyScope ? ' [legacy]' : (scope.franchiseCode ? ` · ${scope.franchiseCode}` : '');
     return `${scope.tournamentName || scope.tournamentTier || 'Tournament'}${suffix}`;
 }
@@ -339,7 +410,7 @@ function buildTournamentScopeOptions(includeAll) {
         label: tournamentScopeLabel(scope)
     }));
     if (includeAll) {
-        return [{ value: '', label: 'Tat ca giai dau' }].concat(options);
+        return [{ value: '', label: 'Tất cả giải đấu' }].concat(options);
     }
     return options;
 }
@@ -357,7 +428,7 @@ function buildLegacyTournamentOptions(includeAll) {
         });
     const options = Array.from(merged.values());
     if (includeAll) {
-        return [{ value: '', label: 'Tat ca giai / tier legacy' }].concat(options);
+        return [{ value: '', label: 'Tất cả giải / tier legacy' }].concat(options);
     }
     return options;
 }
@@ -368,7 +439,7 @@ function buildOfficialTournamentOptions(includeEmpty) {
         label: `${tournament.name}${tournament.franchiseCode ? ` · ${tournament.franchiseCode}` : ''}`
     }));
     if (includeEmpty) {
-        return [{ value: '', label: 'Chua gan tournament chinh thuc' }].concat(options);
+        return [{ value: '', label: 'Chưa gán tournament chính thức' }].concat(options);
     }
     return options;
 }
@@ -379,7 +450,7 @@ function stageLabel(stage) {
 }
 
 function formatDateTime(value) {
-    if (!value) return 'Chua co ngay';
+    if (!value) return 'Chưa có ngày';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) {
         return value;
@@ -395,7 +466,7 @@ function formatDateTime(value) {
 
 function formatDuration(seconds) {
     const numeric = Number(seconds);
-    if (!Number.isFinite(numeric) || numeric < 0) return 'Chua co';
+    if (!Number.isFinite(numeric) || numeric < 0) return 'Chưa có';
     const mins = Math.floor(numeric / 60);
     const secs = numeric % 60;
     return `${mins}:${String(secs).padStart(2, '0')}`;
@@ -426,18 +497,18 @@ function parseDurationInput(value) {
     if (/^\d+$/.test(raw)) {
         const seconds = Number(raw);
         if (!Number.isFinite(seconds) || seconds < 0) {
-            return { value: null, error: 'Duration phai la so giay khong am.' };
+            return { value: null, error: 'Duration phải là số giây không âm.' };
         }
         return { value: seconds, error: '' };
     }
     const matched = raw.match(/^(\d+):(\d{1,2})$/);
     if (!matched) {
-        return { value: null, error: 'Duration chi nhan mm:ss hoac so giay.' };
+        return { value: null, error: 'Duration chỉ nhận mm:ss hoặc số giây.' };
     }
     const minutes = Number(matched[1]);
     const seconds = Number(matched[2]);
     if (!Number.isFinite(minutes) || !Number.isFinite(seconds) || seconds >= 60) {
-        return { value: null, error: 'Duration mm:ss khong hop le.' };
+        return { value: null, error: 'Duration mm:ss không hợp lệ.' };
     }
     return { value: minutes * 60 + seconds, error: '' };
 }
@@ -460,12 +531,12 @@ function normalizeFranchiseCode(code) {
 
 function resolveTournamentAerTier(tournament) {
     const aerTier = toNullableNumber(tournament && tournament.aerTier);
-    return aerTier != null && aerTier > 0 ? aerTier : null;
+    return isValidAerTierValue(aerTier) ? aerTier : null;
 }
 
 function resolveMatchTierValue(match) {
     const officialAerTier = toNullableNumber(match && match.tournamentAerTier);
-    if (officialAerTier != null && officialAerTier > 0) {
+    if (isValidAerTierValue(officialAerTier)) {
         return String(officialAerTier);
     }
     return String(match && match.tier != null ? match.tier : '1');
@@ -474,10 +545,10 @@ function resolveMatchTierValue(match) {
 function getTournamentWarningMessages(tournament) {
     const warnings = [];
     if (!tournament || !tournament.franchiseId || !normalizeFranchiseCode(tournament.franchiseCode)) {
-        warnings.push('Thieu franchise');
+        warnings.push('Thiếu franchise');
     }
     if (resolveTournamentAerTier(tournament) == null) {
-        warnings.push('Thieu AER Tier');
+        warnings.push('Thiếu AER Tier');
     }
     return warnings;
 }
@@ -492,7 +563,7 @@ function heroById(id) {
 }
 
 function displayTeamName(team) {
-    if (!team) return 'Chua chon team';
+    if (!team) return 'Chưa chọn team';
     return team.teamName || team.teamCode || 'Unknown team';
 }
 
@@ -534,7 +605,7 @@ function buildTeamFilterOptions() {
         value: normalizeTeamCode(team.teamCode),
         label: `${displayTeamName(team)} (${normalizeTeamCode(team.teamCode)})`
     }));
-    return [{ value: '', label: 'Tat ca team' }].concat(options);
+    return [{ value: '', label: 'Tất cả team' }].concat(options);
 }
 
 function buildMatchTeamOptions() {
@@ -542,7 +613,7 @@ function buildMatchTeamOptions() {
         value: team.id,
         label: `${displayTeamName(team)} (${normalizeTeamCode(team.teamCode)})`
     }));
-    return [{ value: '', label: 'Chon team' }].concat(teams);
+    return [{ value: '', label: 'Chọn team' }].concat(teams);
 }
 
 function buildWinnerOptions() {
@@ -550,11 +621,11 @@ function buildWinnerOptions() {
         value: team.id,
         label: `${displayTeamName(team)} (${normalizeTeamCode(team.teamCode)})`
     }));
-    return [{ value: '', label: 'Chua xac dinh winner' }].concat(teams);
+    return [{ value: '', label: 'Chưa xác định winner' }].concat(teams);
 }
 
 function buildHeroOptions() {
-    return [{ value: '', label: 'Chua chon hero' }].concat(
+    return [{ value: '', label: 'Chưa chọn hero' }].concat(
         state.heroes.slice().sort(compareHeroes).map(hero => ({
             value: hero.id,
             label: hero.name || `Hero #${hero.id}`
@@ -568,13 +639,13 @@ function buildFranchiseOptions(includeEmpty) {
         label: `${franchise.code} · ${franchise.name}`
     }));
     if (includeEmpty) {
-        return [{ value: '', label: 'Chon franchise' }].concat(options);
+        return [{ value: '', label: 'Chọn franchise' }].concat(options);
     }
     return options;
 }
 
 function buildTournamentTeamSelectorOptions() {
-    return [{ value: '', label: 'Chon tournament de quan ly team' }].concat(
+    return [{ value: '', label: 'Chọn tournament để quản lý team' }].concat(
         state.tournaments.slice().map(tournament => ({
             value: tournament.id,
             label: `${tournament.name}${tournament.franchiseCode ? ` · ${tournament.franchiseCode}` : ''}`
@@ -583,7 +654,7 @@ function buildTournamentTeamSelectorOptions() {
 }
 
 function buildTournamentFilterFranchiseOptions() {
-    return [{ value: '', label: 'Tat ca franchise' }].concat(
+    return [{ value: '', label: 'Tất cả franchise' }].concat(
         state.franchises.slice().map(franchise => ({
             value: normalizeFranchiseCode(franchise.code),
             label: `${franchise.code} · ${franchise.name}`
@@ -600,7 +671,7 @@ function populateStaticSelects() {
     renderSelectOptions('tournament-team-selector', buildTournamentTeamSelectorOptions(), state.selectedTournamentId);
     renderSelectOptions('tournament-filter-franchise', buildTournamentFilterFranchiseOptions(), state.tournamentFilterFranchiseCode);
 
-    const teamOptions = [{ value: '', label: 'Chon team' }].concat(
+    const teamOptions = [{ value: '', label: 'Chọn team' }].concat(
         state.teams.slice().sort(compareTeams).map(team => ({
             value: normalizeTeamCode(team.teamCode),
             label: `${displayTeamName(team)} (${normalizeTeamCode(team.teamCode)})`
@@ -608,7 +679,7 @@ function populateStaticSelects() {
     );
     renderSelectOptions('mf-team1', teamOptions, state.matchForm.team1Code);
     renderSelectOptions('mf-team2', teamOptions, state.matchForm.team2Code);
-    renderSelectOptions('ttf-team', [{ value: '', label: 'Chon team' }].concat(
+    renderSelectOptions('ttf-team', [{ value: '', label: 'Chọn team' }].concat(
         state.teams.slice().sort(compareTeams).map(team => ({
             value: team.id,
             label: `${displayTeamName(team)} (${normalizeTeamCode(team.teamCode)})`
@@ -624,6 +695,17 @@ function populateMatchForm() {
     byId('mf-score2').value = state.matchForm.score2;
     byId('mf-stage').value = state.matchForm.stage || '';
     byId('mf-tier').value = state.matchForm.tier || '1';
+    syncMatchStageField();
+    syncMatchTierFieldState();
+}
+
+function syncMatchStageField() {
+    const input = byId('mf-stage');
+    if (!input) return;
+    const normalized = normalizeStageValue(input.value);
+    if (STAGE_OPTIONS.some(option => option.value === normalized)) {
+        input.value = normalized;
+    }
 }
 
 function populateFranchiseForm() {
@@ -646,12 +728,35 @@ function populateTournamentForm() {
     byId('tf-season-year').value = state.tournamentForm.seasonYear || '';
     byId('tf-split-name').value = state.tournamentForm.splitName || '';
     byId('tf-tier-level').value = state.tournamentForm.tierLevel || 'T1';
-    byId('tf-aer-tier').value = state.tournamentForm.aerTier ?? 1;
+    byId('tf-aer-tier').value = String(state.tournamentForm.aerTier ?? 1);
     byId('tf-status').value = state.tournamentForm.status || 'UPCOMING';
     byId('tf-start-date').value = state.tournamentForm.startDate || '';
     byId('tf-end-date').value = state.tournamentForm.endDate || '';
     byId('tf-logo-url').value = state.tournamentForm.logoUrl || '';
     byId('tf-description').value = state.tournamentForm.description || '';
+}
+
+function syncMatchTierFieldState() {
+    const tierSelect = byId('mf-tier');
+    const tierHelp = byId('mf-tier-help');
+    const selectedTournament = findTournamentById(toNullableNumber(byId('mf-tournament')?.value));
+    if (!tierSelect || !tierHelp) return;
+
+    if (selectedTournament) {
+        const officialAerTier = resolveTournamentAerTier(selectedTournament);
+        tierSelect.disabled = true;
+        if (officialAerTier != null) {
+            tierSelect.value = String(officialAerTier);
+            state.matchForm.tier = String(officialAerTier);
+            tierHelp.innerHTML = `Match đã link tournament qua <code>tournament_id</code>, nên <code>esports_tournaments.aer_tier</code> là source of truth. Snapshot <code>esports_matches.tier</code> sẽ auto-sync thành ${escapeHtml(formatAerTierLabel(officialAerTier))}.`;
+        } else {
+            tierHelp.innerHTML = 'Tournament đã chọn chưa có <code>aer_tier</code> hợp lệ 0/1/2. Hãy sửa tournament trước khi lưu match này.';
+        }
+        return;
+    }
+
+    tierSelect.disabled = false;
+    tierHelp.innerHTML = 'Chỉ dùng snapshot tier legacy này khi match chưa có <code>tournament_id</code>.';
 }
 
 function populateTournamentTeamForm() {
@@ -692,9 +797,9 @@ function populateDraftForm() {
 
 function resetMatchForm() {
     state.matchForm = createDefaultMatchForm();
-    byId('match-form-title').textContent = 'Tao match moi';
-    byId('match-form-subtitle').textContent = 'CRUD series van giu workflow hien tai de khong anh huong AER va ranking, nhung co the link tournament chinh thuc de export/public uu tien entity moi.';
-    byId('btn-match-submit').textContent = 'Luu match';
+    byId('match-form-title').textContent = 'Tạo match mới';
+    byId('match-form-subtitle').innerHTML = 'Match có tournament sẽ dùng <code>esports_tournaments.aer_tier</code> là source of truth; <code>esports_matches.tier</code> chỉ là fallback snapshot khi chưa có tournament.';
+    byId('btn-match-submit').textContent = 'Lưu match';
     setPanelError('match-form-error', '');
     populateStaticSelects();
     populateMatchForm();
@@ -702,8 +807,8 @@ function resetMatchForm() {
 
 function resetFranchiseForm() {
     state.franchiseForm = createDefaultFranchiseForm();
-    byId('franchise-form-title').textContent = 'Tao franchise moi';
-    byId('btn-franchise-submit').textContent = 'Luu franchise';
+    byId('franchise-form-title').textContent = 'Tạo franchise mới';
+    byId('btn-franchise-submit').textContent = 'Lưu franchise';
     setPanelError('franchise-form-error', '');
     populateStaticSelects();
     populateFranchiseForm();
@@ -711,8 +816,8 @@ function resetFranchiseForm() {
 
 function resetTournamentForm() {
     state.tournamentForm = createDefaultTournamentForm();
-    byId('tournament-form-title').textContent = 'Tao tournament moi';
-    byId('btn-tournament-submit').textContent = 'Luu tournament';
+    byId('tournament-form-title').textContent = 'Tạo tournament mới';
+    byId('btn-tournament-submit').textContent = 'Lưu tournament';
     setPanelError('tournament-form-error', '');
     populateStaticSelects();
     populateTournamentForm();
@@ -737,9 +842,9 @@ function resetDraftForm() {
     state.draftForm.gameNumber = state.selectedMatchId ? getNextGameNumber() : '';
     state.draftForm.blueTeamId = defaultTeams[0] ? Number(defaultTeams[0].id) : '';
     state.draftForm.redTeamId = defaultTeams[1] ? Number(defaultTeams[1].id) : '';
-    byId('draft-form-title').textContent = 'Them game draft record';
-    byId('draft-form-subtitle').textContent = 'Workflow moi luu theo trang thai cuoi cua moi van thay vi 18 phase chi tiet.';
-    byId('btn-draft-submit').textContent = 'Luu game draft';
+    byId('draft-form-title').textContent = 'Thêm game draft record';
+    byId('draft-form-subtitle').textContent = 'Workflow mới lưu theo trạng thái cuối của mỗi ván thay vì 18 phase chi tiết.';
+    byId('btn-draft-submit').textContent = 'Lưu game draft';
     setPanelError('draft-form-error', '');
     populateDraftFormSelects();
     populateDraftForm();
@@ -756,6 +861,7 @@ function resetImportPreview(options) {
     state.importPreview.file = existingFile;
     state.importPreview.fileName = existingFileName;
     state.importPreview.overwriteExisting = existingOverwrite;
+    state.lastImportResult = null;
 
     if (!preserveFile) {
         const input = byId('import-file-input');
@@ -780,9 +886,9 @@ function openMatchForm(match) {
         tier: resolveMatchTierValue(match),
         stage: String(match.stage || 'bang')
     };
-    byId('match-form-title').textContent = `Sua match #${match.id}`;
-    byId('match-form-subtitle').textContent = 'Cap nhat series hien co ma khong doi ownership cua esports_matches.';
-    byId('btn-match-submit').textContent = 'Luu chinh sua';
+    byId('match-form-title').textContent = `Sửa match #${match.id}`;
+    byId('match-form-subtitle').textContent = 'Nếu match đã gắn tournament, tier snapshot sẽ readonly và được lấy từ tournament.';
+    byId('btn-match-submit').textContent = 'Lưu chỉnh sửa';
     setPanelError('match-form-error', '');
     populateStaticSelects();
     populateMatchForm();
@@ -800,8 +906,8 @@ function openFranchiseForm(franchise) {
         logoUrl: franchise.logoUrl || '',
         description: franchise.description || ''
     };
-    byId('franchise-form-title').textContent = `Sua franchise #${franchise.id}`;
-    byId('btn-franchise-submit').textContent = 'Luu chinh sua';
+    byId('franchise-form-title').textContent = `Sửa franchise #${franchise.id}`;
+    byId('btn-franchise-submit').textContent = 'Lưu chỉnh sửa';
     setPanelError('franchise-form-error', '');
     populateStaticSelects();
     populateFranchiseForm();
@@ -823,8 +929,8 @@ function openTournamentForm(tournament) {
         logoUrl: tournament.logoUrl || '',
         description: tournament.description || ''
     };
-    byId('tournament-form-title').textContent = `Sua tournament #${tournament.id}`;
-    byId('btn-tournament-submit').textContent = 'Luu chinh sua';
+    byId('tournament-form-title').textContent = `Sửa tournament #${tournament.id}`;
+    byId('btn-tournament-submit').textContent = 'Lưu chỉnh sửa';
     setPanelError('tournament-form-error', '');
     populateStaticSelects();
     populateTournamentForm();
@@ -863,9 +969,9 @@ function openDraftForm(draft) {
             SUP: redLineup.SUP && redLineup.SUP.id != null ? Number(redLineup.SUP.id) : null
         }
     };
-    byId('draft-form-title').textContent = `Sua game draft #${draft.id}`;
-    byId('draft-form-subtitle').textContent = `Match #${draft.matchId} - Game ${draft.gameNumber}. Cap nhat side, bans, lineup va winner theo record tung van.`;
-    byId('btn-draft-submit').textContent = 'Luu chinh sua';
+    byId('draft-form-title').textContent = `Sửa game draft #${draft.id}`;
+    byId('draft-form-subtitle').textContent = `Match #${draft.matchId} - Game ${draft.gameNumber}. Cập nhật side, bans, lineup và winner theo record từng ván.`;
+    byId('btn-draft-submit').textContent = 'Lưu chỉnh sửa';
     setPanelError('draft-form-error', '');
     populateDraftFormSelects();
     populateDraftForm();
@@ -968,7 +1074,7 @@ function renderFranchises() {
     if (!tbody) return;
     byId('franchise-count-pill').textContent = `${state.franchises.length} franchise`;
     if (!state.franchises.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="table-state">Chua co franchise nao.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="table-state">Chưa có franchise nào.</td></tr>';
         return;
     }
 
@@ -981,8 +1087,8 @@ function renderFranchises() {
             <td>${franchise.active ? '<span class="chip">Active</span>' : '<span class="chip">Inactive</span>'}</td>
             <td>
                 <div class="row-actions wrap">
-                    <button type="button" class="btn btn-light btn-small" data-action="edit-franchise" data-id="${franchise.id}">Sua</button>
-                    <button type="button" class="btn btn-danger btn-small" data-action="delete-franchise" data-id="${franchise.id}">${franchise.active ? 'Deactivate' : 'Giu inactive'}</button>
+                    <button type="button" class="btn btn-light btn-small" data-action="edit-franchise" data-id="${franchise.id}">Sửa</button>
+                    <button type="button" class="btn btn-danger btn-small" data-action="delete-franchise" data-id="${franchise.id}">${franchise.active ? 'Deactivate' : 'Giữ inactive'}</button>
                 </div>
             </td>
         </tr>
@@ -998,7 +1104,7 @@ function renderTournaments() {
         ? `${tournaments.length} / ${state.tournaments.length} tournament`
         : `${state.tournaments.length} tournament`;
     if (!tournaments.length) {
-        tbody.innerHTML = '<tr><td colspan="10" class="table-state">Khong co tournament nao khop franchise filter hien tai.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="table-state">Không có tournament nào khớp franchise filter hiện tại.</td></tr>';
         return;
     }
 
@@ -1013,7 +1119,7 @@ function renderTournaments() {
                     <div class="table-subtext">${escapeHtml(tournament.slug || 'No slug')}</div>
                 </td>
                 <td>${escapeHtml(tournament.franchiseCode || '')}</td>
-                <td><span class="chip">${escapeHtml(aerTier != null ? `AER ${aerTier}` : 'Missing')}</span></td>
+                <td><span class="chip">${escapeHtml(aerTier != null ? formatAerTierLabel(aerTier) : 'Missing')}</span></td>
                 <td><span class="chip">${escapeHtml(tournament.tierLevel || 'N/A')}</span></td>
                 <td>${escapeHtml(String(tournament.seasonYear || 'N/A'))}</td>
                 <td>${escapeHtml(tournament.splitName || 'N/A')}</td>
@@ -1022,9 +1128,9 @@ function renderTournaments() {
                 <td>${warnings.length ? warnings.map(message => `<span class="chip">${escapeHtml(message)}</span>`).join(' ') : '<span class="chip">OK</span>'}</td>
                 <td>
                     <div class="row-actions wrap">
-                        <button type="button" class="btn btn-light btn-small" data-action="select-tournament" data-id="${tournament.id}">${selected ? 'Dang xem teams' : 'Teams'}</button>
-                        <button type="button" class="btn btn-light btn-small" data-action="edit-tournament" data-id="${tournament.id}">Sua</button>
-                        <button type="button" class="btn btn-danger btn-small" data-action="delete-tournament" data-id="${tournament.id}">Xoa</button>
+                        <button type="button" class="btn btn-light btn-small" data-action="select-tournament" data-id="${tournament.id}">${selected ? 'Đang xem teams' : 'Teams'}</button>
+                        <button type="button" class="btn btn-light btn-small" data-action="edit-tournament" data-id="${tournament.id}">Sửa</button>
+                        <button type="button" class="btn btn-danger btn-small" data-action="delete-tournament" data-id="${tournament.id}">Xóa</button>
                     </div>
                 </td>
             </tr>
@@ -1039,7 +1145,7 @@ function renderSelectedTournamentCard() {
 
     if (!tournament) {
         card.className = 'selected-summary empty';
-        card.textContent = 'Chon tournament de xem franchise, AER Tier va canh bao du lieu.';
+        card.textContent = 'Chọn tournament để xem franchise, AER Tier và cảnh báo dữ liệu.';
         return;
     }
 
@@ -1047,7 +1153,7 @@ function renderSelectedTournamentCard() {
     const warnings = getTournamentWarningMessages(tournament);
     const summaryChips = [
         `<span class="chip">${escapeHtml(tournament.franchiseCode || 'No franchise')}</span>`,
-        `<span class="chip">${escapeHtml(aerTier != null ? `AER ${aerTier}` : 'AER missing')}</span>`,
+        `<span class="chip">${escapeHtml(aerTier != null ? formatAerTierLabel(aerTier) : 'Thiếu AER')}</span>`,
         `<span class="chip">${escapeHtml(tournament.tierLevel || 'Tier level N/A')}</span>`,
         `<span class="chip">${escapeHtml(`${Number(tournament.teamCount || 0)} team`)}</span>`,
         `<span class="chip">${escapeHtml(`${Number(tournament.linkedMatchCount || 0)} match link`)}</span>`
@@ -1056,7 +1162,7 @@ function renderSelectedTournamentCard() {
     card.className = `selected-summary${warnings.length ? ' warning' : ''}`;
     card.innerHTML = `
         <strong>${escapeHtml(tournament.name || 'Tournament')}</strong>
-        <div class="table-subtext">${escapeHtml(tournament.description || 'Tournament nay se la nguon tier cho workflow AER JSON o task sau.')}</div>
+        <div class="table-subtext">${escapeHtml(tournament.description || 'Tournament này sẽ là nguồn tier chuẩn cho ranking AER đọc trực tiếp từ DB sau import.')}</div>
         <div class="chip-row">${summaryChips.join('')}</div>
         ${warnings.length ? `<div class="chip-row">${warnings.map(message => `<span class="chip">${escapeHtml(message)}</span>`).join('')}</div>` : ''}
     `;
@@ -1069,13 +1175,13 @@ function renderTournamentTeams() {
 
     if (!selectedTournament) {
         byId('tournament-team-count-pill').textContent = '0 team';
-        tbody.innerHTML = '<tr><td colspan="6" class="table-state">Chon tournament de quan ly danh sach team tham gia.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="table-state">Chọn tournament để quản lý danh sách team tham gia.</td></tr>';
         return;
     }
 
     byId('tournament-team-count-pill').textContent = `${state.tournamentTeams.length} team`;
     if (!state.tournamentTeams.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="table-state">Tournament nay chua co team nao. Chon team ben duoi de add.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="table-state">Tournament này chưa có team nào. Chọn team bên dưới để add.</td></tr>';
         return;
     }
 
@@ -1099,7 +1205,7 @@ function renderMatches() {
     byId('match-count-pill').textContent = `${matches.length} match`;
 
     if (!matches.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="table-state">Khong tim thay match nao theo bo loc hien tai.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="table-state">Không tìm thấy match nào theo bộ lọc hiện tại.</td></tr>';
         return;
     }
 
@@ -1121,9 +1227,10 @@ function renderMatches() {
                 <td><span class="score-chip">${escapeHtml(`${match.score1} - ${match.score2}`)}</span></td>
                 <td>
                     <div class="row-actions wrap">
-                        <button type="button" class="btn btn-light btn-small" data-action="select-match" data-id="${match.id}">${selected ? 'Dang chon' : 'Chon'}</button>
-                        <button type="button" class="btn btn-light btn-small" data-action="edit-match" data-id="${match.id}">Sua</button>
-                        <button type="button" class="btn btn-danger btn-small" data-action="delete-match" data-id="${match.id}">Xoa</button>
+                        <button type="button" class="btn btn-light btn-small" data-action="select-match" data-id="${match.id}">${selected ? 'Đang chọn' : 'Chọn'}</button>
+                        <button type="button" class="btn btn-light btn-small" data-action="select-match" data-id="${match.id}">${selected ? 'Đang chọn' : 'Chọn'}</button>
+                        <button type="button" class="btn btn-light btn-small" data-action="edit-match" data-id="${match.id}">Sửa</button>
+                        <button type="button" class="btn btn-danger btn-small" data-action="delete-match" data-id="${match.id}">Xóa</button>
                     </div>
                 </td>
             </tr>
@@ -1138,7 +1245,7 @@ function renderSelectedMatchCard() {
 
     if (!match) {
         card.className = 'selected-summary empty';
-        card.textContent = 'Chua chon match de quan ly game draft records.';
+        card.textContent = 'Chưa chọn match để quản lý game draft records.';
         return;
     }
 
@@ -1151,24 +1258,24 @@ function renderSelectedMatchCard() {
     card.innerHTML = `
         <div class="selected-summary-grid">
             <div>
-                <span class="summary-label">Series dang chon</span>
+                <span class="summary-label">Series đang chọn</span>
                 <strong class="summary-value">Match #${match.id} - ${escapeHtml(displayTeamName(team1))} vs ${escapeHtml(displayTeamName(team2))}</strong>
                 <p class="summary-note">${escapeHtml(formatDateTime(match.matchDate))} - ${escapeHtml(matchTournamentLabel(match))} - ${escapeHtml(stageLabel(match.stage))}</p>
             </div>
             <div>
-                <span class="summary-label">Ty so series</span>
+                <span class="summary-label">Tỷ số series</span>
                 <strong class="summary-value">${escapeHtml(`${match.score1} - ${match.score2}`)}</strong>
-                <p class="summary-note">Match nay dang co ${state.gameDrafts.length} game draft record, ${completeCount} complete va ${incompleteCount} incomplete.</p>
+                <p class="summary-note">Match này đang có ${state.gameDrafts.length} game draft record, ${completeCount} complete và ${incompleteCount} incomplete.</p>
             </div>
             <div>
                 <span class="summary-label">Blue / Red options</span>
                 <strong class="summary-value">${escapeHtml(displayTeamName(team1))} / ${escapeHtml(displayTeamName(team2))}</strong>
-                <p class="summary-note">Editor chi cho phep chon dung 2 team cua series hien tai.</p>
+                <p class="summary-note">Editor chỉ cho phép chọn đúng 2 team của series hiện tại.</p>
             </div>
             <div>
                 <span class="summary-label">Workflow</span>
                 <strong class="summary-value">Series -> Game draft records</strong>
-                <p class="summary-note">Them van, cap nhat bans va lineup, sau do verify completeness de public analytics doc tu bang moi.</p>
+                <p class="summary-note">Thêm ván, cập nhật bans và lineup, sau đó verify completeness để public analytics đọc từ bảng mới.</p>
             </div>
         </div>
     `;
@@ -1183,14 +1290,14 @@ function renderGameDraftList() {
     if (!host) return;
 
     if (!state.selectedMatchId) {
-        host.innerHTML = '<div class="selected-summary empty">Chon match de tai game draft records.</div>';
-        byId('draft-count-pill').textContent = '0 van';
+        host.innerHTML = '<div class="selected-summary empty">Chọn match để tải game draft records.</div>';
+        byId('draft-count-pill').textContent = '0 ván';
         return;
     }
 
-    byId('draft-count-pill').textContent = `${state.gameDrafts.length} van`;
+    byId('draft-count-pill').textContent = `${state.gameDrafts.length} ván`;
     if (!state.gameDrafts.length) {
-        host.innerHTML = '<div class="selected-summary empty">Match nay chua co van nao. Bam "Them van" de tao game draft record dau tien.</div>';
+        host.innerHTML = '<div class="selected-summary empty">Match này chưa có ván nào. Bấm "Thêm ván" để tạo game draft record đầu tiên.</div>';
         return;
     }
 
@@ -1199,7 +1306,7 @@ function renderGameDraftList() {
         const completeness = draft.draftCompleteness || {};
         const blueTeamName = draft.blueTeam ? draft.blueTeam.teamName || draft.blueTeam.teamCode : 'Blue';
         const redTeamName = draft.redTeam ? draft.redTeam.teamName || draft.redTeam.teamCode : 'Red';
-        const winnerName = draft.winnerTeam ? (draft.winnerTeam.teamName || draft.winnerTeam.teamCode) : 'Chua co winner';
+        const winnerName = draft.winnerTeam ? (draft.winnerTeam.teamName || draft.winnerTeam.teamCode) : 'Chưa có winner';
 
         return `
             <article class="game-draft-card ${selected ? 'selected' : ''}">
@@ -1213,14 +1320,14 @@ function renderGameDraftList() {
                 </div>
                 <div class="game-draft-card-metrics">
                     <div><span>Winner</span><strong>${escapeHtml(winnerName)}</strong></div>
-                    <div><span>Duration</span><strong>${escapeHtml(draft.durationText || 'Chua co')}</strong></div>
+                    <div><span>Duration</span><strong>${escapeHtml(draft.durationText || 'Chưa có')}</strong></div>
                     <div><span>Completeness</span><strong>${Number(completeness.banCount || 0)}/${Number(completeness.pickCount || 0)}</strong></div>
                 </div>
                 <div class="game-draft-card-footer">
-                    <small>${escapeHtml((completeness.missingFields || []).length ? `Missing: ${(completeness.missingFields || []).join(', ')}` : 'Du data cho game-level analytics.')}</small>
+                    <small>${escapeHtml((completeness.missingFields || []).length ? `Missing: ${(completeness.missingFields || []).join(', ')}` : 'Đủ dữ liệu cho game-level analytics.')}</small>
                     <div class="row-actions">
-                        <button type="button" class="btn btn-light btn-small" data-action="select-draft" data-id="${draft.id}">${selected ? 'Dang sua' : 'Sua'}</button>
-                        <button type="button" class="btn btn-danger btn-small" data-action="delete-draft" data-id="${draft.id}">Xoa</button>
+                        <button type="button" class="btn btn-light btn-small" data-action="select-draft" data-id="${draft.id}">${selected ? 'Đang sửa' : 'Sửa'}</button>
+                        <button type="button" class="btn btn-danger btn-small" data-action="delete-draft" data-id="${draft.id}">Xóa</button>
                     </div>
                 </div>
             </article>
@@ -1268,35 +1375,35 @@ function buildLocalValidation() {
     const redPicks = countFilledLineup('red');
 
     if (!selectedMatch) {
-        issues.push('Chua chon match.');
+        issues.push('Chưa chọn match.');
     }
     if (!state.draftForm.gameNumber || Number(state.draftForm.gameNumber) <= 0) {
-        issues.push('Game number phai lon hon 0.');
+        issues.push('Game number phải lớn hơn 0.');
     }
     if (!state.draftForm.blueTeamId || !state.draftForm.redTeamId) {
-        issues.push('Blue team va Red team la bat buoc.');
+        issues.push('Blue team và Red team là bắt buộc.');
     }
     if (state.draftForm.blueTeamId && state.draftForm.redTeamId
         && Number(state.draftForm.blueTeamId) === Number(state.draftForm.redTeamId)) {
-        issues.push('Blue team va Red team khong duoc trung nhau.');
+        issues.push('Blue team và Red team không được trùng nhau.');
     }
     if (allowedTeamIds.size && (
         !allowedTeamIds.has(Number(state.draftForm.blueTeamId || 0))
         || !allowedTeamIds.has(Number(state.draftForm.redTeamId || 0))
     )) {
-        issues.push('Blue/Red team phai thuoc dung 2 doi cua match.');
+        issues.push('Blue/Red team phải thuộc đúng 2 đội của match.');
     }
     if (state.draftForm.winnerTeamId && (
         Number(state.draftForm.winnerTeamId) !== Number(state.draftForm.blueTeamId || 0)
         && Number(state.draftForm.winnerTeamId) !== Number(state.draftForm.redTeamId || 0)
     )) {
-        issues.push('Winner phai la Blue team hoac Red team.');
+        issues.push('Winner phải là Blue team hoặc Red team.');
     }
     if (durationResult.error) {
         issues.push(durationResult.error);
     }
     if (duplicateHeroIds.length) {
-        issues.push(`Khong duoc trung hero: ${duplicateHeroIds.map(heroId => heroById(heroId)?.name || `Hero #${heroId}`).join(', ')}.`);
+        issues.push(`Không được trùng hero: ${duplicateHeroIds.map(heroId => heroById(heroId)?.name || `Hero #${heroId}`).join(', ')}.`);
     }
 
     const isComplete = bluePicks === 5 && redPicks === 5 && (blueBans + redBans) >= 8 && Boolean(state.draftForm.winnerTeamId);
@@ -1321,13 +1428,13 @@ function renderSelectedDraftCard() {
     const blueTeam = findTeamById(state.draftForm.blueTeamId);
     const redTeam = findTeamById(state.draftForm.redTeamId);
     const winnerTeam = findTeamById(state.draftForm.winnerTeamId);
-    const winnerText = winnerTeam ? displayTeamName(winnerTeam) : 'Chua co winner';
+    const winnerText = winnerTeam ? displayTeamName(winnerTeam) : 'Chưa có winner';
 
-    pill.textContent = selectedDraft ? `Dang sua game #${selectedDraft.gameNumber}` : 'Dang tao ban moi';
+    pill.textContent = selectedDraft ? `Đang sửa game #${selectedDraft.gameNumber}` : 'Đang tạo bản mới';
 
     if (!state.selectedMatchId) {
         card.className = 'selected-summary empty';
-        card.textContent = 'Chon mot match truoc khi them hoac sua game draft record.';
+        card.textContent = 'Chọn một match trước khi thêm hoặc sửa game draft record.';
         return;
     }
 
@@ -1335,14 +1442,14 @@ function renderSelectedDraftCard() {
     card.innerHTML = `
         <div class="selected-summary-grid">
             <div>
-                <span class="summary-label">Record hien tai</span>
-                <strong class="summary-value">${selectedDraft ? `Game draft #${selectedDraft.id}` : 'Ban ghi moi'}</strong>
+                <span class="summary-label">Record hiện tại</span>
+                <strong class="summary-value">${selectedDraft ? `Game draft #${selectedDraft.id}` : 'Bản ghi mới'}</strong>
                 <p class="summary-note">Game ${escapeHtml(state.draftForm.gameNumber || '...')} - ${escapeHtml(displayTeamName(blueTeam))} vs ${escapeHtml(displayTeamName(redTeam))}</p>
             </div>
             <div>
                 <span class="summary-label">Winner / Duration</span>
                 <strong class="summary-value">${escapeHtml(winnerText)}</strong>
-                <p class="summary-note">${escapeHtml(state.draftForm.duration ? formatDuration(parseDurationInput(state.draftForm.duration).value) : 'Chua co duration')}</p>
+                <p class="summary-note">${escapeHtml(state.draftForm.duration ? formatDuration(parseDurationInput(state.draftForm.duration).value) : 'Chưa có duration')}</p>
             </div>
             <div>
                 <span class="summary-label">Bans</span>
@@ -1364,14 +1471,14 @@ function renderLocalValidation() {
 
     const validation = buildLocalValidation();
     const items = [
-        ['Match', state.selectedMatchId ? renderStatusChip('Da chon match', true) : renderStatusChip('Chua chon match', false)],
-        ['Winner', state.draftForm.winnerTeamId ? renderStatusChip('Da co winner', true) : renderStatusChip('Missing winner', false)],
+        ['Match', state.selectedMatchId ? renderStatusChip('Đã chọn match', true) : renderStatusChip('Chưa chọn match', false)],
+        ['Winner', state.draftForm.winnerTeamId ? renderStatusChip('Đã có winner', true) : renderStatusChip('Missing winner', false)],
         ['Bans', renderStatusChip(`${validation.blueBans + validation.redBans}/10 slot`, (validation.blueBans + validation.redBans) >= 8)],
         ['Lineup', renderStatusChip(`${validation.bluePicks + validation.redPicks}/10 hero`, validation.bluePicks === 5 && validation.redPicks === 5)],
-        ['Duration', renderStatusChip(validation.durationSeconds == null ? 'Chua co duration' : `${validation.durationSeconds}s`, !parseDurationInput(state.draftForm.duration).error)],
-        ['Duplicate hero', validation.issues.some(issue => issue.startsWith('Khong duoc trung hero'))
-            ? renderStatusChip('Dang bi trung', false)
-            : renderStatusChip('Khong trung', true)]
+        ['Duration', renderStatusChip(validation.durationSeconds == null ? 'Chưa có duration' : `${validation.durationSeconds}s`, !parseDurationInput(state.draftForm.duration).error)],
+        ['Duplicate hero', validation.issues.some(issue => issue.startsWith('Không được trùng hero'))
+            ? renderStatusChip('Đang bị trùng', false)
+            : renderStatusChip('Không trùng', true)]
     ];
 
     const extraIssues = validation.issues.length
@@ -1381,7 +1488,7 @@ function renderLocalValidation() {
            </div>`
         : `<div class="verify-item full">
                 <span class="verify-item-label">Ready</span>
-                <span class="verify-item-value">Form hop le de luu. Record ${validation.isComplete ? 'da du completeness co ban' : 'van co the luu dang incomplete'}.</span>
+                <span class="verify-item-value">Form hợp lệ để lưu. Record ${validation.isComplete ? 'đã đủ completeness cơ bản' : 'vẫn có thể lưu dạng incomplete'}.</span>
            </div>`;
 
     host.innerHTML = items.map(([label, value]) => `
@@ -1400,9 +1507,9 @@ function renderValidationSummary() {
     if (!state.selectedMatchId) {
         grid.innerHTML = `
             <article class="summary-card">
-                <span class="summary-label">Tong game</span>
+                <span class="summary-label">Tổng game</span>
                 <strong class="summary-value">0</strong>
-                <p class="summary-note">Chon match de xem summary.</p>
+                <p class="summary-note">Chọn match để xem summary.</p>
             </article>
         `;
         details.innerHTML = `
@@ -1411,7 +1518,7 @@ function renderValidationSummary() {
                 <div class="verify-items">
                     <div class="verify-item">
                         <span class="verify-item-label">Status</span>
-                        <span class="verify-item-value">Chua co du lieu.</span>
+                        <span class="verify-item-value">Chưa có dữ liệu.</span>
                     </div>
                 </div>
             </article>
@@ -1430,24 +1537,24 @@ function renderValidationSummary() {
 
     grid.innerHTML = `
         <article class="summary-card">
-            <span class="summary-label">Tong game</span>
+            <span class="summary-label">Tổng game</span>
             <strong class="summary-value">${totalGames}</strong>
-            <p class="summary-note">Tong so van dang gan vao series hien tai.</p>
+            <p class="summary-note">Tổng số ván đang gắn vào series hiện tại.</p>
         </article>
         <article class="summary-card">
             <span class="summary-label">Complete / Incomplete</span>
             <strong class="summary-value">${completeGames} / ${incompleteGames}</strong>
-            <p class="summary-note">Complete can co lineup 10/10, bans >= 8 va winner.</p>
+            <p class="summary-note">Complete cần có lineup 10/10, bans >= 8 và winner.</p>
         </article>
         <article class="summary-card">
-            <span class="summary-label">Tong bans</span>
+            <span class="summary-label">Tổng bans</span>
             <strong class="summary-value">${totalBans}</strong>
-            <p class="summary-note">Tong so hero ban dang luu tren match nay.</p>
+            <p class="summary-note">Tổng số hero ban đang lưu trên match này.</p>
         </article>
         <article class="summary-card">
-            <span class="summary-label">Tong picks</span>
+            <span class="summary-label">Tổng picks</span>
             <strong class="summary-value">${totalPicks}</strong>
-            <p class="summary-note">Tong so hero lineup dang luu tren match nay.</p>
+            <p class="summary-note">Tổng số hero lineup đang lưu trên match này.</p>
         </article>
     `;
 
@@ -1458,7 +1565,7 @@ function renderValidationSummary() {
                 <div class="verify-item"><span class="verify-item-label">Winner</span><span class="verify-item-value">${missingWinner} game</span></div>
                 <div class="verify-item"><span class="verify-item-label">Bans</span><span class="verify-item-value">${missingBans} game</span></div>
                 <div class="verify-item"><span class="verify-item-label">Lineup</span><span class="verify-item-value">${missingLineup} game</span></div>
-                <div class="verify-item full"><span class="verify-item-label">Status</span><span class="verify-item-value">${incompleteGames ? 'Can review cac game co status incomplete truoc khi doi chieu trang public.' : 'Tat ca game draft records trong match nay da co completeness co ban.'}</span></div>
+                <div class="verify-item full"><span class="verify-item-label">Status</span><span class="verify-item-value">${incompleteGames ? 'Cần review các game có status incomplete trước khi đối chiếu trang public.' : 'Tất cả game draft records trong match này đã có completeness cơ bản.'}</span></div>
             </div>
         </article>
         <article class="verify-card">
@@ -1467,14 +1574,14 @@ function renderValidationSummary() {
                 ${(() => {
                     const selectedDraft = getSelectedDraft();
                     if (!selectedDraft) {
-                        return '<div class="verify-item"><span class="verify-item-label">Record</span><span class="verify-item-value">Chua chon game draft record.</span></div>';
+                        return '<div class="verify-item"><span class="verify-item-label">Record</span><span class="verify-item-value">Chưa chọn game draft record.</span></div>';
                     }
                     const completeness = selectedDraft.draftCompleteness || {};
                     return `
                         <div class="verify-item"><span class="verify-item-label">Record</span><span class="verify-item-value">Game ${selectedDraft.gameNumber}</span></div>
                         <div class="verify-item"><span class="verify-item-label">Status</span><span class="verify-item-value">${renderStatusChip(completeness.status || 'Incomplete', Boolean(completeness.complete))}</span></div>
-                        <div class="verify-item"><span class="verify-item-label">Missing</span><span class="verify-item-value">${escapeHtml((completeness.missingFields || []).join(', ') || 'Khong co')}</span></div>
-                        <div class="verify-item"><span class="verify-item-label">Duration</span><span class="verify-item-value">${escapeHtml(selectedDraft.durationText || 'Chua co')}</span></div>
+                        <div class="verify-item"><span class="verify-item-label">Missing</span><span class="verify-item-value">${escapeHtml((completeness.missingFields || []).join(', ') || 'Không có')}</span></div>
+                        <div class="verify-item"><span class="verify-item-label">Duration</span><span class="verify-item-value">${escapeHtml(selectedDraft.durationText || 'Chưa có')}</span></div>
                     `;
                 })()}
             </div>
@@ -1495,20 +1602,20 @@ function renderImportPreview() {
     if (fileMeta) {
         if (!state.importPreview.fileName) {
             fileMeta.className = 'selected-summary empty';
-            fileMeta.textContent = 'Chua chon file import.';
+            fileMeta.textContent = 'Chưa chọn file import.';
         } else {
             fileMeta.className = 'selected-summary';
             fileMeta.innerHTML = `
                 <div class="selected-summary-grid">
                     <div>
-                        <span class="summary-label">File da chon</span>
+                        <span class="summary-label">File đã chọn</span>
                         <strong class="summary-value">${escapeHtml(state.importPreview.fileName)}</strong>
-                        <p class="summary-note">${state.importPreview.file ? `${escapeHtml((state.importPreview.file.size / 1024).toFixed(1))} KB` : 'Dang cho preview moi.'}</p>
+                        <p class="summary-note">${state.importPreview.file ? `${escapeHtml((state.importPreview.file.size / 1024).toFixed(1))} KB` : 'Đang chờ preview mới.'}</p>
                     </div>
                     <div>
                         <span class="summary-label">Overwrite mode</span>
-                        <strong class="summary-value">${state.importPreview.overwriteExisting ? 'Da bat' : 'Dang tat'}</strong>
-                        <p class="summary-note">Neu tat, duplicate <code>(match_id, game_number)</code> se vao danh sach loi va khong cho confirm.</p>
+                        <strong class="summary-value">${state.importPreview.overwriteExisting ? 'Đã bật' : 'Đang tắt'}</strong>
+                        <p class="summary-note">Nếu tắt, duplicate <code>(match_id, game_number)</code> sẽ vào danh sách lỗi và không cho confirm.</p>
                     </div>
                 </div>
             `;
@@ -1519,20 +1626,20 @@ function renderImportPreview() {
         const summary = state.importPreview.summary;
         if (!state.importPreview.previewToken) {
             statusCard.className = 'selected-summary empty';
-            statusCard.textContent = 'Preview chua duoc tao. Chon file, bam Preview Import, kiem tra loi roi moi Confirm.';
+            statusCard.textContent = 'Preview chưa được tạo. Chọn file, bấm Preview Import, kiểm tra lỗi rồi mới áp dụng vào DB.';
         } else if (state.importPreview.readyToImport) {
             statusCard.className = 'selected-summary';
             statusCard.innerHTML = `
                 <div class="selected-summary-grid">
                     <div>
                         <span class="summary-label">Preview status</span>
-                        <strong class="summary-value">San sang confirm import</strong>
+                        <strong class="summary-value">Sẵn sàng áp dụng vào DB</strong>
                         <p class="summary-note">${escapeHtml(`Token: ${state.importPreview.previewToken}`)}</p>
                     </div>
                     <div>
                         <span class="summary-label">Summary</span>
-                        <strong class="summary-value">${escapeHtml(`${summary?.validRows || 0}/${summary?.totalRows || 0} dong hop le`)}</strong>
-                        <p class="summary-note">Warnings khong chan import, nhung can kiem tra ky truoc khi commit DB.</p>
+                        <strong class="summary-value">${escapeHtml(`${summary?.validRows || 0}/${summary?.totalRows || 0} dòng hợp lệ`)}</strong>
+                        <p class="summary-note">Warnings không chặn import, nhưng cần kiểm tra kỹ trước khi commit DB.</p>
                     </div>
                 </div>
             `;
@@ -1542,13 +1649,13 @@ function renderImportPreview() {
                 <div class="selected-summary-grid">
                     <div>
                         <span class="summary-label">Preview status</span>
-                        <strong class="summary-value">Preview dang co loi</strong>
+                        <strong class="summary-value">Preview đang có lỗi</strong>
                         <p class="summary-note">${escapeHtml(`Token: ${state.importPreview.previewToken}`)}</p>
                     </div>
                     <div>
                         <span class="summary-label">Summary</span>
-                        <strong class="summary-value">${escapeHtml(`${summary?.errorRows || 0} dong loi`)}</strong>
-                        <p class="summary-note">Hay sua file hoac bat overwrite ro rang roi preview lai.</p>
+                        <strong class="summary-value">${escapeHtml(`${summary?.errorRows || 0} dòng lỗi`)}</strong>
+                        <p class="summary-note">Hãy sửa file hoặc bật overwrite rõ ràng rồi preview lại.</p>
                     </div>
                 </div>
             `;
@@ -1562,6 +1669,7 @@ function renderImportPreview() {
     renderImportPreviewSummary();
     renderImportPreviewIssueLists();
     renderImportPreviewTable();
+    renderImportConfirmResult();
 }
 
 function renderImportPreviewSummary() {
@@ -1573,8 +1681,8 @@ function renderImportPreviewSummary() {
         host.innerHTML = `
             <article class="summary-card">
                 <span class="summary-label">Preview</span>
-                <strong class="summary-value">0 dong</strong>
-                <p class="summary-note">Upload file de xem thong ke import.</p>
+                <strong class="summary-value">0 dòng</strong>
+                <p class="summary-note">Upload file để xem thống kê import.</p>
             </article>
         `;
         return;
@@ -1582,24 +1690,24 @@ function renderImportPreviewSummary() {
 
     host.innerHTML = `
         <article class="summary-card">
-            <span class="summary-label">Tong dong</span>
+            <span class="summary-label">Tổng dòng</span>
             <strong class="summary-value">${summary.totalRows}</strong>
-            <p class="summary-note">So dong du lieu da doc tu file.</p>
+            <p class="summary-note">Số dòng dữ liệu đã đọc từ file.</p>
         </article>
         <article class="summary-card">
-            <span class="summary-label">Hop le / Loi</span>
+            <span class="summary-label">Hợp lệ / Lỗi</span>
             <strong class="summary-value">${summary.validRows} / ${summary.errorRows}</strong>
-            <p class="summary-note">Chi duoc Confirm khi errorRows = 0.</p>
+            <p class="summary-note">Chỉ được Confirm khi errorRows = 0.</p>
         </article>
         <article class="summary-card">
             <span class="summary-label">Match create / update</span>
             <strong class="summary-value">${summary.matchesToCreate} / ${summary.matchesToUpdate}</strong>
-            <p class="summary-note">Match update co the la gan tournament hoac dong bo ty so series.</p>
+            <p class="summary-note">Match update có thể là gán tournament hoặc đồng bộ tỷ số series.</p>
         </article>
         <article class="summary-card">
             <span class="summary-label">Draft create / overwrite</span>
             <strong class="summary-value">${summary.draftsToCreate} / ${summary.draftsToOverwrite}</strong>
-            <p class="summary-note">Overwrite chi hop le khi admin da bat lua chon overwrite ro rang.</p>
+            <p class="summary-note">Overwrite chỉ hợp lệ khi admin đã bật lựa chọn overwrite rõ ràng.</p>
         </article>
     `;
 }
@@ -1609,10 +1717,10 @@ function renderImportPreviewIssueLists() {
     const warningsHost = byId('import-preview-warnings-list');
     const rowErrors = state.importPreview.rows
         .filter(row => Array.isArray(row.errors) && row.errors.length)
-        .map(row => `Dong ${row.rowNumber}: ${row.errors.join(' | ')}`);
+        .map(row => `Dòng ${row.rowNumber}: ${row.errors.join(' | ')}`);
     const rowWarnings = state.importPreview.rows
         .filter(row => Array.isArray(row.warnings) && row.warnings.length)
-        .map(row => `Dong ${row.rowNumber}: ${row.warnings.join(' | ')}`);
+        .map(row => `Dòng ${row.rowNumber}: ${row.warnings.join(' | ')}`);
     const allErrors = (state.importPreview.errors || []).concat(rowErrors);
     const allWarnings = (state.importPreview.warnings || []).concat(rowWarnings);
 
@@ -1621,7 +1729,7 @@ function renderImportPreviewIssueLists() {
             errorsHost.innerHTML = `
                 <div class="verify-item">
                     <span class="verify-item-label">Status</span>
-                    <span class="verify-item-value">Chua co loi nao de hien thi.</span>
+                    <span class="verify-item-value">Chưa có lỗi nào để hiển thị.</span>
                 </div>
             `;
         } else {
@@ -1639,7 +1747,7 @@ function renderImportPreviewIssueLists() {
             warningsHost.innerHTML = `
                 <div class="verify-item">
                     <span class="verify-item-label">Status</span>
-                    <span class="verify-item-value">Chua co canh bao nao.</span>
+                    <span class="verify-item-value">Chưa có cảnh báo nào.</span>
                 </div>
             `;
         } else {
@@ -1658,7 +1766,7 @@ function renderImportPreviewTable() {
     if (!tbody) return;
 
     if (!state.importPreview.rows.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="table-state">Chua co preview import.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="table-state">Chưa có preview import.</td></tr>';
         return;
     }
 
@@ -1666,11 +1774,11 @@ function renderImportPreviewTable() {
         const hasErrors = Array.isArray(row.errors) && row.errors.length > 0;
         const hasWarnings = Array.isArray(row.warnings) && row.warnings.length > 0;
         const statusChip = hasErrors
-            ? renderStatusChip('Co loi', false)
-            : renderStatusChip(hasWarnings ? 'Hop le + warning' : 'Hop le', true);
+            ? renderStatusChip('Có lỗi', false)
+            : renderStatusChip(hasWarnings ? 'Hợp lệ + warning' : 'Hợp lệ', true);
         const statusText = hasErrors
             ? row.errors.join(' | ')
-            : (hasWarnings ? row.warnings.join(' | ') : 'San sang import.');
+            : (hasWarnings ? row.warnings.join(' | ') : 'Sẵn sàng import.');
 
         return `
             <tr>
@@ -1684,8 +1792,8 @@ function renderImportPreviewTable() {
                     <div class="table-subtext">${escapeHtml(row.blueTeam || 'N/A')} Blue - ${escapeHtml(row.redTeam || 'N/A')} Red</div>
                 </td>
                 <td>
-                    <strong>${escapeHtml(row.winner || 'Chua co winner')}</strong>
-                    <div class="table-subtext">${escapeHtml(row.durationText || 'Chua co length')}</div>
+                    <strong>${escapeHtml(row.winner || 'Chưa có winner')}</strong>
+                    <div class="table-subtext">${escapeHtml(row.durationText || 'Chưa có length')}</div>
                 </td>
                 <td>${escapeHtml(row.matchAction || 'N/A')}</td>
                 <td>${escapeHtml(row.draftAction || 'N/A')}</td>
@@ -1696,6 +1804,139 @@ function renderImportPreviewTable() {
             </tr>
         `;
     }).join('');
+}
+
+function renderImportConfirmResult() {
+    const host = byId('import-confirm-result');
+    const result = state.lastImportResult;
+    if (!host) return;
+
+    if (!result) {
+        host.innerHTML = `
+            <div class="selected-summary empty">
+                Trạng thái import vào DB và cập nhật dữ liệu AER sẽ hiện ở đây sau khi bấm <strong>Áp dụng vào DB</strong>.
+            </div>
+        `;
+        return;
+    }
+
+    const affectedMatchLabel = result.affectedMatchIds.length
+        ? `Match IDs: ${result.affectedMatchIds.join(', ')}`
+        : 'Không có match ID nào được báo cáo.';
+
+    host.innerHTML = `
+        <div class="selected-summary">
+            <div class="selected-summary-grid">
+                <div>
+                    <span class="summary-label">Import status</span>
+                    <strong class="summary-value">Import thành công</strong>
+                    <p class="summary-note">${escapeHtml(`${result.importedRows} game draft record đã được áp dụng vào DB.`)}</p>
+                </div>
+                <div>
+                    <span class="summary-label">AER status</span>
+                    <strong class="summary-value">Import thành công. Dữ liệu AER đã được cập nhật từ DB.</strong>
+                    <p class="summary-note">Hệ thống đọc trực tiếp <code>esports_matches</code> và <code>esports_game_drafts</code>; không còn lớp trung gian riêng.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="summary-grid import-preview-summary-grid">
+            <article class="summary-card">
+                <span class="summary-label">Game imported</span>
+                <strong class="summary-value">${result.importedRows}</strong>
+                <p class="summary-note">Create ${result.createdDrafts} / overwrite ${result.overwrittenDrafts} game draft records.</p>
+            </article>
+            <article class="summary-card">
+                <span class="summary-label">Series affected</span>
+                <strong class="summary-value">${result.affectedSeriesCount}</strong>
+                <p class="summary-note">${escapeHtml(`${affectedMatchLabel} Match create ${result.createdMatches} / update ${result.updatedMatches}.`)}</p>
+            </article>
+            <article class="summary-card">
+                <span class="summary-label">Match updates</span>
+                <strong class="summary-value">${result.updatedMatches}</strong>
+                <p class="summary-note">Series cha được cập nhật lại tỷ số hoặc tournament link để đồng bộ với file import.</p>
+            </article>
+            <article class="summary-card">
+                <span class="summary-label">Ranking</span>
+                <strong class="summary-value">${result.rankingsRecalculated ? 'Đã recalculate' : 'Không thay đổi'}</strong>
+                <p class="summary-note">${result.rankingsRecalculated
+                    ? 'Elo và xếp hạng AER đã được tính lại từ DB sau khi series cha thay đổi.'
+                    : 'Không cần tính lại vì import không thay đổi series cha ảnh hưởng đến ranking.'}</p>
+            </article>
+        </div>
+    `;
+}
+
+function renderResetResult() {
+    const host = byId('reset-esports-result');
+    const result = state.lastResetResult;
+    if (!host) return;
+
+    if (!result) {
+        host.innerHTML = `
+            <div class="selected-summary empty">
+                Kết quả backup và reset esports data sẽ hiện ở đây sau khi bấm <strong>Reset Esports Data</strong>.
+            </div>
+        `;
+        return;
+    }
+
+    const statusClass = result.reset && result.remainingGameDrafts === 0 && result.remainingMatches === 0
+        ? 'selected-summary danger-zone-summary'
+        : 'selected-summary warning';
+    const playerStatsNote = result.playerStatsCleared
+        ? `player_stats đã được clear: ${result.deletedPlayerStats} record.`
+        : escapeHtml(result.playerStatsRetainedReason || 'player_stats được giữ nguyên.');
+
+    host.innerHTML = `
+        <div class="${statusClass}">
+            <div class="selected-summary-grid">
+                <div>
+                    <span class="summary-label">Reset status</span>
+                    <strong class="summary-value">${result.reset ? 'Đã backup và reset thành công' : 'Reset chưa hoàn tất'}</strong>
+                    <p class="summary-note">Team rows được giữ nguyên; các field ranking trên <code>esports_teams</code> được reset về baseline 1200/0/0/0/0.</p>
+                </div>
+                <div>
+                    <span class="summary-label">Backup file</span>
+                    <strong class="summary-value">${escapeHtml(result.backupFile || 'Không có')}</strong>
+                    <p class="summary-note">Nếu cần phục hồi, restore từ file SQL này trước khi import lại.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="summary-grid import-preview-summary-grid">
+            <article class="summary-card">
+                <span class="summary-label">Game drafts deleted</span>
+                <strong class="summary-value">${result.deletedGameDrafts}</strong>
+                <p class="summary-note">Số record đã xóa khỏi <code>esports_game_drafts</code>.</p>
+            </article>
+            <article class="summary-card">
+                <span class="summary-label">Series deleted</span>
+                <strong class="summary-value">${result.deletedMatches}</strong>
+                <p class="summary-note">Số record đã xóa khỏi <code>esports_matches</code>.</p>
+            </article>
+            <article class="summary-card">
+                <span class="summary-label">Remaining game drafts</span>
+                <strong class="summary-value">${result.remainingGameDrafts}</strong>
+                <p class="summary-note">Cần về 0 để import XLSX/CSV lại từ đầu.</p>
+            </article>
+            <article class="summary-card">
+                <span class="summary-label">Remaining series</span>
+                <strong class="summary-value">${result.remainingMatches}</strong>
+                <p class="summary-note">Cần về 0 để dashboard/AER đọc dataset mới sau import.</p>
+            </article>
+        </div>
+
+        <div class="verify-card">
+            <h4>Player stats note</h4>
+            <div class="verify-items">
+                <div class="verify-item full">
+                    <span class="verify-item-label">Status</span>
+                    <span class="verify-item-value">${playerStatsNote}</span>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 function renderAll() {
@@ -1717,6 +1958,7 @@ function renderAll() {
     renderLocalValidation();
     renderValidationSummary();
     renderImportPreview();
+    renderResetResult();
 }
 
 async function loadTeams() {
@@ -1820,7 +2062,7 @@ async function refreshAllData(options) {
         }
     } catch (error) {
         console.error('Admin esports data load error:', error);
-        setPanelError('page-error', error.message || 'Khong the tai du lieu admin esports.');
+        setPanelError('page-error', error.message || 'Không thể tải dữ liệu admin esports.');
     }
 }
 
@@ -1841,6 +2083,7 @@ function clearImportPreviewResults() {
     state.importPreview.file = file;
     state.importPreview.fileName = fileName;
     state.importPreview.overwriteExisting = overwriteExisting;
+    state.lastImportResult = null;
     setPanelError('import-form-error', '');
     renderImportPreview();
 }
@@ -1858,7 +2101,7 @@ async function previewImportFile() {
     }
 
     setPanelError('import-form-error', '');
-    setButtonLoading('btn-import-preview', true, 'Dang preview...');
+    setButtonLoading('btn-import-preview', true, 'Đang preview...');
     try {
         const formData = new FormData();
         formData.append('file', state.importPreview.file);
@@ -1888,8 +2131,8 @@ async function previewImportFile() {
         renderImportPreview();
         showToast(
             state.importPreview.readyToImport
-                ? 'Preview hop le. Ban co the Confirm Import.'
-                : 'Preview da xong, nhung van con loi can xu ly.',
+                ? 'Preview hợp lệ. Bạn có thể áp dụng vào DB.'
+                : 'Preview đã xong, nhưng vẫn còn lỗi cần xử lý.',
             state.importPreview.readyToImport ? 'ok' : 'err'
         );
     } catch (error) {
@@ -1901,15 +2144,15 @@ async function previewImportFile() {
 
 async function confirmImportPreview() {
     if (!state.importPreview.previewToken || !state.importPreview.readyToImport) {
-        setPanelError('import-form-error', 'Preview chua hop le de confirm import.');
+        setPanelError('import-form-error', 'Preview chưa hợp lệ để áp dụng vào DB.');
         return;
     }
 
-    const confirmed = window.confirm(`Confirm import ${state.importPreview.summary?.validRows || 0} dong hop le vao DB?`);
+    const confirmed = window.confirm(`Áp dụng import ${state.importPreview.summary?.validRows || 0} dòng hợp lệ vào DB?`);
     if (!confirmed) return;
 
     setPanelError('import-form-error', '');
-    setButtonLoading('btn-import-confirm', true, 'Dang import...');
+    setButtonLoading('btn-import-confirm', true, 'Đang import...');
     try {
         const response = await apiFetch('/api/admin/esports/game-drafts/import/confirm', {
             method: 'POST',
@@ -1921,18 +2164,74 @@ async function confirmImportPreview() {
             ? response.affectedMatchIds.filter(Boolean)
             : [];
         resetImportPreview();
+        state.lastImportResult = normalizeImportConfirmResult(response);
         await refreshAllData({ preserveMatchId: false, preserveDraftId: false, preserveTournamentId: true });
         if (affectedMatchIds.length) {
             await selectMatch(affectedMatchIds[0], null);
         }
         showToast(
-            `Da import ${response?.importedRows || 0} dong. Match moi: ${response?.createdMatches || 0}, overwrite: ${response?.overwrittenDrafts || 0}.`,
+            response?.rankingsRecalculated
+                ? `Đã import ${response?.importedRows || 0} dòng. Xếp hạng AER đã được cập nhật từ DB cho ${response?.affectedSeriesCount || affectedMatchIds.length || 0} series.`
+                : `Đã import ${response?.importedRows || 0} dòng. Dữ liệu AER đã được cập nhật từ DB.`,
             'ok'
         );
     } catch (error) {
         setPanelError('import-form-error', error.message);
     } finally {
         setButtonLoading('btn-import-confirm', false);
+    }
+}
+
+async function resetEsportsData() {
+    setPanelError('reset-esports-error', '');
+
+    const confirmation = window.prompt(
+        [
+            'Danger Zone: thao tác này sẽ xóa esports_matches và esports_game_drafts.',
+            'Không xóa teams/heroes/tournaments.',
+            'Sau reset cần import lại file XLSX/CSV.',
+            'Không thể hoàn tác nếu không restore backup.',
+            '',
+            `Nhập chính xác: ${RESET_ESPORTS_CONFIRMATION_TEXT}`
+        ].join('\n')
+    );
+    if (confirmation == null) return;
+    if (confirmation !== RESET_ESPORTS_CONFIRMATION_TEXT) {
+        const message = 'Confirmation text không đúng. Không có dữ liệu nào bị xóa.';
+        setPanelError('reset-esports-error', message);
+        showToast(message, 'err');
+        return;
+    }
+
+    const finalConfirm = window.confirm(
+        'Hệ thống sẽ backup DB trước, sau đó xóa esports_matches và esports_game_drafts. Tiếp tục?'
+    );
+    if (!finalConfirm) return;
+
+    setButtonLoading('btn-reset-esports-data', true, 'Đang backup + reset...');
+    try {
+        const response = await apiFetch('/api/admin/esports/reset-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                confirmationText: RESET_ESPORTS_CONFIRMATION_TEXT,
+                backupBeforeReset: true
+            })
+        });
+
+        state.lastResetResult = normalizeResetResult(response);
+        resetImportPreview();
+        await refreshAllData({ preserveMatchId: false, preserveDraftId: false, preserveTournamentId: true });
+        renderResetResult();
+        showToast(
+            `Đã reset ${state.lastResetResult.deletedMatches} series và ${state.lastResetResult.deletedGameDrafts} game draft records.`,
+            'ok'
+        );
+    } catch (error) {
+        setPanelError('reset-esports-error', error.message);
+        showToast(error.message, 'err');
+    } finally {
+        setButtonLoading('btn-reset-esports-data', false);
     }
 }
 
@@ -1950,26 +2249,40 @@ async function submitMatchForm(event) {
         stage: normalizeStageValue(byId('mf-stage').value)
     };
     const matchId = toNullableNumber(byId('mf-id').value);
+    const selectedTournament = findTournamentById(payload.tournamentId);
 
-    if (!payload.matchDate || !payload.team1Code || !payload.team2Code || !payload.tier || !payload.stage) {
-        setPanelError('match-form-error', 'Vui long nhap du ngay thi dau, 2 team, giai/tier va stage.');
+    if (selectedTournament) {
+        const officialAerTier = resolveTournamentAerTier(selectedTournament);
+        if (officialAerTier == null) {
+            setPanelError('match-form-error', 'Tournament đã chọn chưa có AER Tier hợp lệ 0/1/2. Hãy sửa tournament trước khi lưu match.');
+            return;
+        }
+        payload.tier = String(officialAerTier);
+    }
+
+    if (!payload.matchDate || !payload.team1Code || !payload.team2Code || !payload.stage || (!selectedTournament && !payload.tier)) {
+        setPanelError('match-form-error', 'Vui lòng nhập đủ ngày thi đấu, 2 team, tier và stage.');
+        return;
+    }
+    if (!selectedTournament && !LEGACY_TOURNAMENT_OPTIONS.some(option => option.value === String(payload.tier))) {
+        setPanelError('match-form-error', 'Tier fallback (legacy snapshot) chỉ hợp lệ T0/T1/T2 khi match chưa có tournament.');
         return;
     }
     if (payload.team1Code === payload.team2Code) {
-        setPanelError('match-form-error', 'Team 1 va Team 2 khong duoc trung nhau.');
+        setPanelError('match-form-error', 'Team 1 và Team 2 không được trùng nhau.');
         return;
     }
     if (!findTeamByCode(payload.team1Code) || !findTeamByCode(payload.team2Code)) {
-        setPanelError('match-form-error', 'Team 1 va Team 2 phai la team dang co trong DB.');
+        setPanelError('match-form-error', 'Team 1 và Team 2 phải là team đang có trong DB.');
         return;
     }
     if (!Number.isFinite(payload.score1) || payload.score1 < 0 || !Number.isFinite(payload.score2) || payload.score2 < 0) {
-        setPanelError('match-form-error', 'Ty so series phai la so nguyen khong am.');
+        setPanelError('match-form-error', 'Tỷ số series phải là số nguyên không âm.');
         return;
     }
 
     setPanelError('match-form-error', '');
-    setButtonLoading('btn-match-submit', true, 'Dang luu match...');
+    setButtonLoading('btn-match-submit', true, 'Đang lưu match...');
     try {
         const response = await apiFetch(matchId ? `/api/admin/esports/matches/${matchId}` : '/api/admin/esports/matches', {
             method: matchId ? 'PUT' : 'POST',
@@ -1981,7 +2294,7 @@ async function submitMatchForm(event) {
         if (response && response.id) {
             await selectMatch(response.id, null);
         }
-        showToast(matchId ? 'Da cap nhat match thanh cong.' : 'Da tao match moi thanh cong.', 'ok');
+        showToast(matchId ? 'Đã cập nhật match thành công.' : 'Đã tạo match mới thành công.', 'ok');
     } catch (error) {
         setPanelError('match-form-error', error.message);
     } finally {
@@ -1992,7 +2305,7 @@ async function submitMatchForm(event) {
 async function deleteMatch(matchId) {
     const match = state.matches.find(item => Number(item.id) === Number(matchId));
     if (!match) return;
-    const confirmed = window.confirm(`Xoa match #${match.id} (${normalizeTeamCode(match.team1Code)} vs ${normalizeTeamCode(match.team2Code)})?`);
+    const confirmed = window.confirm(`Xóa match #${match.id} (${normalizeTeamCode(match.team1Code)} vs ${normalizeTeamCode(match.team2Code)})?`);
     if (!confirmed) return;
 
     try {
@@ -2004,7 +2317,7 @@ async function deleteMatch(matchId) {
             resetDraftForm();
         }
         await refreshAllData({ preserveMatchId: true, preserveDraftId: true, preserveTournamentId: true });
-        showToast(`Da xoa match #${matchId}.`, 'ok');
+        showToast(`Đã xóa match #${matchId}.`, 'ok');
     } catch (error) {
         setPanelError('matches-error', error.message);
     }
@@ -2025,12 +2338,12 @@ async function submitFranchiseForm(event) {
     };
 
     if (!payload.code || !payload.name || !payload.tierLevel) {
-        setPanelError('franchise-form-error', 'Code, name va tier level la bat buoc.');
+        setPanelError('franchise-form-error', 'Code, name và tier level là bắt buộc.');
         return;
     }
 
     setPanelError('franchise-form-error', '');
-    setButtonLoading('btn-franchise-submit', true, 'Dang luu franchise...');
+    setButtonLoading('btn-franchise-submit', true, 'Đang lưu franchise...');
     try {
         await apiFetch(franchiseId ? `/api/admin/esports/franchises/${franchiseId}` : '/api/admin/esports/franchises', {
             method: franchiseId ? 'PUT' : 'POST',
@@ -2039,7 +2352,7 @@ async function submitFranchiseForm(event) {
         });
         resetFranchiseForm();
         await refreshAllData({ preserveMatchId: true, preserveDraftId: true, preserveTournamentId: true });
-        showToast(franchiseId ? 'Da cap nhat franchise.' : 'Da tao franchise moi.', 'ok');
+        showToast(franchiseId ? 'Đã cập nhật franchise.' : 'Đã tạo franchise mới.', 'ok');
     } catch (error) {
         setPanelError('franchise-form-error', error.message);
     } finally {
@@ -2056,7 +2369,7 @@ async function deleteFranchise(franchiseId) {
     try {
         await apiFetch(`/api/admin/esports/franchises/${franchiseId}`, { method: 'DELETE' });
         await refreshAllData({ preserveMatchId: true, preserveDraftId: true, preserveTournamentId: true });
-        showToast(`Da deactivate franchise ${franchise.code}.`, 'ok');
+        showToast(`Đã deactivate franchise ${franchise.code}.`, 'ok');
     } catch (error) {
         setPanelError('franchise-form-error', error.message);
     }
@@ -2081,16 +2394,19 @@ async function submitTournamentForm(event) {
     };
 
     if (!payload.franchiseId || !payload.name || !payload.slug) {
-        setPanelError('tournament-form-error', 'Franchise, name va slug la bat buoc.');
+        setPanelError('tournament-form-error', 'Franchise, name và slug là bắt buộc.');
         return;
     }
-    if (payload.aerTier == null || payload.aerTier <= 0) {
-        setPanelError('tournament-form-error', 'AER Tier phai la so nguyen duong.');
+    if (payload.aerTier == null) {
+        payload.aerTier = 1;
+    }
+    if (!isValidAerTierValue(payload.aerTier)) {
+        setPanelError('tournament-form-error', 'AER Tier chỉ hợp lệ 0, 1 hoặc 2.');
         return;
     }
 
     setPanelError('tournament-form-error', '');
-    setButtonLoading('btn-tournament-submit', true, 'Dang luu tournament...');
+    setButtonLoading('btn-tournament-submit', true, 'Đang lưu tournament...');
     try {
         const response = await apiFetch(tournamentId ? `/api/admin/esports/tournaments/${tournamentId}` : '/api/admin/esports/tournaments', {
             method: tournamentId ? 'PUT' : 'POST',
@@ -2102,7 +2418,7 @@ async function submitTournamentForm(event) {
         if (response && response.id) {
             await selectTournament(response.id);
         }
-        showToast(tournamentId ? 'Da cap nhat tournament.' : 'Da tao tournament moi.', 'ok');
+        showToast(tournamentId ? 'Đã cập nhật tournament.' : 'Đã tạo tournament mới.', 'ok');
     } catch (error) {
         setPanelError('tournament-form-error', error.message);
     } finally {
@@ -2113,7 +2429,7 @@ async function submitTournamentForm(event) {
 async function deleteTournament(tournamentId) {
     const tournament = state.tournaments.find(item => Number(item.id) === Number(tournamentId));
     if (!tournament) return;
-    const confirmed = window.confirm(`Xoa tournament ${tournament.name}?`);
+    const confirmed = window.confirm(`Xóa tournament ${tournament.name}?`);
     if (!confirmed) return;
 
     try {
@@ -2123,7 +2439,7 @@ async function deleteTournament(tournamentId) {
             state.tournamentTeams = [];
         }
         await refreshAllData({ preserveMatchId: true, preserveDraftId: true, preserveTournamentId: true });
-        showToast(`Da xoa tournament ${tournament.name}.`, 'ok');
+        showToast(`Đã xóa tournament ${tournament.name}.`, 'ok');
     } catch (error) {
         setPanelError('tournament-form-error', error.message);
     }
@@ -2132,7 +2448,7 @@ async function deleteTournament(tournamentId) {
 async function submitTournamentTeamForm(event) {
     event.preventDefault();
     if (!state.selectedTournamentId) {
-        setPanelError('tournament-teams-error', 'Hay chon tournament truoc khi add team.');
+        setPanelError('tournament-teams-error', 'Hãy chọn tournament trước khi add team.');
         return;
     }
 
@@ -2145,12 +2461,12 @@ async function submitTournamentTeamForm(event) {
     };
 
     if (!payload.teamId) {
-        setPanelError('tournament-teams-error', 'teamId la bat buoc.');
+        setPanelError('tournament-teams-error', 'teamId là bắt buộc.');
         return;
     }
 
     setPanelError('tournament-teams-error', '');
-    setButtonLoading('btn-tournament-team-submit', true, 'Dang add team...');
+    setButtonLoading('btn-tournament-team-submit', true, 'Đang add team...');
     try {
         await apiFetch(`/api/admin/esports/tournaments/${state.selectedTournamentId}/teams`, {
             method: 'POST',
@@ -2159,7 +2475,7 @@ async function submitTournamentTeamForm(event) {
         });
         resetTournamentTeamForm();
         await selectTournament(state.selectedTournamentId);
-        showToast('Da them team vao tournament.', 'ok');
+        showToast('Đã thêm team vào tournament.', 'ok');
     } catch (error) {
         setPanelError('tournament-teams-error', error.message);
     } finally {
@@ -2170,13 +2486,13 @@ async function submitTournamentTeamForm(event) {
 async function removeTournamentTeam(teamId) {
     const relation = state.tournamentTeams.find(item => Number(item.teamId) === Number(teamId));
     if (!relation || !state.selectedTournamentId) return;
-    const confirmed = window.confirm(`Remove ${relation.teamName || relation.teamCode} khoi tournament hien tai?`);
+    const confirmed = window.confirm(`Remove ${relation.teamName || relation.teamCode} khỏi tournament hiện tại?`);
     if (!confirmed) return;
 
     try {
         await apiFetch(`/api/admin/esports/tournaments/${state.selectedTournamentId}/teams/${teamId}`, { method: 'DELETE' });
         await selectTournament(state.selectedTournamentId);
-        showToast('Da xoa team khoi tournament.', 'ok');
+        showToast('Đã xóa team khỏi tournament.', 'ok');
     } catch (error) {
         setPanelError('tournament-teams-error', error.message);
     }
@@ -2219,7 +2535,7 @@ async function submitDraftForm(event) {
     event.preventDefault();
 
     if (!state.selectedMatchId) {
-        setPanelError('draft-form-error', 'Hay chon match truoc khi tao game draft record.');
+        setPanelError('draft-form-error', 'Hãy chọn match trước khi tạo game draft record.');
         return;
     }
 
@@ -2231,7 +2547,7 @@ async function submitDraftForm(event) {
 
     const draftId = toNullableNumber(state.draftForm.id);
     setPanelError('draft-form-error', '');
-    setButtonLoading('btn-draft-submit', true, 'Dang luu game draft...');
+    setButtonLoading('btn-draft-submit', true, 'Đang lưu game draft...');
     try {
         const response = await apiFetch(
             draftId
@@ -2244,7 +2560,7 @@ async function submitDraftForm(event) {
             }
         );
         await selectMatch(state.selectedMatchId, response && response.id ? response.id : null);
-        showToast(draftId ? 'Da cap nhat game draft record.' : 'Da tao game draft record moi.', 'ok');
+        showToast(draftId ? 'Đã cập nhật game draft record.' : 'Đã tạo game draft record mới.', 'ok');
     } catch (error) {
         setPanelError('draft-form-error', error.message);
     } finally {
@@ -2255,7 +2571,7 @@ async function submitDraftForm(event) {
 async function deleteGameDraft(gameDraftId) {
     const draft = state.gameDrafts.find(item => Number(item.id) === Number(gameDraftId));
     if (!draft) return;
-    const confirmed = window.confirm(`Xoa game draft #${draft.id} / Game ${draft.gameNumber}?`);
+    const confirmed = window.confirm(`Xóa game draft #${draft.id} / Game ${draft.gameNumber}?`);
     if (!confirmed) return;
 
     try {
@@ -2264,7 +2580,7 @@ async function deleteGameDraft(gameDraftId) {
             resetDraftForm();
         }
         await selectMatch(state.selectedMatchId, null);
-        showToast(`Da xoa game draft #${gameDraftId}.`, 'ok');
+        showToast(`Đã xóa game draft #${gameDraftId}.`, 'ok');
     } catch (error) {
         setPanelError('game-drafts-error', error.message);
     }
@@ -2296,7 +2612,7 @@ function bindEvents() {
     byId('btn-export-admin-esports')?.addEventListener('click', downloadGameDraftsCsv);
     byId('btn-add-draft')?.addEventListener('click', () => {
         if (!state.selectedMatchId) {
-            showToast('Hay chon match truoc khi them van.', 'err');
+            showToast('Hãy chọn match trước khi thêm ván.', 'err');
             return;
         }
         resetDraftForm();
@@ -2307,6 +2623,9 @@ function bindEvents() {
     byId('btn-import-preview')?.addEventListener('click', previewImportFile);
     byId('btn-import-confirm')?.addEventListener('click', confirmImportPreview);
     byId('btn-import-reset')?.addEventListener('click', () => resetImportPreview());
+    byId('btn-reset-esports-data')?.addEventListener('click', resetEsportsData);
+    byId('mf-stage')?.addEventListener('change', syncMatchStageField);
+    byId('mf-stage')?.addEventListener('blur', syncMatchStageField);
 
     byId('btn-franchise-reset')?.addEventListener('click', resetFranchiseForm);
     byId('franchise-form')?.addEventListener('submit', submitFranchiseForm);
@@ -2366,14 +2685,7 @@ function bindEvents() {
             renderMatches();
         }));
     byId('btn-match-filter-reset')?.addEventListener('click', resetMatchFilters);
-    byId('mf-tournament')?.addEventListener('change', event => {
-        const tournament = findTournamentById(toNullableNumber(event.target.value));
-        const aerTier = resolveTournamentAerTier(tournament);
-        if (aerTier != null) {
-            byId('mf-tier').value = String(aerTier);
-            state.matchForm.tier = String(aerTier);
-        }
-    });
+    byId('mf-tournament')?.addEventListener('change', () => syncMatchTierFieldState());
 
     byId('btn-match-reset')?.addEventListener('click', resetMatchForm);
     byId('match-form')?.addEventListener('submit', submitMatchForm);
@@ -2438,3 +2750,4 @@ if (document.readyState === 'loading') {
 } else {
     initAdminEsportsDataPage();
 }
+

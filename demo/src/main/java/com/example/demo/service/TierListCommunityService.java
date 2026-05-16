@@ -597,7 +597,7 @@ public class TierListCommunityService {
     @Transactional
     public Map<String, Object> rateTierList(Long tierListId, GoogleUserPrincipal principal, int ratingValue) {
         if (ratingValue < 1 || ratingValue > 5) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "So sao phai tu 1 den 5");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số sao phải từ 1 đến 5");
         }
 
         TierList tierList = findTierList(tierListId);

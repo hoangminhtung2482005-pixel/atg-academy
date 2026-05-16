@@ -44,6 +44,9 @@ class EsportsTournamentServiceTest {
     @Mock
     private EsportsMatchRepository esportsMatchRepository;
 
+    @Mock
+    private EloCalculationService eloCalculationService;
+
     @Test
     void createTournamentStoresAerTierAndReturnsIt() {
         EsportsFranchise franchise = franchise(1L, "AOG", "Arena Of Glory", "T1");
@@ -115,12 +118,19 @@ class EsportsTournamentServiceTest {
     }
 
     @Test
-    void createTournamentRejectsAerTierLessThanOrEqualToZero() {
+    void createTournamentAllowsAerTierZero() {
         EsportsFranchise franchise = franchise(1L, "APL", "AoV Premier League", "T0");
         when(esportsTournamentRepository.existsBySlugIgnoreCase("apl-2026")).thenReturn(false);
         when(esportsFranchiseService.findEntityById(1L)).thenReturn(franchise);
+        when(esportsTournamentRepository.save(any())).thenAnswer(invocation -> {
+            EsportsTournament tournament = invocation.getArgument(0);
+            tournament.setId(12L);
+            return tournament;
+        });
+        when(esportsTournamentTeamRepository.countByTournamentId(12L)).thenReturn(0L);
+        when(esportsMatchRepository.countByTournamentId(12L)).thenReturn(0L);
 
-        assertThatThrownBy(() -> service().createTournament(new EsportsTournamentRequest(
+        EsportsTournamentResponse response = service().createTournament(new EsportsTournamentRequest(
                 1L,
                 "APL 2026",
                 "apl-2026",
@@ -133,22 +143,124 @@ class EsportsTournamentServiceTest {
                 "UPCOMING",
                 null,
                 null
+        ));
+
+        assertThat(response.aerTier()).isEqualTo(0);
+        verify(esportsTournamentRepository).save(any());
+    }
+
+    @Test
+    void createTournamentRejectsAerTierOutsideSupportedRange() {
+        EsportsFranchise franchise = franchise(1L, "APL", "AoV Premier League", "T0");
+        when(esportsTournamentRepository.existsBySlugIgnoreCase("apl-2026")).thenReturn(false);
+        when(esportsFranchiseService.findEntityById(1L)).thenReturn(franchise);
+
+        assertThatThrownBy(() -> service().createTournament(new EsportsTournamentRequest(
+                1L,
+                "APL 2026",
+                "apl-2026",
+                2026,
+                null,
+                "T0",
+                3,
+                null,
+                null,
+                "UPCOMING",
+                null,
+                null
         )))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("aerTier phai lon hon 0");
+                .hasMessageContaining("aerTier chi hop le 0, 1 hoac 2");
+
+        assertThatThrownBy(() -> service().createTournament(new EsportsTournamentRequest(
+                1L,
+                "APL 2026",
+                "apl-2026",
+                2026,
+                null,
+                "T0",
+                -1,
+                null,
+                null,
+                "UPCOMING",
+                null,
+                null
+        )))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("aerTier chi hop le 0, 1 hoac 2");
 
         verify(esportsTournamentRepository, never()).save(any());
     }
 
     @Test
+    void updateTournamentAllowsChangingAerTierToZeroAndRecalculatesRankings() {
+        EsportsFranchise franchise = franchise(1L, "AOG", "Arena Of Glory", "T1");
+        EsportsTournament existing = tournament(21L, franchise, "AOG Spring 2026", "aog-spring-2026", "T1", 1);
+
+        when(esportsTournamentRepository.findById(21L)).thenReturn(Optional.of(existing));
+        when(esportsTournamentRepository.existsBySlugIgnoreCaseAndIdNot("aog-spring-2026", 21L)).thenReturn(false);
+        when(esportsFranchiseService.findEntityById(1L)).thenReturn(franchise);
+        when(esportsTournamentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        EsportsTournamentResponse response = service().updateTournament(21L, new EsportsTournamentRequest(
+                1L,
+                "AOG Spring 2026",
+                "aog-spring-2026",
+                2026,
+                "Spring",
+                "T0",
+                0,
+                null,
+                null,
+                "ONGOING",
+                null,
+                null
+        ));
+
+        assertThat(response.aerTier()).isEqualTo(0);
+        verify(esportsMatchRepository).syncTierSnapshotByTournamentId(21L, "0");
+        verify(eloCalculationService).calculateAllRankings();
+    }
+
+    @Test
+    void updateTournamentAllowsChangingAerTierToTwoAndRecalculatesRankings() {
+        EsportsFranchise franchise = franchise(1L, "RPL", "RoV Pro League", "T1");
+        EsportsTournament existing = tournament(22L, franchise, "RPL Summer 2026", "rpl-summer-2026", "T1", 1);
+
+        when(esportsTournamentRepository.findById(22L)).thenReturn(Optional.of(existing));
+        when(esportsTournamentRepository.existsBySlugIgnoreCaseAndIdNot("rpl-summer-2026", 22L)).thenReturn(false);
+        when(esportsFranchiseService.findEntityById(1L)).thenReturn(franchise);
+        when(esportsTournamentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        EsportsTournamentResponse response = service().updateTournament(22L, new EsportsTournamentRequest(
+                1L,
+                "RPL Summer 2026",
+                "rpl-summer-2026",
+                2026,
+                "Summer",
+                "T1",
+                2,
+                null,
+                null,
+                "ONGOING",
+                null,
+                null
+        ));
+
+        assertThat(response.aerTier()).isEqualTo(2);
+        verify(esportsMatchRepository).syncTierSnapshotByTournamentId(22L, "2");
+        verify(eloCalculationService).calculateAllRankings();
+    }
+
+    @Test
     void getPublicTournamentsKeepsAerTierInFilteredListing() {
         EsportsFranchise franchise = franchise(2L, "AOG", "Arena Of Glory", "T1");
-        EsportsTournament listedTournament = tournament(20L, franchise, "AOG Winter 2026", "aog-winter-2026", "T1", 1);
+        EsportsTournament listedTournament = tournament(20L, franchise, "AOG Spring 2026", "aog-spring-2026", "T1", 1);
         EsportsTournament seededTournament = tournament(99L, franchise, "Seed", "seed", "T1", 1);
 
         when(esportsTournamentRepository.findBySlugIgnoreCase(anyString())).thenReturn(Optional.of(seededTournament));
         when(esportsTournamentRepository.findAllForListing(null, "AOG")).thenReturn(List.of(listedTournament));
-        when(esportsTournamentTeamRepository.countByTournamentId(20L)).thenReturn(4L);
+        when(esportsTournamentTeamRepository.countByTournamentId(20L)).thenReturn(8L);
         when(esportsMatchRepository.countByTournamentId(20L)).thenReturn(2L);
 
         List<EsportsTournamentResponse> response = service().getPublicTournaments(null, "aog");
@@ -156,7 +268,7 @@ class EsportsTournamentServiceTest {
         assertThat(response).singleElement().satisfies(item -> {
             assertThat(item.franchiseCode()).isEqualTo("AOG");
             assertThat(item.aerTier()).isEqualTo(1);
-            assertThat(item.teamCount()).isEqualTo(4L);
+            assertThat(item.teamCount()).isEqualTo(8L);
         });
         verify(esportsTournamentRepository).findAllForListing(null, "AOG");
     }
@@ -167,7 +279,8 @@ class EsportsTournamentServiceTest {
                 esportsTournamentRepository,
                 esportsTournamentTeamRepository,
                 esportsTeamRepository,
-                esportsMatchRepository
+                esportsMatchRepository,
+                eloCalculationService
         );
     }
 

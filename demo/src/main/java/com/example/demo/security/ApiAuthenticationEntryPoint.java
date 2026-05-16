@@ -18,6 +18,6 @@ public class ApiAuthenticationEntryPoint implements AuthenticationEntryPoint {
                          AuthenticationException authException) throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"Google JWT khong hop le hoac da het han.\"}");
+        response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"Google JWT không hợp lệ hoặc đã hết hạn.\"}");
     }
 }

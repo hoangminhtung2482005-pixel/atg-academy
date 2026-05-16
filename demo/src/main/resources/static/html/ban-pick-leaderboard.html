@@ -9,7 +9,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
-<body data-ban-pick-view="leaderboard">
+<body data-ban-pick-view="leaderboard" data-disable-shared-footer="true">
 <div id="header-placeholder"></div>
 <main class="leader-shell">
     <section class="leader-hero">
@@ -17,15 +17,17 @@
             <span>Solo Ban/Pick</span>
             <h1>Bảng xếp hạng</h1>
         </div>
-        <a href="/ban-pick/profile">Hồ sơ của tôi</a>
+        <a href="/html/ban-pick-solo.html">Vào Solo Ban/Pick</a>
     </section>
     <section class="leader-card" id="leaderboard-root">
         <div class="leader-row">Đang tải bảng xếp hạng...</div>
     </section>
 </main>
 
+<div id="footer-placeholder"></div>
+
 <script src="/js/auth.js?v=30260429-banpick-product"></script>
-<script src="/js/header-loader.js?v=20260507-tierlist-route-cleanup"></script>
+<script src="/js/header-loader.js?v=20260515-banpick-footer-exception"></script>
 <script>
     function escapeHtml(value) {
         return String(value || '').replace(/[&<>"']/g, char => ({
@@ -46,12 +48,12 @@
         }
         root.innerHTML = `
             <div class="leader-row header">
-                <span>Rank</span><span>Người chơi</span><span>Rating</span><span>Win rate</span><span>Most picked</span>
+                <span>Tier</span><span>Người chơi</span><span>Rating</span><span>Win rate</span><span>Most picked</span>
             </div>
             ${players.map((player, index) => `
                 <div class="leader-row">
-                    <span class="rank">#${index + 1}</span>
-                    <span class="player"><strong>${escapeHtml(player.user?.name || 'User')}</strong><span>${player.totalMatches || 0} trận · W/L ${player.wins || 0}/${player.losses || 0}</span></span>
+                    <span class="rank" title="${escapeHtml(player.rankLabel || 'Unranked')}">${escapeHtml(player.rankCode === 'UNRANKED' ? '—' : (player.rankCode || '—'))}</span>
+                    <span class="player"><strong>${escapeHtml(player.user?.name || 'User')}</strong><span>#${index + 1} · ${player.totalMatches || 0} trận · W/L ${player.wins || 0}/${player.losses || 0}</span></span>
                     <span class="metric">${player.rating || 1000}</span>
                     <span class="metric">${player.winRate || 0}%</span>
                     <span class="heroes">${escapeHtml(heroText(player))}</span>

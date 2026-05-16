@@ -1,10 +1,24 @@
 /**
- * header-loader.js - Tải và inject header dùng chung cho toàn bộ dự án.
- * Dùng fetch() để lấy nội dung header.html rồi chèn vào #header-placeholder.
- * Sau khi inject xong, tự động highlight link active, bật dropdown nav
- * và kích hoạt lại Google Sign-In nếu có.
+ * header-loader.js - Shared layout loader cho header, footer va admin sidebar.
+ * Giu nguyen entry script cu de cac page hien tai khong can doi business logic.
  */
 (function () {
+    const sharedLoader = window.__atgSharedLayoutLoader;
+    if (sharedLoader && typeof sharedLoader.loadLayouts === 'function') {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', sharedLoader.loadLayouts, { once: true });
+        } else {
+            sharedLoader.loadLayouts();
+        }
+        return;
+    }
+
+    const PARTIAL_VERSION = '20260515-esports-nav';
+    const partialCache = new Map();
+    let dropdownListenersBound = false;
+    let mobileMenuListenersBound = false;
+    let adminHashListenerBound = false;
+
     function getWikiPageKey() {
         const path = window.location.pathname.toLowerCase();
         const filename = path.substring(path.lastIndexOf('/') + 1).replace('.html', '');
@@ -26,7 +40,9 @@
     function getCurrentPage() {
         const path = window.location.pathname.toLowerCase();
         const filename = path.substring(path.lastIndexOf('/') + 1).replace('.html', '');
-        if (filename === 'esports-leaderboard') return 'esports';
+        if (path === '/esports' || path === '/esports/' || filename === 'esports' || filename === 'esports-leaderboard') {
+            return 'esports-ranking';
+        }
         const wikiPageKey = getWikiPageKey();
         if (wikiPageKey) return wikiPageKey;
         if (path === '/esports/data' || path === '/esports/data/' || filename === 'esports-data') return 'esports-data';
@@ -38,11 +54,12 @@
         return filename || 'index';
     }
 
-    function setActiveLink() {
+    function setActiveHeaderLink() {
         const currentPage = getCurrentPage();
         const isBanPickPage = currentPage.startsWith('ban-pick');
         const isTierListPage = currentPage.startsWith('tier-list');
-        const isWikiPage = currentPage.startsWith('wiki-') || currentPage === 'esports-data';
+        const isWikiPage = currentPage.startsWith('wiki-');
+        const isEsportsPage = currentPage === 'esports-ranking' || currentPage === 'esports-data';
         const navLinks = document.querySelectorAll('nav [data-page]');
 
         navLinks.forEach(link => {
@@ -50,14 +67,21 @@
             const isActive = page === currentPage
                 || (page === 'ban-pick' && isBanPickPage)
                 || (page === 'tier-list' && isTierListPage)
+                || (page === 'esports' && isEsportsPage)
                 || (page === 'wiki' && isWikiPage);
             link.classList.toggle('active', isActive);
+        });
+
+        document.querySelectorAll('.mobile-nav-group').forEach(group => {
+            const trigger = group.querySelector('.mobile-nav-group-trigger');
+            const hasActiveChild = !!group.querySelector('.mobile-nav-sublink.active');
+            group.open = Boolean(hasActiveChild || trigger?.classList.contains('active'));
         });
     }
 
     function setupDropdowns() {
         const dropdowns = document.querySelectorAll('.nav-dropdown');
-        if (!dropdowns.length) return;
+        if (!dropdowns.length || dropdownListenersBound) return;
 
         function closeAllDropdowns() {
             dropdowns.forEach(dropdown => {
@@ -103,34 +127,312 @@
         document.addEventListener('keydown', event => {
             if (event.key === 'Escape') closeAllDropdowns();
         });
+
+        dropdownListenersBound = true;
     }
 
-    function loadHeader() {
-        const placeholder = document.getElementById('header-placeholder');
-        if (!placeholder) return;
+    function setupMobileMenu() {
+        const toggle = document.querySelector('[data-mobile-menu-toggle]');
+        const panel = document.querySelector('[data-mobile-nav]');
+        if (!toggle || !panel || mobileMenuListenersBound) return;
 
-        fetch('/html/header.html?v=20260508-wiki-dropdown', { cache: 'no-store' })
-            .then(response => {
-                if (!response.ok) throw new Error('Không thể tải header.html');
-                return response.text();
-            })
+        function setMobileMenuOpen(isOpen) {
+            panel.hidden = !isOpen;
+            toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        }
+
+        toggle.addEventListener('click', () => {
+            setMobileMenuOpen(panel.hidden);
+        });
+
+        panel.addEventListener('click', event => {
+            if (event.target.closest('a[href]')) {
+                setMobileMenuOpen(false);
+            }
+        });
+
+        document.addEventListener('click', event => {
+            if (panel.hidden) return;
+            if (event.target.closest('[data-mobile-menu-toggle]') || event.target.closest('[data-mobile-nav]')) return;
+            setMobileMenuOpen(false);
+        });
+
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && !panel.hidden) {
+                setMobileMenuOpen(false);
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 768) {
+                setMobileMenuOpen(false);
+            }
+        });
+
+        mobileMenuListenersBound = true;
+    }
+
+    function getCurrentAdminLinkKey() {
+        const path = window.location.pathname.toLowerCase();
+        const filename = path.substring(path.lastIndexOf('/') + 1).replace('.html', '');
+        const hash = window.location.hash.toLowerCase();
+
+        if (filename === 'admin') {
+            switch (hash) {
+                case '#users':
+                    return 'admin-users';
+                case '#guides':
+                    return 'admin-guides';
+                case '#aer-data':
+                case '#teams':
+                case '#esports':
+                    return 'admin-aer-data';
+                case '#dashboard':
+                case '':
+                default:
+                    return 'admin-dashboard';
+            }
+        }
+
+        if (filename === 'admin-esports-data') {
+            switch (hash) {
+                case '#import-management':
+                    return 'admin-esports-import';
+                case '#franchise-management':
+                    return 'admin-esports-franchise';
+                case '#tournament-management':
+                    return 'admin-esports-tournament';
+                case '#match-management':
+                    return 'admin-esports-match';
+                default:
+                    return 'admin-esports-data';
+            }
+        }
+
+        if (filename === 'admin-heroes') return 'admin-heroes';
+        if (filename === 'admin-attributes') return 'admin-attributes';
+        if (filename === 'admin-wiki-data') return 'admin-wiki-data';
+        return '';
+    }
+
+    function setActiveAdminLink() {
+        const currentKey = getCurrentAdminLinkKey();
+        if (!currentKey) return;
+
+        document.querySelectorAll('.admin-sidebar [data-admin-link]').forEach(link => {
+            link.classList.toggle('active', link.getAttribute('data-admin-link') === currentKey);
+        });
+    }
+
+    function bindAdminHashTracking() {
+        if (adminHashListenerBound) return;
+        window.addEventListener('hashchange', setActiveAdminLink);
+        adminHashListenerBound = true;
+    }
+
+    function fetchPartial(url) {
+        if (!partialCache.has(url)) {
+            partialCache.set(url, fetch(url + '?v=' + PARTIAL_VERSION, { cache: 'no-store' })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Khong the tai ' + url);
+                    }
+                    return response.text();
+                }));
+        }
+
+        return partialCache.get(url);
+    }
+
+    function resolveTargets(config) {
+        const targets = [];
+
+        if (config.selector) {
+            document.querySelectorAll(config.selector).forEach(node => targets.push(node));
+        }
+
+        if (config.dataInclude) {
+            document.querySelectorAll('[data-include="' + config.dataInclude + '"]').forEach(node => targets.push(node));
+        }
+
+        return targets.filter((node, index, list) => node && list.indexOf(node) === index);
+    }
+
+    function injectPartial(config) {
+        const targets = resolveTargets(config).filter(node => node.dataset.layoutLoaded !== 'true');
+        if (!targets.length) return Promise.resolve(false);
+
+        return fetchPartial(config.url)
             .then(html => {
-                placeholder.innerHTML = html;
-                setActiveLink();
-                setupDropdowns();
-                if (typeof renderGoogleButton === 'function') {
-                    renderGoogleButton();
+                let injected = false;
+
+                targets.forEach(target => {
+                    if (target.dataset.layoutLoaded === 'true') return;
+
+                    target.innerHTML = html;
+                    target.dataset.layoutLoaded = 'true';
+                    injected = true;
+
+                    if (typeof config.afterInject === 'function') {
+                        config.afterInject(target);
+                    }
+                });
+
+                if (injected && config.eventName) {
+                    document.dispatchEvent(new CustomEvent(config.eventName));
                 }
-                document.dispatchEvent(new CustomEvent('headerLoaded'));
+
+                return injected;
             })
-            .catch(err => {
-                console.error('Header load error:', err);
+            .catch(error => {
+                console.error((config.label || 'Layout') + ' load error:', error);
+                return false;
             });
     }
 
+    function loadHeader() {
+        return injectPartial({
+            selector: '#header-placeholder',
+            dataInclude: 'header',
+            url: '/html/header.html',
+            label: 'Header',
+            eventName: 'headerLoaded',
+            afterInject: () => {
+                setActiveHeaderLink();
+                setupDropdowns();
+                setupMobileMenu();
+                if (typeof renderGoogleButton === 'function') {
+                    renderGoogleButton();
+                }
+            }
+        });
+    }
+
+    function isSharedFooterDisabled() {
+        const body = document.body;
+        if (!body) return false;
+
+        return body.dataset.disableSharedFooter === 'true'
+            || body.classList.contains('no-shared-footer');
+    }
+
+    function removeSharedFooter() {
+        resolveTargets({
+            selector: '#footer-placeholder',
+            dataInclude: 'footer'
+        }).forEach(target => target.remove());
+
+        document.querySelectorAll('.site-footer').forEach(footer => {
+            const placeholder = footer.closest('#footer-placeholder, [data-include="footer"]');
+            footer.remove();
+            if (placeholder && !placeholder.hasChildNodes()) {
+                placeholder.remove();
+            }
+        });
+
+        document.querySelectorAll('body > footer').forEach(footer => {
+            footer.remove();
+        });
+    }
+
+    function loadFooter() {
+        if (isSharedFooterDisabled()) {
+            removeSharedFooter();
+            return Promise.resolve(false);
+        }
+
+        const placeholderTargets = resolveTargets({
+            selector: '#footer-placeholder',
+            dataInclude: 'footer'
+        }).filter(node => node.dataset.layoutLoaded !== 'true');
+
+        if (placeholderTargets.length) {
+            return injectPartial({
+                selector: '#footer-placeholder',
+                dataInclude: 'footer',
+                url: '/html/footer.html',
+                label: 'Footer',
+                eventName: 'footerLoaded'
+            });
+        }
+
+        const legacyFooter = document.querySelector('body > footer:not(.site-footer)');
+        if (!legacyFooter || legacyFooter.querySelector('#last-updated, #leaderboard-updated')) {
+            return Promise.resolve(false);
+        }
+
+        return fetchPartial('/html/footer.html')
+            .then(html => {
+                legacyFooter.outerHTML = html;
+                document.dispatchEvent(new CustomEvent('footerLoaded'));
+                return true;
+            })
+            .catch(error => {
+                console.error('Footer load error:', error);
+                return false;
+            });
+    }
+
+    function loadAdminSidebar() {
+        const placeholderTargets = resolveTargets({
+            selector: '#admin-sidebar-placeholder',
+            dataInclude: 'admin-sidebar'
+        }).filter(node => node.dataset.layoutLoaded !== 'true');
+
+        if (placeholderTargets.length) {
+            return injectPartial({
+                selector: '#admin-sidebar-placeholder',
+                dataInclude: 'admin-sidebar',
+                url: '/html/admin-sidebar.html',
+                label: 'Admin sidebar',
+                eventName: 'adminSidebarLoaded',
+                afterInject: () => {
+                    setActiveAdminLink();
+                    bindAdminHashTracking();
+                }
+            });
+        }
+
+        const legacySidebar = document.querySelector('body[data-page^="admin"] .admin-sidebar, body[data-page="admin-dashboard"] aside');
+        if (!legacySidebar || legacySidebar.dataset.layoutLoaded === 'true') {
+            return Promise.resolve(false);
+        }
+
+        return fetchPartial('/html/admin-sidebar.html')
+            .then(html => {
+                legacySidebar.outerHTML = html;
+                const injectedSidebar = document.querySelector('.admin-sidebar');
+                if (injectedSidebar) {
+                    injectedSidebar.dataset.layoutLoaded = 'true';
+                }
+                setActiveAdminLink();
+                bindAdminHashTracking();
+                document.dispatchEvent(new CustomEvent('adminSidebarLoaded'));
+                return true;
+            })
+            .catch(error => {
+                console.error('Admin sidebar load error:', error);
+                return false;
+            });
+    }
+
+    function loadLayouts() {
+        return Promise.allSettled([
+            loadHeader(),
+            loadFooter(),
+            loadAdminSidebar()
+        ]);
+    }
+
+    window.__atgSharedLayoutLoader = {
+        loadLayouts: loadLayouts,
+        setActiveAdminLink: setActiveAdminLink,
+        setActiveHeaderLink: setActiveHeaderLink
+    };
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', loadHeader);
+        document.addEventListener('DOMContentLoaded', loadLayouts, { once: true });
     } else {
-        loadHeader();
+        loadLayouts();
     }
 })();

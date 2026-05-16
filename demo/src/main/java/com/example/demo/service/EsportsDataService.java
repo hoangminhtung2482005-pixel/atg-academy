@@ -109,18 +109,34 @@ public class EsportsDataService {
         return getTopHeroBanStats(tournamentId, tournamentName, limit, BanPickTeamSide.BLUE);
     }
 
+    public List<EsportsHeroBanStatResponse> getTopRedBannedHeroes(String tournamentName, Integer limit) {
+        return getTopRedBannedHeroes(null, tournamentName, limit);
+    }
+
+    public List<EsportsHeroBanStatResponse> getTopRedBannedHeroes(Long tournamentId, String tournamentName, Integer limit) {
+        return getTopHeroBanStats(tournamentId, tournamentName, limit, BanPickTeamSide.RED);
+    }
+
     public List<EsportsHeroStatResponse> getHeroStats(String tournamentName) {
         return getHeroStats(null, tournamentName);
     }
 
     public List<EsportsHeroStatResponse> getHeroStats(Long tournamentId, String tournamentName) {
-        TournamentScope tournamentScope = resolveTournamentScope(tournamentId, tournamentName);
+        return getHeroStats(tournamentId, tournamentName, null, null, null);
+    }
+
+    public List<EsportsHeroStatResponse> getHeroStats(Long tournamentId,
+                                                      String tournamentName,
+                                                      String teamCode,
+                                                      LocalDate dateFrom,
+                                                      LocalDate dateTo) {
+        AnalyticsFilter filter = resolveAnalyticsFilter(tournamentId, tournamentName, teamCode, dateFrom, dateTo);
         List<EsportsGameDraft> drafts = esportsGameDraftRepository.findAllForAnalyticsScope(
-                tournamentScope.tournamentId(),
-                tournamentScope.tournamentTier(),
-                null,
-                null,
-                null
+                filter.tournamentId(),
+                filter.tournamentTier(),
+                filter.teamCode(),
+                filter.dateFrom(),
+                filter.dateTo()
         );
         Map<Long, Hero> heroesById = loadHeroesForDrafts(drafts);
         return buildHeroStats(drafts, heroesById);
@@ -191,7 +207,7 @@ public class EsportsDataService {
                                                    LocalDate dateFrom,
                                                    LocalDate dateTo) {
         if (dateFrom != null && dateTo != null && dateFrom.isAfter(dateTo)) {
-            throw new IllegalArgumentException("date range khong hop le.");
+            throw new IllegalArgumentException("date range không hợp lệ.");
         }
 
         TournamentScope tournamentScope = resolveTournamentScope(tournamentId, tournamentName);
@@ -208,10 +224,13 @@ public class EsportsDataService {
 
     private List<EsportsHeroStatResponse> buildHeroStats(List<EsportsGameDraft> drafts, Map<Long, Hero> heroesById) {
         Map<Long, HeroStatAccumulator> statsByHeroId = new LinkedHashMap<>();
+        long totalGames = drafts.size();
 
         for (EsportsGameDraft draft : drafts) {
             boolean blueWon = didSideWin(draft, BanPickTeamSide.BLUE);
             boolean redWon = didSideWin(draft, BanPickTeamSide.RED);
+            boolean blueLost = didSideLose(draft, BanPickTeamSide.BLUE);
+            boolean redLost = didSideLose(draft, BanPickTeamSide.RED);
 
             accumulateBan(statsByHeroId, heroesById, draft.getBlueBan1HeroId(), BanPickTeamSide.BLUE);
             accumulateBan(statsByHeroId, heroesById, draft.getBlueBan2HeroId(), BanPickTeamSide.BLUE);
@@ -225,21 +244,21 @@ public class EsportsDataService {
             accumulateBan(statsByHeroId, heroesById, draft.getRedBan4HeroId(), BanPickTeamSide.RED);
             accumulateBan(statsByHeroId, heroesById, draft.getRedBan5HeroId(), BanPickTeamSide.RED);
 
-            accumulatePick(statsByHeroId, heroesById, draft.getBlueDslHeroId(), BanPickTeamSide.BLUE, blueWon);
-            accumulatePick(statsByHeroId, heroesById, draft.getBlueJglHeroId(), BanPickTeamSide.BLUE, blueWon);
-            accumulatePick(statsByHeroId, heroesById, draft.getBlueMidHeroId(), BanPickTeamSide.BLUE, blueWon);
-            accumulatePick(statsByHeroId, heroesById, draft.getBlueAdlHeroId(), BanPickTeamSide.BLUE, blueWon);
-            accumulatePick(statsByHeroId, heroesById, draft.getBlueSupHeroId(), BanPickTeamSide.BLUE, blueWon);
+            accumulatePick(statsByHeroId, heroesById, draft.getBlueDslHeroId(), BanPickTeamSide.BLUE, blueWon, blueLost);
+            accumulatePick(statsByHeroId, heroesById, draft.getBlueJglHeroId(), BanPickTeamSide.BLUE, blueWon, blueLost);
+            accumulatePick(statsByHeroId, heroesById, draft.getBlueMidHeroId(), BanPickTeamSide.BLUE, blueWon, blueLost);
+            accumulatePick(statsByHeroId, heroesById, draft.getBlueAdlHeroId(), BanPickTeamSide.BLUE, blueWon, blueLost);
+            accumulatePick(statsByHeroId, heroesById, draft.getBlueSupHeroId(), BanPickTeamSide.BLUE, blueWon, blueLost);
 
-            accumulatePick(statsByHeroId, heroesById, draft.getRedDslHeroId(), BanPickTeamSide.RED, redWon);
-            accumulatePick(statsByHeroId, heroesById, draft.getRedJglHeroId(), BanPickTeamSide.RED, redWon);
-            accumulatePick(statsByHeroId, heroesById, draft.getRedMidHeroId(), BanPickTeamSide.RED, redWon);
-            accumulatePick(statsByHeroId, heroesById, draft.getRedAdlHeroId(), BanPickTeamSide.RED, redWon);
-            accumulatePick(statsByHeroId, heroesById, draft.getRedSupHeroId(), BanPickTeamSide.RED, redWon);
+            accumulatePick(statsByHeroId, heroesById, draft.getRedDslHeroId(), BanPickTeamSide.RED, redWon, redLost);
+            accumulatePick(statsByHeroId, heroesById, draft.getRedJglHeroId(), BanPickTeamSide.RED, redWon, redLost);
+            accumulatePick(statsByHeroId, heroesById, draft.getRedMidHeroId(), BanPickTeamSide.RED, redWon, redLost);
+            accumulatePick(statsByHeroId, heroesById, draft.getRedAdlHeroId(), BanPickTeamSide.RED, redWon, redLost);
+            accumulatePick(statsByHeroId, heroesById, draft.getRedSupHeroId(), BanPickTeamSide.RED, redWon, redLost);
         }
 
         return statsByHeroId.values().stream()
-                .map(HeroStatAccumulator::toResponse)
+                .map(accumulator -> accumulator.toResponse(totalGames))
                 .sorted(heroStatComparator())
                 .toList();
     }
@@ -263,7 +282,8 @@ public class EsportsDataService {
                                 Map<Long, Hero> heroesById,
                                 Long heroId,
                                 BanPickTeamSide teamSide,
-                                boolean teamWon) {
+                                boolean teamWon,
+                                boolean teamLost) {
         if (heroId == null) {
             return;
         }
@@ -272,7 +292,7 @@ public class EsportsDataService {
             return;
         }
         statsByHeroId.computeIfAbsent(heroId, ignored -> new HeroStatAccumulator(hero))
-                .applyPick(teamSide, teamWon);
+                .applyPick(teamSide, teamWon, teamLost);
     }
 
     private List<EsportsHeroBanStatResponse> buildTopBannedHeroStats(List<EsportsGameDraft> drafts,
@@ -585,7 +605,7 @@ public class EsportsDataService {
     private TournamentScope resolveTournamentScope(Long tournamentId, String tournamentName) {
         if (tournamentId != null) {
             EsportsTournament tournament = esportsTournamentRepository.findById(tournamentId)
-                    .orElseThrow(() -> new IllegalArgumentException("tournamentId khong hop le."));
+                    .orElseThrow(() -> new IllegalArgumentException("tournamentId không hợp lệ."));
             return new TournamentScope(tournament.getId(), null, tournament.getName());
         }
 
@@ -618,7 +638,7 @@ public class EsportsDataService {
             }
         }
 
-        throw new IllegalArgumentException("tournamentName khong hop le.");
+        throw new IllegalArgumentException("tournamentName không hợp lệ.");
     }
 
     private String resolveLegacyTournamentLabel(String tournamentTier) {
@@ -682,6 +702,17 @@ public class EsportsDataService {
         return winnerId.equals(sideTeamId);
     }
 
+    private boolean didSideLose(EsportsGameDraft draft, BanPickTeamSide side) {
+        Long winnerId = safeEntityId(draft.getWinnerTeam());
+        if (winnerId == null) {
+            return false;
+        }
+        Long sideTeamId = side == BanPickTeamSide.BLUE
+                ? safeEntityId(draft.getBlueTeam())
+                : safeEntityId(draft.getRedTeam());
+        return sideTeamId != null && !winnerId.equals(sideTeamId);
+    }
+
     private int sanitizeLimit(Integer limit) {
         if (limit == null) {
             return DEFAULT_LIMIT;
@@ -691,9 +722,8 @@ public class EsportsDataService {
 
     private static Comparator<EsportsHeroStatResponse> heroStatComparator() {
         return Comparator
-                .comparing(EsportsHeroStatResponse::presenceCount, Comparator.reverseOrder())
-                .thenComparing(EsportsHeroStatResponse::pickCount, Comparator.reverseOrder())
-                .thenComparing(EsportsHeroStatResponse::banCount, Comparator.reverseOrder())
+                .comparing(EsportsHeroStatResponse::pickCount, Comparator.reverseOrder())
+                .thenComparing(EsportsHeroStatResponse::presenceCount, Comparator.reverseOrder())
                 .thenComparing(response -> safeText(response.heroName()))
                 .thenComparing(response -> response.heroId() == null ? Long.MAX_VALUE : response.heroId());
     }
@@ -777,10 +807,13 @@ public class EsportsDataService {
         private final String heroAvatarUrl;
         private long pickCount;
         private long pickWins;
+        private long pickLosses;
         private long bluePickCount;
         private long blueWins;
+        private long blueLosses;
         private long redPickCount;
         private long redWins;
+        private long redLosses;
         private long banCount;
         private long blueBanCount;
         private long redBanCount;
@@ -800,29 +833,38 @@ public class EsportsDataService {
             }
         }
 
-        private void applyPick(BanPickTeamSide side, boolean won) {
+        private void applyPick(BanPickTeamSide side, boolean won, boolean lost) {
             pickCount++;
             if (side == BanPickTeamSide.BLUE) {
                 bluePickCount++;
                 if (won) {
                     blueWins++;
+                } else if (lost) {
+                    blueLosses++;
                 }
             } else if (side == BanPickTeamSide.RED) {
                 redPickCount++;
                 if (won) {
                     redWins++;
+                } else if (lost) {
+                    redLosses++;
                 }
             }
 
             if (won) {
                 pickWins++;
+            } else if (lost) {
+                pickLosses++;
             }
         }
 
-        private EsportsHeroStatResponse toResponse() {
-            long pickLosses = Math.max(0L, pickCount - pickWins);
-            long blueLosses = Math.max(0L, bluePickCount - blueWins);
-            long redLosses = Math.max(0L, redPickCount - redWins);
+        private EsportsHeroStatResponse toResponse(long totalGames) {
+            long presenceCount = pickCount + banCount;
+            double pickRate = calculateWinRate(pickCount, totalGames);
+            double bluePickWinRate = calculateWinRate(blueWins, bluePickCount);
+            double redPickWinRate = calculateWinRate(redWins, redPickCount);
+            double banRate = calculateWinRate(banCount, totalGames);
+            double presenceRate = calculateWinRate(presenceCount, totalGames);
 
             return new EsportsHeroStatResponse(
                     heroId,
@@ -835,15 +877,25 @@ public class EsportsDataService {
                     bluePickCount,
                     blueWins,
                     blueLosses,
-                    calculateWinRate(blueWins, bluePickCount),
+                    bluePickWinRate,
                     redPickCount,
                     redWins,
                     redLosses,
-                    calculateWinRate(redWins, redPickCount),
+                    redPickWinRate,
                     banCount,
                     blueBanCount,
                     redBanCount,
-                    pickCount + banCount
+                    presenceCount,
+                    heroAvatarUrl,
+                    pickRate,
+                    blueWins,
+                    blueLosses,
+                    bluePickWinRate,
+                    redWins,
+                    redLosses,
+                    redPickWinRate,
+                    banRate,
+                    presenceRate
             );
         }
     }

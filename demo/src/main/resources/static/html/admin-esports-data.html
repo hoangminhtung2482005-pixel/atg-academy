@@ -5,14 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Esports Data Admin - ATG Academy</title>
     <link rel="stylesheet" href="/css/style.css?v=20260507-css-modules">
-    <link rel="stylesheet" href="/css/admin.css?v=20260512-esports-game-drafts">
+    <link rel="stylesheet" href="/css/admin.css?v=20260514-reset-danger-zone">
 </head>
 <body data-page="admin-esports-data">
 <div id="toast" class="toast-box"></div>
 
-<aside class="admin-sidebar">
+<div id="admin-sidebar-placeholder"></div>
+<aside class="admin-sidebar" hidden>
     <div class="sidebar-brand">
-        <a href="/html/index.html" class="back-link"><- Ve trang chu</a>
+        <a href="/html/index.html" class="back-link">← Về trang chủ</a>
         <div class="brand-row">
             <div class="brand-mark">ATG</div>
             <div>
@@ -23,12 +24,12 @@
     </div>
 
     <nav class="sidebar-nav">
-        <a class="nav-item" href="/html/admin.html">Tong quan</a>
-        <a class="nav-item" href="/html/admin-heroes.html">Quan ly Tuong</a>
-        <a class="nav-item" href="/html/admin-attributes.html">Dac diem tuong</a>
-        <a class="nav-item" href="/html/admin-wiki-data.html">Bo tro &amp; Phu hieu</a>
-        <a class="nav-item" href="/html/admin.html#guides">Cam nang</a>
-        <a class="nav-item" href="/html/admin.html#users">Nguoi dung</a>
+        <a class="nav-item" href="/html/admin.html">Tổng quan</a>
+        <a class="nav-item" href="/html/admin-heroes.html">Quản lý Tướng</a>
+        <a class="nav-item" href="/html/admin-attributes.html">Đặc điểm tướng</a>
+        <a class="nav-item" href="/html/admin-wiki-data.html">Bổ trợ &amp; Phù hiệu</a>
+        <a class="nav-item" href="/html/admin.html#guides">Cẩm nang</a>
+        <a class="nav-item" href="/html/admin.html#users">Người dùng</a>
         <a class="nav-item" href="/html/admin.html#aer-data">AER Data</a>
         <a class="nav-item active" href="/html/admin-esports-data.html">Esports Data</a>
     </nav>
@@ -44,33 +45,36 @@
         <div class="admin-page-header">
             <div>
                 <p class="eyebrow">Direction B Refactor</p>
-                <h2>Quan ly du lieu tung van dau theo game draft record</h2>
+                <h2>Quản lý dữ liệu từng ván đấu theo game draft record</h2>
                 <p>
-                    Trang nay giu <strong>esports_matches</strong> lam series cha, con du lieu chi tiet moi van
-                    duoc quan ly qua <strong>esports_game_drafts</strong>. Admin chi can nhap Blue/Red, winner,
-                    duration, bans va final lineup theo lane.
+                    Trang này giữ <strong>esports_matches</strong> làm series cha, còn dữ liệu chi tiết mỗi ván
+                    được quản lý qua <strong>esports_game_drafts</strong>. Admin chỉ cần nhập Blue/Red, winner,
+                    duration, bans và final lineup theo lane.
                 </p>
             </div>
             <div class="header-actions">
-                <button id="btn-add-draft" type="button" class="btn btn-light">Them van</button>
-                <button id="btn-refresh-admin-esports" type="button" class="btn btn-light">Lam moi</button>
-                <button id="btn-export-admin-esports" type="button" class="btn btn-light">Xuat CSV</button>
-                <a class="btn btn-primary" href="/esports/data" target="_blank" rel="noopener">Mo Esports Data public</a>
+                <button id="btn-add-draft" type="button" class="btn btn-light">Thêm ván</button>
+                <button id="btn-refresh-admin-esports" type="button" class="btn btn-light">Làm mới</button>
+                <button id="btn-export-admin-esports" type="button" class="btn btn-light">Xuất CSV</button>
+                <a class="btn btn-primary" href="/esports/data" target="_blank" rel="noopener">Mở Esports Data public</a>
             </div>
         </div>
 
-        <section class="admin-section">
+        <section id="import-management" class="admin-section">
             <div class="section-header">
                 <div>
                     <h3>Import Excel / CSV</h3>
                     <p>
-                        Upload file mau export draft, preview map tournament/team/hero truoc, xem danh sach loi,
-                        roi moi Confirm Import de ghi vao <code>esports_matches</code> + <code>esports_game_drafts</code>.
+                        Upload file draft theo từng ván, preview map tournament/team/hero trước, xem danh sách lỗi,
+                        rồi mới áp dụng vào DB. Hệ thống sẽ group các dòng game thành 1 series cha theo
+                        <code>Date + Tournament + Stage + team pair</code> trước khi ghi vào
+                        <code>esports_matches</code> + <code>esports_game_drafts</code>, sau do recalculate
+                        xếp hạng AER/Elo trực tiếp từ DB theo scope <code>affectedMatchIds</code>.
                     </p>
                 </div>
                 <div class="header-actions">
                     <button id="btn-import-preview" type="button" class="btn btn-light">Preview Import</button>
-                    <button id="btn-import-confirm" type="button" class="btn btn-primary" disabled>Confirm Import</button>
+                    <button id="btn-import-confirm" type="button" class="btn btn-primary" disabled>Áp dụng vào DB</button>
                     <button id="btn-import-reset" type="button" class="btn btn-light">Reset Preview</button>
                 </div>
             </div>
@@ -80,7 +84,7 @@
                     <div class="form-pane-header">
                         <div>
                             <h4>Upload file</h4>
-                            <p>Ho tro <code>.csv</code>, <code>.xlsx</code>, <code>.xls</code>. Tournament phai ton tai truoc trong admin, he thong khong tu doan tournament moi.</p>
+                            <p>Hỗ trợ <code>.csv</code>, <code>.xlsx</code>, <code>.xls</code>. Tournament phải tồn tại trước trong admin, hệ thống không tự đoán tournament mới.</p>
                         </div>
                     </div>
                     <div id="import-form-error" class="inline-error hidden"></div>
@@ -88,21 +92,21 @@
                         <label class="field">
                             <span>File import *</span>
                             <input id="import-file-input" type="file" accept=".csv,.xlsx,.xls">
-                            <small class="field-help">Moi dong file = 1 record <code>esports_game_drafts</code>. Cot <code>Match</code> duoc doc nhu <code>game_number</code>.</small>
+                            <small class="field-help">Mỗi dòng file = 1 record <code>esports_game_drafts</code>. Cột <code>Match</code> được đọc như <code>game_number</code>; cột <code>Stage</code> nếu có sẽ được dùng để resolve series, nếu thiếu thì fallback <code>bang</code>.</small>
                         </label>
                         <label class="toggle-field">
                             <input id="import-overwrite-checkbox" type="checkbox">
-                            <span>Cho phep overwrite duplicate <code>(match_id, game_number)</code> sau khi preview</span>
+                            <span>Cho phép overwrite duplicate <code>(match_id, game_number)</code> sau khi preview</span>
                         </label>
                         <div id="import-file-meta" class="selected-summary empty">
-                            Chua chon file import.
+                            Chưa chọn file import.
                         </div>
                     </div>
                 </div>
 
                 <div class="panel-stack">
                     <div id="import-preview-status" class="selected-summary empty">
-                        Preview chua duoc tao. Chon file, bam Preview Import, kiem tra loi roi moi Confirm.
+                        Preview chưa được tạo. Chọn file, bấm Preview Import, kiểm tra lỗi rồi mới áp dụng vào DB.
                     </div>
 
                     <div class="verify-card">
@@ -110,7 +114,7 @@
                         <div id="import-preview-errors-list" class="verify-items">
                             <div class="verify-item">
                                 <span class="verify-item-label">Status</span>
-                                <span class="verify-item-value">Chua co loi nao de hien thi.</span>
+                                <span class="verify-item-value">Chưa có lỗi nào để hiển thị.</span>
                             </div>
                         </div>
                     </div>
@@ -120,7 +124,7 @@
                         <div id="import-preview-warnings-list" class="verify-items">
                             <div class="verify-item">
                                 <span class="verify-item-label">Status</span>
-                                <span class="verify-item-value">Chua co canh bao nao.</span>
+                                <span class="verify-item-value">Chưa có cảnh báo nào.</span>
                             </div>
                         </div>
                     </div>
@@ -130,8 +134,8 @@
             <div id="import-preview-summary" class="summary-grid import-preview-summary-grid">
                 <article class="summary-card">
                     <span class="summary-label">Preview</span>
-                    <strong class="summary-value">0 dong</strong>
-                    <p class="summary-note">Upload file de xem thong ke import.</p>
+                    <strong class="summary-value">0 dòng</strong>
+                    <p class="summary-note">Upload file để xem thống kê import.</p>
                 </article>
             </div>
 
@@ -149,9 +153,15 @@
                     </tr>
                     </thead>
                     <tbody id="import-preview-tbody">
-                    <tr><td colspan="7" class="table-state">Chua co preview import.</td></tr>
+                    <tr><td colspan="7" class="table-state">Chưa có preview import.</td></tr>
                     </tbody>
                 </table>
+            </div>
+
+            <div id="import-confirm-result" class="panel-stack">
+                <div class="selected-summary empty">
+                    Trạng thái import vào DB và cập nhật dữ liệu AER sẽ hiện ở đây sau khi bấm <strong>Áp dụng vào DB</strong>.
+                </div>
             </div>
         </section>
 
@@ -159,19 +169,19 @@
             <div class="section-header">
                 <div>
                     <h3>Tournament Management</h3>
-                    <p>Quan ly franchise, tournament, roster tham gia, va field <code>aer_tier</code> dung lam nguon tier cho workflow AER JSON o task sau.</p>
+                    <p>Quản lý franchise, tournament, roster tham gia, và field <code>aer_tier</code> dùng làm nguồn tier chuẩn cho ranking AER/Elo đọc trực tiếp từ DB sau import.</p>
                 </div>
                 <div class="header-actions">
-                    <button id="btn-refresh-tournament-catalog" type="button" class="btn btn-light">Lam moi tournament</button>
+                    <button id="btn-refresh-tournament-catalog" type="button" class="btn btn-light">Làm mới tournament</button>
                 </div>
             </div>
 
             <div class="admin-catalog-grid">
-                <div class="panel-stack">
+                <div id="franchise-management" class="panel-stack">
                     <div class="section-header compact">
                         <div>
                             <h4>Franchise list</h4>
-                            <p>Seed mac dinh gom RPL, AOG, GCS, APL, AIC.</p>
+                            <p>Seed mặc định gồm RPL, AOG, GCS, APL, AIC.</p>
                         </div>
                         <span id="franchise-count-pill" class="count-pill">0 franchise</span>
                     </div>
@@ -188,15 +198,15 @@
                             </tr>
                             </thead>
                             <tbody id="franchises-tbody">
-                            <tr><td colspan="6" class="table-state">Dang tai franchise...</td></tr>
+                            <tr><td colspan="6" class="table-state">Đang tải franchise...</td></tr>
                             </tbody>
                         </table>
                     </div>
                     <div class="form-card admin-form-pane">
                         <div class="form-pane-header">
                             <div>
-                                <h4 id="franchise-form-title">Tao franchise moi</h4>
-                                <p>Code unique, tier level va region duoc dung de gom cac tournament theo he thong giai dau.</p>
+                                <h4 id="franchise-form-title">Tạo franchise mới</h4>
+                                <p>Code unique, tier level và region được dùng để gom các tournament theo hệ thống giải đấu.</p>
                             </div>
                         </div>
                         <div id="franchise-form-error" class="inline-error hidden"></div>
@@ -232,25 +242,25 @@
                             </label>
                             <label class="field">
                                 <span>Description</span>
-                                <textarea id="ff-description" rows="3" placeholder="Mo ta ngan cho franchise"></textarea>
+                                <textarea id="ff-description" rows="3" placeholder="Mô tả ngắn cho franchise"></textarea>
                             </label>
                             <label class="toggle-field">
                                 <input id="ff-active" type="checkbox" checked>
-                                <span>Franchise dang active</span>
+                                <span>Franchise đang active</span>
                             </label>
                             <div class="modal-actions">
                                 <button id="btn-franchise-reset" type="button" class="btn btn-light">Reset</button>
-                                <button id="btn-franchise-submit" type="submit" class="btn btn-primary">Luu franchise</button>
+                                <button id="btn-franchise-submit" type="submit" class="btn btn-primary">Lưu franchise</button>
                             </div>
                         </form>
                     </div>
                 </div>
 
-                <div class="panel-stack">
+                <div id="tournament-management" class="panel-stack">
                     <div class="section-header compact">
                         <div>
                             <h4>Tournament list</h4>
-                            <p>Tung mua giai cu the thuoc franchise, co slug unique, <code>tierLevel</code> he thong giai, va <code>aerTier</code> cho output AER.</p>
+                            <p>Từng mùa giải cụ thể thuộc franchise, có slug unique, <code>tierLevel</code> hệ thống giải, và <code>aerTier</code> cho output AER.</p>
                         </div>
                         <span id="tournament-count-pill" class="count-pill">0 tournament</span>
                     </div>
@@ -277,15 +287,15 @@
                             </tr>
                             </thead>
                             <tbody id="tournaments-tbody">
-                            <tr><td colspan="10" class="table-state">Dang tai tournament...</td></tr>
+                            <tr><td colspan="10" class="table-state">Đang tải tournament...</td></tr>
                             </tbody>
                         </table>
                     </div>
                     <div class="form-card admin-form-pane">
                         <div class="form-pane-header">
-                            <div>
-                                <h4 id="tournament-form-title">Tao tournament moi</h4>
-                                <p>Gan tournament vao franchise, quan ly <code>tierLevel</code> he thong, va chot <code>aerTier</code> de task CSV -&gt; AER JSON khong phai hardcode tier.</p>
+                        <div>
+                            <h4 id="tournament-form-title">Tạo tournament mới</h4>
+                            <p>Gán tournament vào franchise, quản lý <code>tierLevel</code> hệ thống, và chốt <code>aerTier</code> để ranking AER đọc từ DB không phải hardcode tier.</p>
                             </div>
                         </div>
                         <div id="tournament-form-error" class="inline-error hidden"></div>
@@ -330,12 +340,16 @@
                                 <label class="field">
                                     <span>Tier level</span>
                                     <input id="tf-tier-level" type="text" placeholder="T1">
-                                    <small class="field-help">Tier he thong giai, vi du <code>T0</code> / <code>T1</code>. Khong thay the cho AER tier.</small>
+                                    <small class="field-help">Tier hệ thống giải, ví dụ <code>T0</code> / <code>T1</code>. Không thay thế cho AER tier.</small>
                                 </label>
                                 <label class="field">
                                     <span>AER Tier *</span>
-                                    <input id="tf-aer-tier" type="number" min="1" step="1" value="1" required placeholder="1">
-                                    <small class="field-help">Tier so se duoc task sau lookup tu <code>esports_tournaments.aer_tier</code> de convert CSV sang AER JSON.</small>
+                                    <select id="tf-aer-tier" required>
+                                        <option value="0">T0 / Tier 0</option>
+                                        <option value="1" selected>T1 / Tier 1</option>
+                                        <option value="2">T2 / Tier 2</option>
+                                    </select>
+                                    <small class="field-help">Tier hợp lệ gồm <code>T0/T1/T2</code> tương ứng <code>0/1/2</code>. Tier của tournament là nguồn chuẩn khi tính AER/Elo. Match link qua <code>tournament_id</code> sẽ dùng <code>esports_tournaments.aer_tier</code>; <code>esports_matches.tier</code> chỉ là fallback/legacy snapshot nếu chưa có tournament.</small>
                                 </label>
                             </div>
                             <div class="form-grid two">
@@ -354,11 +368,11 @@
                             </label>
                             <label class="field">
                                 <span>Description</span>
-                                <textarea id="tf-description" rows="3" placeholder="Mo ta ngan cho tournament"></textarea>
+                                <textarea id="tf-description" rows="3" placeholder="Mô tả ngắn cho tournament"></textarea>
                             </label>
                             <div class="modal-actions">
                                 <button id="btn-tournament-reset" type="button" class="btn btn-light">Reset</button>
-                                <button id="btn-tournament-submit" type="submit" class="btn btn-primary">Luu tournament</button>
+                                <button id="btn-tournament-submit" type="submit" class="btn btn-primary">Lưu tournament</button>
                             </div>
                         </form>
                     </div>
@@ -368,17 +382,17 @@
                     <div class="section-header compact">
                         <div>
                             <h4>Tournament teams</h4>
-                            <p>Chon tournament, xem team da tham gia, va them/xoa mapping team cho mua giai do.</p>
+                            <p>Chọn tournament, xem team đã tham gia, và thêm/xóa mapping team cho mùa giải đó.</p>
                         </div>
                         <span id="tournament-team-count-pill" class="count-pill">0 team</span>
                     </div>
                     <div id="tournament-teams-error" class="error-state hidden"></div>
                     <label class="field">
-                        <span>Tournament dang quan ly</span>
+                        <span>Tournament đang quản lý</span>
                         <select id="tournament-team-selector"></select>
                     </label>
                     <div id="selected-tournament-card" class="selected-summary empty">
-                        Chon tournament de xem franchise, AER Tier va canh bao du lieu.
+                        Chọn tournament để xem franchise, AER Tier và cảnh báo dữ liệu.
                     </div>
                     <div class="admin-table-card">
                         <table class="admin-table admin-inline-table">
@@ -393,15 +407,15 @@
                             </tr>
                             </thead>
                             <tbody id="tournament-teams-tbody">
-                            <tr><td colspan="6" class="table-state">Chon tournament de tai team.</td></tr>
+                            <tr><td colspan="6" class="table-state">Chọn tournament để tải team.</td></tr>
                             </tbody>
                         </table>
                     </div>
                     <div class="form-card admin-form-pane">
                         <div class="form-pane-header">
                             <div>
-                                <h4>Them team vao tournament</h4>
-                                <p>Khong cho add trung team vao cung 1 tournament.</p>
+                                <h4>Thêm team vào tournament</h4>
+                                <p>Không cho add trùng team vào cùng 1 tournament.</p>
                             </div>
                         </div>
                         <form id="tournament-team-form" class="form-grid">
@@ -431,7 +445,7 @@
                             </div>
                             <label class="field">
                                 <span>Note</span>
-                                <textarea id="ttf-note" rows="3" placeholder="Ghi chu them neu can"></textarea>
+                                <textarea id="ttf-note" rows="3" placeholder="Ghi chú thêm nếu cần"></textarea>
                             </label>
                             <div class="modal-actions">
                                 <button id="btn-tournament-team-reset" type="button" class="btn btn-light">Reset</button>
@@ -443,35 +457,35 @@
             </div>
         </section>
 
-        <section class="admin-section">
+        <section id="match-management" class="admin-section">
             <div class="section-header">
                 <div>
                     <h3>Series / Match selector</h3>
-                    <p>Chon mot series trong <code>esports_matches</code> de mo danh sach game draft records, hoac tao match moi neu can.</p>
+                    <p>Chọn một series trong <code>esports_matches</code> để mở danh sách game draft records, hoặc tạo match mới nếu cần.</p>
                 </div>
                 <span id="match-count-pill" class="count-pill">0 match</span>
             </div>
 
             <div class="summary-grid">
                 <article class="summary-card">
-                    <span class="summary-label">Model moi</span>
-                    <strong class="summary-value">1 record = 1 van dau</strong>
-                    <p class="summary-note">Game draft record gom side, winner, duration, bans, lineup va raw draft payload.</p>
+                    <span class="summary-label">Model mới</span>
+                    <strong class="summary-value">1 record = 1 ván đấu</strong>
+                    <p class="summary-note">Game draft record gồm side, winner, duration, bans, lineup và raw draft payload.</p>
                 </article>
                 <article class="summary-card">
                     <span class="summary-label">Legacy</span>
-                    <strong class="summary-value">3 bang cu deprecate</strong>
-                    <p class="summary-note">Trang admin moi khong con ghi runtime vao esports_match_games, draft_actions hay game_lineups.</p>
+                    <strong class="summary-value">3 bảng cũ deprecate</strong>
+                    <p class="summary-note">Trang admin mới không còn ghi runtime vào esports_match_games, draft_actions hay game_lineups.</p>
                 </article>
                 <article class="summary-card">
                     <span class="summary-label">Public analytics</span>
-                    <strong class="summary-value">Doc tu game drafts</strong>
-                    <p class="summary-note">Top bans, top picks, hero stats va blue side win rate deu aggregate tu bang moi.</p>
+                    <strong class="summary-value">Đọc từ game drafts</strong>
+                    <p class="summary-note">Top bans, top picks, hero stats và blue side win rate đều aggregate từ bảng mới.</p>
                 </article>
                 <article class="summary-card">
                     <span class="summary-label">AER / Ranking</span>
-                    <strong class="summary-value">Van giu nguyen</strong>
-                    <p class="summary-note">Team, match history va Elo van tiep tuc dua tren esports_matches va esports_teams.</p>
+                    <strong class="summary-value">Vẫn giữ nguyên</strong>
+                    <p class="summary-note">Team, match history và Elo vẫn tiếp tục dựa trên esports_matches và esports_teams, replay theo <code>match_date ASC, id ASC</code>.</p>
                 </article>
             </div>
 
@@ -479,8 +493,8 @@
 
             <div class="filter-grid esports-match-filter-grid">
                 <label class="field">
-                    <span>Tim series</span>
-                    <input id="match-filter-search" type="search" placeholder="Ten doi, ma doi, giai hoac stage">
+                    <span>Tìm series</span>
+                    <input id="match-filter-search" type="search" placeholder="Tên đội, mã đội, giải hoặc stage">
                 </label>
                 <label class="field">
                     <span>Tournament scope</span>
@@ -491,14 +505,14 @@
                     <select id="match-filter-team"></select>
                 </label>
                 <label class="field">
-                    <span>Tu ngay</span>
+                    <span>Từ ngày</span>
                     <input id="match-filter-date-from" type="date">
                 </label>
                 <label class="field">
-                    <span>Den ngay</span>
+                    <span>Đến ngày</span>
                     <input id="match-filter-date-to" type="date">
                 </label>
-                <button id="btn-match-filter-reset" type="button" class="btn btn-light">Xoa loc</button>
+                <button id="btn-match-filter-reset" type="button" class="btn btn-light">Xóa lọc</button>
             </div>
 
             <div class="admin-two-column">
@@ -508,37 +522,37 @@
                         <table class="admin-table admin-table-compact">
                             <thead>
                             <tr>
-                                <th>Ngay</th>
+                                <th>Ngày</th>
                                 <th>Series</th>
-                                <th>Giai</th>
+                                <th>Giải</th>
                                 <th>Stage</th>
-                                <th>Ty so</th>
-                                <th>Thao tac</th>
+                                <th>Tỷ số</th>
+                                <th>Thao tác</th>
                             </tr>
                             </thead>
                             <tbody id="matches-tbody">
-                            <tr><td colspan="6" class="table-state">Dang tai danh sach match...</td></tr>
+                            <tr><td colspan="6" class="table-state">Đang tải danh sách match...</td></tr>
                             </tbody>
                         </table>
                     </div>
 
                     <div id="selected-match-card" class="selected-summary empty">
-                        Chua chon match de quan ly game draft records.
+                        Chưa chọn match để quản lý game draft records.
                     </div>
                 </div>
 
                 <div class="form-card admin-form-pane">
                     <div class="form-pane-header">
                         <div>
-                            <h4 id="match-form-title">Tao match moi</h4>
-                            <p id="match-form-subtitle">CRUD series van giu workflow hien tai de khong anh huong AER va ranking.</p>
+                            <h4 id="match-form-title">Tạo match mới</h4>
+                            <p id="match-form-subtitle">Match có tournament sẽ dùng <code>esports_tournaments.aer_tier</code> là source of truth; <code>esports_matches.tier</code> chỉ là fallback snapshot khi chưa có tournament.</p>
                         </div>
                     </div>
                     <div id="match-form-error" class="inline-error hidden"></div>
                     <form id="match-form" class="form-grid">
                         <input id="mf-id" type="hidden">
                         <label class="field">
-                            <span>Ngay thi dau *</span>
+                            <span>Ngày thi đấu *</span>
                             <input id="mf-date" type="datetime-local" required>
                         </label>
                         <div class="form-grid two">
@@ -551,11 +565,11 @@
                                 <select id="mf-team2" required></select>
                             </label>
                         </div>
-                        <label class="field">
-                            <span>Tournament chinh thuc</span>
-                            <select id="mf-tournament"></select>
-                            <small class="field-help">Neu co <code>tournament_id</code>, export/public se uu tien entity tournament va dong bo fallback tier theo <code>aerTier</code>. Neu de trong, he thong fallback theo tier legacy.</small>
-                        </label>
+                            <label class="field">
+                                <span>Tournament chính thức</span>
+                                <select id="mf-tournament"></select>
+                                <small class="field-help">Quan hệ đúng là <code>esports_matches.tournament_id -> esports_tournaments.id</code>. Nếu có <code>tournament_id</code>, export/public và ranking sẽ ưu tiên tournament này và đọc tier từ <code>esports_tournaments.aer_tier</code>; nếu để trống thì mới fallback về <code>esports_matches.tier</code>.</small>
+                            </label>
                         <div class="form-grid three">
                             <label class="field">
                                 <span>Score 1 *</span>
@@ -566,8 +580,9 @@
                                 <input id="mf-score2" type="number" min="0" required>
                             </label>
                             <label class="field">
-                                <span>Giai / Tier *</span>
+                                <span>Tier snapshot fallback (legacy) *</span>
                                 <select id="mf-tier" required></select>
+                                <small id="mf-tier-help" class="field-help">Chỉ dùng snapshot tier legacy này khi match chưa có <code>tournament_id</code>.</small>
                             </label>
                         </div>
                         <label class="field">
@@ -579,10 +594,11 @@
                                 <option value="ck"></option>
                                 <option value="vongloai"></option>
                             </datalist>
+                            <small class="field-help">Stage lưu vào DB chỉ chấp nhận <code>bang</code>, <code>playoff</code>, <code>ck</code>, <code>vongloai</code>. Alias như <code>group</code>, <code>play-off</code>, <code>final</code>, <code>qualifier</code> sẽ được đổi về canonical trước khi gửi API; stage không hợp lệ sẽ bị reject để tránh Elo fallback sai.</small>
                         </label>
                         <div class="modal-actions">
-                            <button id="btn-match-reset" type="button" class="btn btn-light">Huy chinh sua</button>
-                            <button id="btn-match-submit" type="submit" class="btn btn-primary">Luu match</button>
+                            <button id="btn-match-reset" type="button" class="btn btn-light">Hủy chỉnh sửa</button>
+                            <button id="btn-match-submit" type="submit" class="btn btn-primary">Lưu match</button>
                         </div>
                     </form>
                 </div>
@@ -593,14 +609,14 @@
             <div class="section-header">
                 <div>
                     <h3>Game Draft List</h3>
-                    <p>Moi card la mot van dau thuc te. Nhan vao card de sua nhanh bans, lineup va winner theo model moi.</p>
+                    <p>Mỗi card là một ván đấu thực tế. Nhấn vào card để sửa nhanh bans, lineup và winner theo model mới.</p>
                 </div>
-                <span id="draft-count-pill" class="count-pill">0 van</span>
+                <span id="draft-count-pill" class="count-pill">0 ván</span>
             </div>
 
             <div id="game-drafts-error" class="error-state hidden"></div>
             <div id="game-draft-list" class="game-draft-list">
-                <div class="selected-summary empty">Chon match de tai game draft records.</div>
+                <div class="selected-summary empty">Chọn match để tải game draft records.</div>
             </div>
         </section>
 
@@ -608,10 +624,10 @@
             <div class="section-header">
                 <div>
                     <h3>Game Draft Editor</h3>
-                    <p>Nhap game number, side, winner, duration, 5 slot ban moi ben va lineup DSL/JGL/MID/ADL/SUP. Duration cho phep mm:ss hoac so giay.</p>
+                    <p>Nhập game number, side, winner, duration, 5 slot ban mỗi bên và lineup DSL/JGL/MID/ADL/SUP. Duration cho phép mm:ss hoặc số giây.</p>
                 </div>
                 <div class="header-actions">
-                    <span id="editor-status-pill" class="count-pill">Dang tao ban moi</span>
+                    <span id="editor-status-pill" class="count-pill">Đang tạo bản mới</span>
                 </div>
             </div>
 
@@ -619,8 +635,8 @@
                 <div class="form-card admin-form-pane">
                     <div class="form-pane-header">
                         <div>
-                            <h4 id="draft-form-title">Them game draft record</h4>
-                            <p id="draft-form-subtitle">Workflow moi luu theo trang thai cuoi cua moi van thay vi 18 phase chi tiet.</p>
+                            <h4 id="draft-form-title">Thêm game draft record</h4>
+                            <p id="draft-form-subtitle">Workflow mới lưu theo trạng thái cuối của mỗi ván thay vì 18 phase chi tiết.</p>
                         </div>
                     </div>
                     <div id="draft-form-error" class="inline-error hidden"></div>
@@ -658,8 +674,8 @@
 
                         <label class="field">
                             <span>Duration</span>
-                            <input id="df-duration" type="text" placeholder="19:51 hoac 1191">
-                            <small class="field-help">Frontend se tu convert mm:ss sang durationSeconds. Bo trong neu chua co du lieu.</small>
+                            <input id="df-duration" type="text" placeholder="19:51 hoặc 1191">
+                            <small class="field-help">Frontend sẽ tự convert mm:ss sang durationSeconds. Bỏ trống nếu chưa có dữ liệu.</small>
                         </label>
 
                         <div class="draft-slot-grid">
@@ -724,14 +740,14 @@
 
                         <div class="modal-actions">
                             <button id="btn-draft-reset" type="button" class="btn btn-light">Reset form</button>
-                            <button id="btn-draft-submit" type="submit" class="btn btn-primary">Luu game draft</button>
+                            <button id="btn-draft-submit" type="submit" class="btn btn-primary">Lưu game draft</button>
                         </div>
                     </form>
                 </div>
 
                 <div class="panel-stack">
                     <div id="selected-draft-card" class="selected-summary empty">
-                        Chon mot game draft record de xem summary va chinh sua.
+                        Chọn một game draft record để xem summary và chỉnh sửa.
                     </div>
 
                     <div class="verify-card">
@@ -739,7 +755,7 @@
                         <div id="local-validation-list" class="verify-items">
                             <div class="verify-item">
                                 <span class="verify-item-label">Status</span>
-                                <span class="verify-item-value">Dang cho du lieu.</span>
+                                <span class="verify-item-value">Đang chờ dữ liệu.</span>
                             </div>
                         </div>
                     </div>
@@ -751,15 +767,15 @@
             <div class="section-header">
                 <div>
                     <h3>Validation summary</h3>
-                    <p>Tong hop nhanh muc do day du cua match dang chon de kiem tra truoc khi xem trang public.</p>
+                    <p>Tổng hợp nhanh mức độ đầy đủ của match đang chọn để kiểm tra trước khi xem trang public.</p>
                 </div>
             </div>
 
             <div id="draft-validation-grid" class="summary-grid">
                 <article class="summary-card">
-                    <span class="summary-label">Tong game</span>
+                    <span class="summary-label">Tổng game</span>
                     <strong class="summary-value">0</strong>
-                    <p class="summary-note">Chon match de xem summary.</p>
+                    <p class="summary-note">Chọn match để xem summary.</p>
                 </article>
             </div>
 
@@ -769,16 +785,68 @@
                     <div class="verify-items">
                         <div class="verify-item">
                             <span class="verify-item-label">Status</span>
-                            <span class="verify-item-value">Chua co du lieu.</span>
+                            <span class="verify-item-value">Chưa có dữ liệu.</span>
                         </div>
                     </div>
                 </article>
+            </div>
+        </section>
+
+        <section id="danger-zone" class="admin-section danger-zone-section">
+            <div class="section-header">
+                <div>
+                    <h3>Danger Zone</h3>
+                    <p>Reset chỉ xóa dataset import esports để admin có thể upload lại XLSX/CSV từ đầu, không đụng vào team/tournament/hero rows.</p>
+                </div>
+            </div>
+
+            <div class="danger-zone-grid">
+                <div class="selected-summary warning danger-zone-banner">
+                    <div class="selected-summary-grid">
+                        <div>
+                            <span class="summary-label">Cảnh báo</span>
+                            <strong class="summary-value">Reset sẽ xóa dữ liệu import trong <code>esports_matches</code> và <code>esports_game_drafts</code></strong>
+                            <p class="summary-note">Hệ thống sẽ backup DB trước khi xóa. Nếu backup fail, reset sẽ bị hủy ngay.</p>
+                        </div>
+                        <div>
+                            <span class="summary-label">Không bị xóa</span>
+                            <strong class="summary-value">Teams, tournaments, heroes và nội dung khác vẫn được giữ nguyên</strong>
+                            <p class="summary-note">Sau reset, admin cần preview/apply lại file XLSX/CSV để tạo dataset mới và cập nhật lại ranking AER từ DB.</p>
+                        </div>
+                    </div>
+
+                    <div class="danger-note-list">
+                        <div>Nhập chính xác <code>RESET ESPORTS DATA</code> để xác nhận.</div>
+                        <div>Không thể hoàn tác nếu không restore file backup SQL.</div>
+                        <div>Nên chỉ dùng khi cần làm sạch dataset import để import lại từ đầu.</div>
+                    </div>
+                </div>
+
+                <div class="form-card admin-form-pane danger-zone-card">
+                    <div class="form-pane-header">
+                        <div>
+                            <h4>Reset imported esports data</h4>
+                            <p>Nút này không nằm gần workflow Import để tránh bấm nhầm. Khi thực hiện, hệ thống bắt buộc backup trước và verify count sau xóa.</p>
+                        </div>
+                    </div>
+                    <div id="reset-esports-error" class="inline-error hidden"></div>
+                    <div class="modal-actions">
+                        <button id="btn-reset-esports-data" type="button" class="btn btn-danger">Reset Esports Data</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="reset-esports-result" class="panel-stack">
+                <div class="selected-summary empty">
+                    Kết quả backup và reset esports data sẽ hiện ở đây sau khi bấm <strong>Reset Esports Data</strong>.
+                </div>
             </div>
         </section>
     </section>
 </main>
 
 <script src="/js/auth.js?v=20260424-account-profile"></script>
-<script src="/js/admin-esports-data.js?v=20260513-import-preview"></script>
+<script src="/js/header-loader.js?v=20260514-layout-partials"></script>
+<script src="/js/admin-esports-data.js?v=20260514-reset-danger-zone"></script>
 </body>
 </html>

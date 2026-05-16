@@ -4,7 +4,7 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
 
 ## Ghi chú quyền truy cập
 
-- Public `GET` đang mở cho: `Wiki`, `Spells`, `Enchantments`, `Esports`, `Guides`, `Tier Lists`, `Ban/Pick leaderboard`, `Ban/Pick result`.
+- Public `GET` đang mở cho: `Wiki`, `Spells`, `Enchantments`, `Esports`, `Guides`, `Tier Lists`, `Ban/Pick leaderboard`, `Ban/Pick result` read-only legacy route.
 - Các thao tác ghi dữ liệu như tạo guide, tạo/rate/comment/save tier list, room Ban/Pick online, profile account đều cần đăng nhập.
 - Toàn bộ `/api/admin/**` yêu cầu role `ADMIN`.
 
@@ -139,7 +139,7 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
       - Người dùng được làm gì:
         - Kéo thả tự do vào slot ban/pick.
         - Không đi theo phase chuẩn.
-        - Xem `Ban/Pick Score & Win Rate` của 2 đội theo hero đã pick.
+        - Xem `Ban/Pick Score & Win Rate` của 2 đội theo hero đã pick ngay trong quá trình chọn.
       - Admin được làm gì:
         - Không thấy thao tác admin riêng trên page này.
       - API chính:
@@ -156,7 +156,7 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
         - Preview rồi confirm/cancel lượt chọn.
         - Chuyển phase thủ công nếu cần.
         - C? bu?c `lineup adjustment` 30 gi?y cu?i draft.
-        - Xem `Ban/Pick Score & Win Rate`.
+        - Xem `Ban/Pick Score & Win Rate` xuyên suốt quá trình ban/pick và lineup adjustment local.
       - Admin được làm gì:
         - Không thấy thao tác admin riêng trên page này.
       - API chính:
@@ -170,12 +170,15 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
         - `?room=CODE` để join room trực tiếp
       - Người dùng được làm gì:
         - Đăng nhập để tạo/join room.
+        - Xem Player Card nhỏ tách riêng Stats Panel ngay trong lobby Solo khi đã đăng nhập.
         - Chọn BO1/BO3/BO5/BO7.
         - Roll side, ready, start.
         - Draft realtime.
         - Xác nhận lineup sau khi draft.
+        - Chỉ xem `Ban/Pick Score & Win Rate` sau khi draft hoàn tất và cả 2 đội đã confirm lineup cuối.
         - Chuyển ván tiếp theo hoặc reset room.
-        - Chia sẻ link kết quả draft.
+        - Xem winner được hệ thống tính tự động từ Ban/Pick Score cuối; nếu hòa thì không tự chọn bừa winner.
+        - Nếu chưa đăng nhập, chỉ thấy trạng thái gọn yêu cầu đăng nhập để xem thống kê.
       - Admin được làm gì:
         - Không thấy quyền admin riêng; module đang theo người chơi đăng nhập.
       - API chính:
@@ -200,12 +203,12 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
 
     - Ban/Pick Score & Win Rate
       - Route/UI chính:
-        - Hiển thị trong `Free Mode`
-        - Hiển thị trong `Standard Mode`
-        - Hiển thị trong `Solo Online`
+        - Hiển thị trong `Free Mode` ngay khi pick/reset.
+        - Hiển thị trong `Standard Mode` trong suốt draft local.
+        - Chỉ hiển thị trong `Solo Online` sau khi room `FINISHED` và cả `blueLineupConfirmed` lẫn `redLineupConfirmed` đều true.
       - Người dùng được làm gì:
         - Xem tổng điểm 2 đội.
-        - Xem win rate dự đoán theo đội hình đã pick.
+        - Xem win rate dự đoán theo đội hình cuối.
       - Admin được làm gì:
         - Chỉnh `banPickScore` của hero ở Admin Hero.
       - API chính:
@@ -214,20 +217,38 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
       - Ghi chú dữ liệu/DB:
         - Điểm đang đọc từ `heroes.ban_pick_score`.
 
-    - Hồ sơ draft
-      - Route chính: `/ban-pick/profile`, `/html/ban-pick-profile.html`
+    - Thống kê cá nhân trong Solo page
+      - Route chính: `/html/ban-pick-solo.html`
+      - Route legacy/removed:
+        - `/ban-pick/profile` -> redirect về `/html/ban-pick-solo.html`
+        - `/ban-pick-profile.html` -> redirect về `/html/ban-pick-solo.html`
+        - `/html/ban-pick-profile.html` -> redirect về `/html/ban-pick-solo.html`
       - Người dùng được làm gì:
-        - Xem rating.
-        - Xem win rate, W/L, tổng số trận.
-        - Xem lịch sử draft.
-        - Xem hero pick nhiều nhất.
+        - Khi đã đăng nhập, xem Player Card riêng gồm avatar Google, IGN/display name, rank, ELO, badge và title.
+        - Xem Stats Panel riêng gồm W/L, win rate, tổng số trận, most picked heroes và 3 draft gần đây.
+        - Guest chỉ thấy trạng thái gọn yêu cầu đăng nhập để xem thống kê.
       - Admin được làm gì:
         - Không thấy page admin riêng cho profile solo.
       - API chính:
         - `GET /api/ban-pick/profile`
       - Ghi chú dữ liệu/DB:
         - Yêu cầu đăng nhập.
-        - Dữ liệu tổng hợp từ `draft_histories` và `player_stats`.
+        - Response `BanPickProfileResponse` trả `user`, `stats`, `playerCard`, `history`.
+        - Chỉ trả 50 draft gần nhất của user hiện tại.
+        - Player Card được render bằng component dùng chung `demo/src/main/resources/static/js/components/player-card.js` + `demo/src/main/resources/static/css/player-card.css`; hiện được Solo page và Account Center preview dùng lại.
+        - W/L, win rate, rating và most picked heroes đều tính theo 50 draft gần nhất của user.
+        - Rank solo Ban/Pick được backend compute theo percentile của `player_stats.rating` trong pool hiện tại; Player Card nhận `rankCode`/`rankLabel` trực tiếp từ API và frontend chỉ render.
+        - Badge/title cua `playerCard` lay tu `users.player_badge_*` va `users.player_title`; neu field null/blank thi backend fallback an toan ve `default / ATG Player / ✦ Tân Binh Ban/Pick ✦`.
+        - `player_stats` aggregate được backend rebuild theo đúng window 50 trận này sau mỗi Solo draft finished.
+        - Base rating Solo Ban/Pick khởi tạo `1000`; thua vẫn `-20`, rating không xuống dưới `0`, và trận hòa không đổi W/L/rating.
+        - Macro Economy Control 30 ngày chạy ở backend theo snapshot ngày `00:00`: lấy pool active là top `50%` người chơi có nhiều completed matches nhất trong 30 ngày gần nhất, expand thêm nếu bằng match count ở mép pool.
+        - Average rating của active pool được so với mốc `1500`; mỗi lệch `10` điểm sẽ điều chỉnh `2%` điểm thắng. Winner nhận `currentWinDelta` macro-adjusted, nhưng không thấp hơn `+20`.
+        - Sau macro, backend áp thêm ELO gap modifier theo rating trước trận của 2 người chơi: cứ lệch `10` điểm = `2%`, cap `50%`. Cửa dưới thắng được tăng win delta và cửa trên thua bị phạt nặng hơn; cửa trên thắng bị giảm win delta và cửa dưới thua bị phạt nhẹ hơn.
+        - Mỗi draft history lưu snapshot `win_rating_delta/loss_rating_delta` cuối cùng sau macro + gap, nên rolling-50 replay dùng lại đúng delta đã ghi của từng trận thay vì tính lại theo ngày hiện tại.
+        - Anti-win-trading chạy ở backend theo unordered pair `(minUserId, maxUserId)`: trong cửa sổ `48 giờ`, cặp người chơi này vẫn được tính điểm ở 2 lần gặp đầu; từ lần gặp thứ `3` trở đi backend override snapshot thành `0/0`, history vẫn lưu để audit nhưng ELO không đổi. Sau quá `48 giờ` kể từ các lần gặp trước thì pair window được reset.
+        - Trận hòa không đổi rating/W/L; win rate tính theo số trận có kết quả thắng/thua để tie không kéo sai thống kê.
+        - Percentile rank dùng bucket `S/A/B/C/D` với ngưỡng `>=80 / >=60 / >=40 / >=20 / <20`; tie rating dùng midpoint percentile của nhóm bằng điểm để người cùng rating nhận cùng rank ổn định.
+        - Rating Solo Ban/Pick hiện gồm: base rating, macro economy win delta, ELO gap modifier, và anti-win-trading override `0/0` cho pair spam trong `48 giờ`; chưa gồm dodge penalty hoặc seasonal reset.
 
     - Bảng xếp hạng
       - Route chính: `/ban-pick/leaderboard`, `/html/ban-pick-leaderboard.html`
@@ -240,20 +261,26 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
         - `GET /api/ban-pick/leaderboard`
       - Ghi chú dữ liệu/DB:
         - Dữ liệu chính lấy từ `player_stats`.
+        - `player_stats` không còn là all-time aggregate; row được sync theo 50 draft gần nhất của từng user.
+        - Leaderboard dùng cùng snapshot `player_stats.rating` sau rolling-50 replay: khởi tạo `1000`, winner nhận delta cuối cùng sau macro + ELO gap, loser nhận `loss_rating_delta` đã điều chỉnh theo gap, floor `0`, tie không đổi W/L/rating, và match bị anti-win-trading thì replay snapshot `0/0`.
+        - Leaderboard và Player Card dùng chung percentile rank backend từ `player_stats.rating`; frontend không tự map rank theo ngưỡng ELO.
 
     - Kết quả draft
-      - Route chính: `/ban-pick/result/{id}`, `/html/ban-pick-result.html`
+      - Route legacy: `/ban-pick/result/{id}`, `/ban-pick-result.html`, `/html/ban-pick-result.html`
       - Người dùng được làm gì:
-        - Xem picks/bans hai bên.
-        - Copy link kết quả.
-        - Người trong trận có thể ghi nhận bên thắng nếu chưa có winner.
+        - Không còn mở page result riêng.
+        - Link result cũ sẽ được đưa về Solo Ban/Pick.
+        - Winner vẫn được xem ở summary cuối trận và lịch sử/profile.
       - Admin được làm gì:
         - Không thấy thao tác admin riêng trên page này.
       - API chính:
         - `GET /api/ban-pick/history/{id}`
-        - `POST /api/ban-pick/history/{id}/winner`
+        - `POST /api/ban-pick/history/{id}/winner` chỉ giữ cho legacy client và trả reject message `Winner is calculated automatically from Ban/Pick score.`
       - Ghi chú dữ liệu/DB:
         - Lưu ở `draft_histories`.
+        - Mỗi row hiện lưu thêm snapshot `win_rating_delta` và `loss_rating_delta` để replay/resync 50 trận giữ đúng delta lịch sử sau macro + ELO gap.
+        - Cleanup retention chạy sau khi Solo draft kết thúc; history chỉ bị xóa thật khỏi DB khi đã nằm ngoài top 50 gần nhất của cả 2 participant.
+        - Page result đã bị loại khỏi flow chính; summary cuối trận vẫn hiển thị bans/picks/score/winner bình thường.
 
   - Tactics & Guides
     - Danh sách giáo án
@@ -308,13 +335,15 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
         - Xem `Global Power Rankings`.
         - Tìm đội.
         - Lọc theo region.
-        - Xem Elo, matches, W/L, win rate.
+        - Xem Elo, số series, `Series W/L`, win rate.
       - Admin được làm gì:
         - Không thấy thao tác admin trên page public này.
       - API chính:
         - `GET /api/esports/teams`
       - Ghi chú dữ liệu/DB:
         - Dữ liệu chính ở `esports_teams`.
+        - Cột `Series W/L` trên leaderboard lấy từ `matchWins` / `matchLosses`, không phải `gameWins` / `gameLosses`.
+        - Elo được replay theo thứ tự `match_date ASC, id ASC`; `id ASC` là tie-breaker khi trùng timestamp.
 
     - Teams
       - Route/UI chính:
@@ -337,7 +366,7 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
         - Chưa thấy UI public riêng; cần kiểm tra thêm.
       - Admin được làm gì:
         - Thêm/sửa/xóa trận và reset match history ở Admin.
-        - Dùng form series để nhập/chỉnh `match_date`, `team 1`, `team 2`, `score1`, `score2`, `giải/tier`, và `stage`.
+        - Dùng form series để nhập/chỉnh `match_date`, `team 1`, `team 2`, `score1`, `score2`, `tournament_id`, `tier` fallback snapshot, và `stage`.
         - Chọn một match để load danh sách game, mở draft 18 phase, final lineup, và panel verify ở page admin riêng.
         - Đối chiếu score series đang lưu với winner của từng game để phát hiện lệch dữ liệu.
       - API chính:
@@ -348,7 +377,9 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
         - `GET /api/admin/esports/game-drafts/export`
       - Ghi chú dữ liệu/DB:
         - Admin hiện có page riêng `/html/admin-esports-data.html` để nhập dữ liệu chi tiết match/game/draft/lineup cho Esports Data; workflow AER/ranking/bulk import nằm ở `/html/admin.html#aer-data`.
-        - Stage đang lưu dạng string nên admin page cho phép giữ preset cũ hoặc nhập stage custom nếu bracket cần chi tiết hơn.
+        - Quan hệ chuẩn là `esports_matches.tournament_id -> esports_tournaments.id`; `esports_tournaments.aer_tier` là source of truth cho AER/Elo, còn `esports_matches.tier` chỉ là fallback/legacy snapshot khi match chưa gắn tournament.
+        - Tier hợp lệ là `0/1/2`, tương ứng `T0 / Tier 0`, `T1 / Tier 1`, `T2 / Tier 2`; không có rule ép tier tối thiểu là `1`.
+        - Stage chỉ chấp nhận 4 giá trị canonical `ck`, `playoff`, `bang`, `vongloai`; alias quen tay sẽ được normalize về canonical và stage lạ sẽ bị reject.
 
     - Esports Data
       - Route chính: `/esports/data`, `/html/esports-data.html`
@@ -357,6 +388,7 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
         - Lọc đồng thời theo giải đấu, đội tuyển, và khoảng ngày.
         - Xem `Analytics Overview` gồm tổng trận/ván, tướng trong meta, `Blue Side WR`, và `Draft Accuracy` khi đủ dữ liệu.
         - Xem `Match Activity`, `Side Advantage`, `Power Picks`, `Trap Picks`, `Top Teams`.
+        - `Hero Statistics` hien la bang grouped headers day du cho `Picks`, `Blue Side`, `Red Side`, `Bans`, `Picks & Bans`, co icon + ten hero va cot `Details` voi nut `Show` an toan.
         - Xem `Hero Statistics`, `Top 5 tướng bị cấm nhiều nhất`, và `Tướng bị cấm nhiều nhất bởi bên Xanh`.
       - Admin được làm gì:
         - Dùng `/html/admin-esports-data.html` để nhập source data match/game/draft/lineup cho thống kê public.
@@ -366,6 +398,8 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
         - `GET /api/esports/data/top-banned-heroes`
         - `GET /api/esports/data/top-blue-banned-heroes`
         - `GET /api/esports/data/hero-stats`
+          - Dung chung payload voi `dashboard.heroStats`; nhan `tournamentId/tournamentName`, va khi can co the nhan them `teamCode`, `dateFrom`, `dateTo`.
+          - Payload Hero Statistics gom `pickCount/pickWins/pickLosses/pickWinRate/pickRate`, `bluePick*`, `redPick*`, `banCount/banRate`, `presenceCount/presenceRate`, va `heroIconUrl` (giu alias cu `heroAvatarUrl` de tranh vo frontend cu).
       - Ghi chú dữ liệu/DB:
         - Dashboard public hiện lấy KPI/chart/insight/table chủ yếu từ endpoint tổng hợp `GET /api/esports/data/dashboard`.
         - Filter `tournamentName`, `teamCode`, `dateFrom`, `dateTo` áp dụng đồng thời cho toàn bộ dashboard.
@@ -443,8 +477,8 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
 
     - Esports Data
       - Ghi chú menu:
-        - Trong header hiện đang nằm trong dropdown `Wiki`.
-        - Route thật là `/esports/data`, không phải page con vật lý bên trong `wiki.html`.
+        - Trong header nằm trong dropdown `Esports`, không còn top-level riêng và không nằm trong dropdown `Wiki`.
+        - Canonical link là `/esports/data`; route này redirect sang `/html/esports-data.html`, còn legacy `/esports-data.html` vẫn được giữ qua redirect cũ.
 
   - Account
     - Ghi chú menu:
@@ -457,14 +491,20 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
         - Xem email, role, level.
         - Sửa `displayName`.
         - Đổi `level` giữa `Normal` và `Vip`.
+        - Xem Player Card preview dùng chung component với Solo Ban/Pick.
+        - Chon preset `badge` va sua `player title`, sau do luu ngay trong section `Player Card`.
         - Đăng xuất.
       - Admin được làm gì:
         - Nếu role `Admin`, có shortcut sang Admin Panel.
       - API chính:
         - `GET /api/users/me/profile`
         - `PUT /api/users/me/profile`
+        - `GET /api/ban-pick/profile` (preview Player Card)
       - Ghi chú dữ liệu/DB:
-        - Dùng bảng `users`.
+        - Dung bang `users`.
+        - Player Card config duoc persist truc tiep tai `users.player_badge_code`, `users.player_badge_name`, `users.player_badge_icon_url`, `users.player_title`.
+        - `PUT /api/users/me/profile` duoc reuse de luu ca profile co ban lan Player Card config; request khong gui player-card fields se giu nguyen gia tri DB hien co.
+        - Preview doc avatar/display name tu `users`, ELO/rank tu snapshot solo 50 tran qua `BanPickHistoryService`; badge/title doc tu DB va fallback an toan ve `default / ATG Player / ✦ Tân Binh Ban/Pick ✦` neu thieu du lieu.
 
     - Nội dung của bạn
       - Route/UI chính: panel bên phải trong `/html/account.html`
@@ -573,7 +613,7 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
       - Route/UI chính:
         - Page chính `/html/admin-esports-data.html`
       - Admin được làm gì:
-        - Thêm/sửa series chi tiết với `giải/tier`, `stage`, `match_date`, `team 1`, `team 2`, `score1`, `score2`.
+        - Thêm/sửa series chi tiết với `match_date`, `team 1`, `team 2`, `score1`, `score2`, `tournament_id`, `tier` fallback snapshot, và `stage`.
         - Chọn lại match từ danh sách để load game của series và gợi ý score series từ game winners.
         - Thêm/sửa/xóa game trong match với `game_number`, `blue_team`, `red_team`, `winner_team`, `duration_seconds`, `draft_format`.
         - Nhập/sửa 18 phase draft theo hard phase rule; admin chỉ chọn hero, không được đổi `team_side`/`action_type`.
@@ -589,7 +629,9 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
       - Ghi chú dữ liệu/DB:
         - Bảng chính runtime là `esports_matches`, `esports_game_drafts`, `esports_franchises`, `esports_tournaments`, `esports_tournament_teams`.
         - UI admin dùng page riêng để nhập game draft record, import preview/confirm, export CSV, và verify nhanh trước khi xem thống kê public.
-        - Tournament Management quản lý trực tiếp franchise/tournament/roster; `esports_tournaments.aer_tier` là nguồn tier cho CSV -> AER JSON sau này.
+        - Tournament Management quản lý trực tiếp franchise/tournament/roster; `esports_tournaments.aer_tier` là nguồn tier chuẩn cho ranking AER/Elo, còn `esports_matches.tier` chỉ giữ vai trò fallback snapshot cho dữ liệu legacy chưa có tournament.
+        - Tier hợp lệ là `0/1/2`, tương ứng `T0 / Tier 0`, `T1 / Tier 1`, `T2 / Tier 2`.
+        - Không còn workflow AER JSON trung gian trên page này; import/confirm cập nhật trực tiếp DB và API vẫn trả JSON bình thường cho web app.
 
     - Quản lý tier list
       - Route/UI chính:
@@ -649,3 +691,40 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
   - `/tactics-guides.html` và `/html/tactics-guides.html` -> redirect sang `/html/giao-an.html`
   - `/tier-list/recommended` và các HTML cũ -> redirect sang `/html/tier-list.html`
   - `/ban-pick`, `/ban-pick.html`, `/html/ban-pick.html` -> redirect theo mode hoặc room
+## Shared layout partials
+
+- `demo/src/main/resources/static/html/header.html` lÃ  partial dÃ¹ng chung cho header toÃ n web.
+- `demo/src/main/resources/static/html/footer.html` lÃ  partial dÃ¹ng chung cho footer toÃ n web.
+- `demo/src/main/resources/static/html/admin-sidebar.html` lÃ  partial dÃ¹ng chung cho navigation trong admin panel.
+- `demo/src/main/resources/static/js/header-loader.js` hiá»‡n lÃ  shared layout loader: inject `header`, `footer`, vÃ  `admin sidebar`; Ä‘á»“ng thá»i xá»­ lÃ½ active state cho nav theo `window.location.pathname` / `hash`.
+## Shared layout partials (ASCII note)
+
+- `demo/src/main/resources/static/html/header.html`: shared header partial.
+- `demo/src/main/resources/static/html/footer.html`: shared footer partial.
+- Ban/Pick exception: `ban-pick-free.html`, `ban-pick-standard.html`, `ban-pick-solo.html`, and `ban-pick-leaderboard.html` opt out of the shared footer via a body flag so the draft workspace keeps more vertical space.
+- `demo/src/main/resources/static/html/admin-sidebar.html`: shared admin navigation partial.
+- `demo/src/main/resources/static/js/header-loader.js`: shared layout loader for `header`, `footer`, and `admin sidebar`, including route/hash based active state.
+
+## Solo Ban/Pick Dodge Penalty v1 (2026-05-16)
+
+- Scope:
+  - Chi ap dung cho room `IN_PROGRESS` + `phaseType = DRAFT`.
+  - Khong phat lobby.
+  - Khong phat room da `FINISHED`.
+  - Khong phat `LINEUP_ADJUSTMENT` trong v1.
+
+- Runtime behavior:
+  - Current-turn player timeout trong draft -> thua do dodge timeout.
+  - Current-turn player disconnect trong draft -> co grace window `10s`; qua grace moi xu thua.
+  - Reconnect trong grace -> khong phat.
+  - `resetRoom()` khi room dang `IN_PROGRESS` bi reject de khong cho escape hatch xoa room state/history.
+
+- Rating / cooldown:
+  - Dodge van reuse full pipeline rating hien co: macro economy, ELO gap modifier, anti-win-trading, delta snapshot, rolling-50 replay.
+  - Dodger nhan cooldown rieng Solo Ban/Pick `5 minutes`.
+  - User dang cooldown khong the create, join, hoac start room Solo Ban/Pick.
+
+- Persistence:
+  - `users.ban_pick_cooldown_until`
+  - `draft_histories.end_reason`
+  - `draft_histories.dodged_user_id`

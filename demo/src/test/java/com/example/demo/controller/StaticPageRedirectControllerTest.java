@@ -51,4 +51,18 @@ class StaticPageRedirectControllerTest {
         assertThat(controller.redirectLegacyTacticsGuidesPage())
                 .isEqualTo("redirect:/html/giao-an.html");
     }
+
+    @Test
+    void redirectLegacyBanPickResultRoutesBackToSoloPage() {
+        assertThat(controller.redirectLegacyBanPickResult(42L))
+                .isEqualTo("redirect:/html/ban-pick-solo.html");
+        assertThat(controller.redirectLegacyBanPickResultPage())
+                .isEqualTo("redirect:/html/ban-pick-solo.html");
+    }
+
+    @Test
+    void redirectLegacyBanPickProfileRoutesBackToSoloPage() {
+        assertThat(controller.redirectBanPickProfile())
+                .isEqualTo("redirect:/html/ban-pick-solo.html");
+    }
 }

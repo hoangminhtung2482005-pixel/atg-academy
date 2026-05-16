@@ -1,16 +1,14 @@
 <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-            <!-- Left: Logo -->
+        <div class="flex h-16 items-center justify-between gap-4">
             <div class="flex items-center">
                 <img src="/images/ui/logo.png" alt="Logo" class="h-10 object-contain mr-2">
                 <span class="font-bold text-xl tracking-tight text-slate-900 hidden sm:block">ATG Academy</span>
             </div>
-            
-            <!-- Center: Links -->
-            <div class="hidden md:flex space-x-6 items-center h-full">
-                <!-- Using data-page attributes for header-loader.js to highlight -->
+
+            <div class="desktop-nav hidden md:flex space-x-6 items-center h-full">
                 <a href="/html/index.html" data-page="index" class="text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent">Home</a>
+
                 <div class="nav-dropdown">
                     <button type="button" data-page="tier-list" class="nav-dropdown-trigger text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent" aria-haspopup="true" aria-expanded="false">
                         <span>Tier List</span>
@@ -33,6 +31,7 @@
                         </a>
                     </div>
                 </div>
+
                 <div class="nav-dropdown">
                     <button type="button" data-page="ban-pick" class="nav-dropdown-trigger text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent" aria-haspopup="true" aria-expanded="false">
                         <span>Ban/Pick</span>
@@ -55,9 +54,28 @@
                         </a>
                     </div>
                 </div>
+
                 <a href="/html/giao-an.html" data-page="giao-an" class="text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent">Tactics & Guides</a>
-                <a href="/html/esports.html" data-page="esports" class="text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent">Esports</a>
-                <a href="/esports/data" data-page="esports-data" class="text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent">Esports Data</a>
+
+                <div class="nav-dropdown">
+                    <button type="button" data-page="esports" class="nav-dropdown-trigger text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent" aria-haspopup="true" aria-expanded="false">
+                        <span>Esports</span>
+                        <svg class="nav-dropdown-caret" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 011.08 1.04l-4.25 4.51a.75.75 0 01-1.08 0l-4.25-4.51a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <div class="nav-dropdown-menu" role="menu" aria-label="Esports pages">
+                        <a href="/html/esports.html" data-page="esports-ranking" class="nav-dropdown-item" role="menuitem">
+                            <strong>Esports Ranking</strong>
+                            <small>Xem bảng xếp hạng đội tuyển, Elo và sức mạnh khu vực hiện tại.</small>
+                        </a>
+                        <a href="/esports/data" data-page="esports-data" class="nav-dropdown-item" role="menuitem">
+                            <strong>Esports Data</strong>
+                            <small>Mở Draft Analytics với top bans, top picks và Blue vs Red side.</small>
+                        </a>
+                    </div>
+                </div>
+
                 <div class="nav-dropdown">
                     <button type="button" data-page="wiki" class="nav-dropdown-trigger text-slate-500 hover:text-slate-900 transition-colors h-full flex items-center px-1 text-sm font-medium border-b-2 border-transparent" aria-haspopup="true" aria-expanded="false">
                         <span>Wiki</span>
@@ -81,9 +99,8 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- Right: Search & Login -->
-            <div class="flex items-center space-x-4">
+
+            <div class="flex items-center gap-2 sm:gap-4">
                 <div class="relative hidden lg:block">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -92,10 +109,79 @@
                     </div>
                     <input type="text" placeholder="Search..." class="bg-slate-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-md py-1.5 pl-9 pr-3 text-sm text-slate-900 placeholder-slate-400 w-48 transition-all outline-none">
                 </div>
-                
+
                 <div id="user-section" class="flex items-center">
                     <div id="google-login-button-target" class="min-w-[120px]" aria-label="Đăng nhập bằng Google"></div>
                 </div>
+
+                <button type="button" class="mobile-menu-toggle md:hidden" data-mobile-menu-toggle aria-controls="mobile-nav-panel" aria-expanded="false" aria-label="Mở menu điều hướng">
+                    <svg class="mobile-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M4 7h16M4 12h16M4 17h16" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="mobile-nav-panel" class="mobile-nav md:hidden" data-mobile-nav hidden>
+            <div class="mobile-nav-inner">
+                <a href="/html/index.html" data-page="index" class="mobile-nav-link">Home</a>
+
+                <details class="mobile-nav-group">
+                    <summary data-page="tier-list" class="mobile-nav-group-trigger">
+                        <span>Tier List</span>
+                        <svg class="mobile-nav-caret" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 011.08 1.04l-4.25 4.51a.75.75 0 01-1.08 0l-4.25-4.51a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                        </svg>
+                    </summary>
+                    <div class="mobile-nav-submenu">
+                        <a href="/tier-list" data-page="tier-list-meta" class="mobile-nav-sublink">Tier List Meta</a>
+                        <a href="/tier-list/all" data-page="tier-list-all" class="mobile-nav-sublink">Tất cả Tier List</a>
+                        <a href="/tier-list/mine" data-page="tier-list-mine" class="mobile-nav-sublink">Tier List của bạn</a>
+                    </div>
+                </details>
+
+                <details class="mobile-nav-group">
+                    <summary data-page="ban-pick" class="mobile-nav-group-trigger">
+                        <span>Ban/Pick</span>
+                        <svg class="mobile-nav-caret" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 011.08 1.04l-4.25 4.51a.75.75 0 01-1.08 0l-4.25-4.51a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                        </svg>
+                    </summary>
+                    <div class="mobile-nav-submenu">
+                        <a href="/html/ban-pick-free.html" data-page="ban-pick-free" class="mobile-nav-sublink">Cấm chọn tự do</a>
+                        <a href="/html/ban-pick-standard.html" data-page="ban-pick-standard" class="mobile-nav-sublink">Cấm chọn tiêu chuẩn</a>
+                        <a href="/html/ban-pick-solo.html" data-page="ban-pick-solo" class="mobile-nav-sublink">Solo Ban/Pick 1v1 Online</a>
+                    </div>
+                </details>
+
+                <a href="/html/giao-an.html" data-page="giao-an" class="mobile-nav-link">Tactics & Guides</a>
+
+                <details class="mobile-nav-group">
+                    <summary data-page="esports" class="mobile-nav-group-trigger">
+                        <span>Esports</span>
+                        <svg class="mobile-nav-caret" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 011.08 1.04l-4.25 4.51a.75.75 0 01-1.08 0l-4.25-4.51a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                        </svg>
+                    </summary>
+                    <div class="mobile-nav-submenu">
+                        <a href="/html/esports.html" data-page="esports-ranking" class="mobile-nav-sublink">Esports Ranking</a>
+                        <a href="/esports/data" data-page="esports-data" class="mobile-nav-sublink">Esports Data</a>
+                    </div>
+                </details>
+
+                <details class="mobile-nav-group">
+                    <summary data-page="wiki" class="mobile-nav-group-trigger">
+                        <span>Wiki</span>
+                        <svg class="mobile-nav-caret" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 011.08 1.04l-4.25 4.51a.75.75 0 01-1.08 0l-4.25-4.51a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                        </svg>
+                    </summary>
+                    <div class="mobile-nav-submenu">
+                        <a href="/html/wiki.html" data-page="wiki-home" class="mobile-nav-sublink">Tướng</a>
+                        <a href="/html/wiki.html?tab=spells" data-page="wiki-spells" class="mobile-nav-sublink">Bổ trợ</a>
+                        <a href="/html/wiki.html?tab=enchantments" data-page="wiki-enchantments" class="mobile-nav-sublink">Phù hiệu</a>
+                    </div>
+                </details>
             </div>
         </div>
     </div>
@@ -106,14 +192,14 @@ nav {
     box-shadow: 0 1px 0 rgba(226, 232, 240, 0.78);
 }
 
-nav a[data-page],
-nav button[data-page] {
+.desktop-nav a[data-page],
+.desktop-nav button[data-page] {
     position: relative;
     transition: color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
-nav a[data-page]::after,
-nav button[data-page]::after {
+.desktop-nav a[data-page]::after,
+.desktop-nav button[data-page]::after {
     background: linear-gradient(90deg, #2563eb, #38bdf8);
     border-radius: 999px;
     bottom: 10px;
@@ -127,20 +213,20 @@ nav button[data-page]::after {
     transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-nav a[data-page]:hover,
-nav a[data-page]:focus-visible,
-nav button[data-page]:hover,
-nav button[data-page]:focus-visible {
+.desktop-nav a[data-page]:hover,
+.desktop-nav a[data-page]:focus-visible,
+.desktop-nav button[data-page]:hover,
+.desktop-nav button[data-page]:focus-visible {
     color: #0f172a !important;
     transform: translateY(-1px);
 }
 
-nav a[data-page]:hover::after,
-nav a[data-page]:focus-visible::after,
-nav a[data-page].active::after,
-nav button[data-page]:hover::after,
-nav button[data-page]:focus-visible::after,
-nav button[data-page].active::after {
+.desktop-nav a[data-page]:hover::after,
+.desktop-nav a[data-page]:focus-visible::after,
+.desktop-nav a[data-page].active::after,
+.desktop-nav button[data-page]:hover::after,
+.desktop-nav button[data-page]:focus-visible::after,
+.desktop-nav button[data-page].active::after {
     opacity: 1;
     transform: scaleX(1);
 }
@@ -159,10 +245,10 @@ nav input[type="text"]:focus {
     width: 13rem;
 }
 
-/* Active state for navigation links applied by header-loader.js */
 nav a.active,
-nav button.active {
-    color: #2563eb !important; /* text-blue-600 */
+nav button.active,
+nav summary.active {
+    color: #2563eb !important;
     border-bottom-color: #2563eb !important;
 }
 
@@ -276,14 +362,144 @@ nav button.active {
     color: #2563eb;
 }
 
-/* Auth section overrides for Tailwind compatibility */
-.user-info {
-    display: flex;
+.mobile-menu-toggle {
     align-items: center;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    color: #0f172a;
+    cursor: pointer;
+    display: inline-flex;
+    flex-shrink: 0;
+    height: 42px;
+    justify-content: center;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    width: 42px;
 }
+
+.mobile-menu-toggle:hover,
+.mobile-menu-toggle:focus-visible {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    transform: translateY(-1px);
+}
+
+.mobile-menu-icon {
+    height: 20px;
+    width: 20px;
+}
+
+.mobile-nav {
+    border-top: 1px solid rgba(226, 232, 240, 0.94);
+    padding: 0 0 16px;
+}
+
+.mobile-nav-inner {
+    display: grid;
+    gap: 10px;
+    padding-top: 14px;
+}
+
+.mobile-nav-link,
+.mobile-nav-group-trigger,
+.mobile-nav-sublink {
+    border-radius: 16px;
+    text-decoration: none;
+}
+
+.mobile-nav-link,
+.mobile-nav-group-trigger {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+    display: flex;
+    font-size: 0.95rem;
+    font-weight: 750;
+    justify-content: space-between;
+    min-height: 48px;
+    padding: 0 16px;
+    transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.mobile-nav-link:hover,
+.mobile-nav-link:focus-visible,
+.mobile-nav-group-trigger:hover,
+.mobile-nav-group-trigger:focus-visible,
+.mobile-nav-link.active,
+.mobile-nav-group-trigger.active {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.08);
+    outline: none;
+}
+
+.mobile-nav-link.active,
+.mobile-nav-group-trigger.active {
+    color: #2563eb !important;
+}
+
+.mobile-nav-group {
+    display: grid;
+    gap: 10px;
+}
+
+.mobile-nav-group summary {
+    cursor: pointer;
+    list-style: none;
+}
+
+.mobile-nav-group summary::-webkit-details-marker {
+    display: none;
+}
+
+.mobile-nav-caret {
+    flex-shrink: 0;
+    height: 16px;
+    transition: transform 0.18s ease;
+    width: 16px;
+}
+
+.mobile-nav-group[open] .mobile-nav-caret {
+    transform: rotate(180deg);
+}
+
+.mobile-nav-submenu {
+    display: grid;
+    gap: 8px;
+    padding: 0 6px 0 14px;
+}
+
+.mobile-nav-sublink {
+    background: rgba(248, 250, 252, 0.92);
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 700;
+    min-height: 44px;
+    padding: 11px 14px;
+    transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.mobile-nav-sublink:hover,
+.mobile-nav-sublink:focus-visible,
+.mobile-nav-sublink.active {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #2563eb;
+    outline: none;
+}
+
+.user-info {
+    align-items: center;
+    display: flex;
+}
+
 .account-menu {
     position: relative;
 }
+
 .account-trigger {
     align-items: center;
     background: #ffffff;
@@ -294,17 +510,19 @@ nav button.active {
     display: flex;
     font: inherit;
     gap: 8px;
-    min-height: 38px;
     max-width: 250px;
+    min-height: 38px;
     padding: 5px 10px 5px 7px;
     text-decoration: none;
     transition: all 0.18s ease;
 }
+
 .account-trigger:hover {
     border-color: #2563eb;
     box-shadow: 0 6px 18px rgba(37, 99, 235, 0.12);
     transform: translateY(-1px);
 }
+
 .account-trigger:focus-visible,
 .google-login-fallback-btn:focus-visible,
 .account-popup-item:focus-visible {
@@ -312,6 +530,7 @@ nav button.active {
     outline: 2px solid transparent;
     outline-offset: 2px;
 }
+
 .account-trigger-icon {
     align-items: center;
     background: #eff6ff;
@@ -324,12 +543,14 @@ nav button.active {
     justify-content: center;
     width: 28px;
 }
+
 .account-trigger-text {
     display: flex;
     flex-direction: column;
     min-width: 0;
     text-align: left;
 }
+
 .account-trigger-name {
     color: #0f172a;
     font-size: 0.83rem;
@@ -339,6 +560,7 @@ nav button.active {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
 .account-trigger-role {
     color: #64748b;
     font-size: 0.68rem;
@@ -346,12 +568,14 @@ nav button.active {
     line-height: 1.1;
     text-transform: uppercase;
 }
+
 .account-trigger-caret {
     color: #64748b;
     flex-shrink: 0;
     font-size: 0.78rem;
     margin-left: 2px;
 }
+
 .account-popup {
     background: #ffffff;
     border: 1px solid #e2e8f0;
@@ -365,9 +589,11 @@ nav button.active {
     top: calc(100% + 10px);
     z-index: 80;
 }
+
 .account-popup.is-open {
     display: block;
 }
+
 .account-popup::before {
     background: #ffffff;
     border-left: 1px solid #e2e8f0;
@@ -380,6 +606,7 @@ nav button.active {
     transform: rotate(45deg);
     width: 12px;
 }
+
 .account-popup-profile {
     align-items: center;
     background: #f8fafc;
@@ -389,6 +616,7 @@ nav button.active {
     gap: 10px;
     padding: 12px;
 }
+
 .account-popup-avatar {
     align-items: center;
     background: #eff6ff;
@@ -401,11 +629,13 @@ nav button.active {
     justify-content: center;
     width: 42px;
 }
+
 .account-popup-identity {
     display: flex;
     flex-direction: column;
     min-width: 0;
 }
+
 .account-popup-identity strong,
 .account-popup-item strong {
     color: #0f172a;
@@ -413,6 +643,7 @@ nav button.active {
     font-size: 0.88rem;
     line-height: 1.2;
 }
+
 .account-popup-identity small,
 .account-popup-item small {
     color: #64748b;
@@ -423,10 +654,12 @@ nav button.active {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
 .account-popup-identity small {
     max-width: 165px;
     white-space: nowrap;
 }
+
 .account-popup-role {
     background: #ecfdf5;
     border: 1px solid #bbf7d0;
@@ -439,11 +672,13 @@ nav button.active {
     padding: 4px 8px;
     text-transform: uppercase;
 }
+
 .account-popup-actions {
     display: grid;
     gap: 8px;
     margin-top: 10px;
 }
+
 .account-popup-item {
     align-items: center;
     background: #ffffff;
@@ -460,11 +695,13 @@ nav button.active {
     transition: all 0.18s ease;
     width: 100%;
 }
+
 .account-popup-item:hover {
     background: #eff6ff;
     border-color: #2563eb;
     transform: translateX(2px);
 }
+
 .account-popup-item-icon {
     align-items: center;
     background: #f1f5f9;
@@ -478,21 +715,26 @@ nav button.active {
     justify-content: center;
     width: 36px;
 }
+
 .account-popup-admin {
     background: #fffbeb;
     border-color: #facc15;
 }
+
 .account-popup-admin .account-popup-item-icon {
     background: #fef3c7;
     color: #b45309;
 }
+
 .account-popup-logout {
     border-color: #fecaca;
 }
+
 .account-popup-logout .account-popup-item-icon {
     background: #fef2f2;
     color: #ef4444;
 }
+
 .google-login-fallback-btn {
     align-items: center;
     background: #ffffff;
@@ -505,11 +747,13 @@ nav button.active {
     padding: 8px 14px;
     transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
+
 .google-login-fallback-btn:hover {
     border-color: #2563eb;
     box-shadow: 0 8px 20px rgba(37, 99, 235, 0.12);
     transform: translateY(-1px);
 }
+
 .google-login-error {
     color: #dc2626;
     font-size: 0.7rem;
@@ -517,19 +761,37 @@ nav button.active {
     margin-top: 4px;
     max-width: 220px;
 }
+
 @media (max-width: 640px) {
     .account-trigger-text {
         display: none;
     }
+
     .account-trigger {
         max-width: 52px;
     }
+
     .account-trigger-caret {
         display: none;
     }
+
     .account-popup {
         min-width: min(320px, calc(100vw - 24px));
         right: -8px;
+    }
+
+    .mobile-nav-inner {
+        gap: 8px;
+    }
+
+    .mobile-nav-link,
+    .mobile-nav-group-trigger {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    .mobile-nav-submenu {
+        padding-left: 10px;
     }
 }
 </style>

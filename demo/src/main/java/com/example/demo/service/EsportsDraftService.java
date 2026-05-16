@@ -1,9 +1,9 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.esports.EsportsDraftTournamentScopeAggregate;
 import com.example.demo.dto.esports.EsportsGameDraftImportConfirmRequest;
 import com.example.demo.dto.esports.EsportsGameDraftImportConfirmResponse;
 import com.example.demo.dto.esports.EsportsGameDraftImportPreviewResponse;
-import com.example.demo.dto.esports.EsportsDraftTournamentScopeAggregate;
 import com.example.demo.dto.esports.EsportsGameDraftRequest;
 import com.example.demo.dto.esports.EsportsGameDraftResponse;
 import com.example.demo.entity.EsportsGameDraft;
@@ -18,6 +18,8 @@ import com.example.demo.repository.EsportsTeamRepository;
 import com.example.demo.repository.EsportsTournamentRepository;
 import com.example.demo.repository.HeroRepository;
 import com.example.demo.util.EsportsDraftDefaults;
+import com.example.demo.util.EsportsStageSupport;
+import com.example.demo.util.EsportsTierSupport;
 import com.example.demo.util.EsportsTournamentCatalog;
 import com.example.demo.util.SlugUtils;
 import org.apache.poi.ss.usermodel.Cell;
@@ -36,8 +38,6 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.time.LocalDate;
@@ -68,11 +68,12 @@ public class EsportsDraftService {
     private static final int MAX_BANS_PER_SIDE = 5;
     private static final int EXPECTED_COMPLETE_BANS = 8;
     private static final int EXPECTED_COMPLETE_PICKS = 10;
-    private static final String IMPORT_MATCH_STAGE = "bang";
+    private static final String DEFAULT_IMPORT_MATCH_STAGE = "bang";
     private static final String IMPORT_DRAFT_FORMAT_CODE = "AOV_STANDARD_18";
     private static final String IMPORT_SOURCE = "import";
     private static final long IMPORT_PREVIEW_TTL_MINUTES = 30L;
     private static final DateTimeFormatter IMPORT_DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
+    private static final List<String> IMPORT_OPTIONAL_HEADERS = List.of("Stage");
     private static final List<String> EXPORT_CSV_HEADERS = List.of(
             "Date",
             "Tournament",
@@ -226,7 +227,13 @@ public class EsportsDraftService {
             if (row.groupKey != null) {
                 groups.computeIfAbsent(
                                 row.groupKey,
-                                ignored -> new SeriesGroupAccumulator(row.groupKey, row.matchDate, row.tournament, row.team1, row.team2))
+                                ignored -> new SeriesGroupAccumulator(
+                                        row.groupKey,
+                                        row.matchDate,
+                                        row.matchStage,
+                                        row.tournament,
+                                        row.team1,
+                                        row.team2))
                         .rows.add(row);
             }
         }
@@ -256,7 +263,7 @@ public class EsportsDraftService {
         for (ResolvedGroupPlan plan : groupPlans) {
             if (plan.createMatch) {
                 matchesToCreate++;
-                previewWarnings.add("Match moi se duoc tao voi stage=bang va gio mac dinh 12:00.");
+                previewWarnings.add("Match mới sẽ được tạo với stage=" + plan.matchStage + " và giờ mặc định 12:00.");
             } else if (plan.updateTournamentLink || plan.updateSeriesScore) {
                 matchesToUpdate++;
             }
@@ -279,13 +286,13 @@ public class EsportsDraftService {
         }
 
         if (errorRows > 0) {
-            previewErrors.add("Co " + errorRows + " dong dang loi. Can sua het loi truoc khi Confirm Import.");
+            previewErrors.add("Có " + errorRows + " dòng đang lỗi. Cần sửa hết lỗi trước khi Confirm Import.");
         }
         if (matchesToUpdate > 0) {
-            previewWarnings.add("Mot so match cha se duoc cap nhat tournament hoac ty so series de dong bo voi file import.");
+            previewWarnings.add("Một số match cha sẽ được cập nhật tournament hoặc tỷ số series để đồng bộ với file import.");
         }
         if (draftsToOverwrite > 0) {
-            previewWarnings.add("Preview dang bat overwrite cho " + draftsToOverwrite + " game draft da ton tai trong DB.");
+            previewWarnings.add("Preview đang bật overwrite cho " + draftsToOverwrite + " game draft đã tồn tại trong DB.");
         }
 
         String previewToken = UUID.randomUUID().toString();
@@ -320,16 +327,16 @@ public class EsportsDraftService {
     @Transactional
     public EsportsGameDraftImportConfirmResponse confirmGameDraftImport(EsportsGameDraftImportConfirmRequest request) {
         if (request == null || !StringUtils.hasText(request.previewToken())) {
-            throw new IllegalArgumentException("previewToken la bat buoc.");
+            throw new IllegalArgumentException("previewToken là bắt buộc.");
         }
 
         pruneExpiredImportPreviewSessions();
         ImportPreviewSession session = importPreviewSessions.get(request.previewToken().trim());
         if (session == null) {
-            throw new IllegalArgumentException("Preview import da het han hoac khong ton tai. Hay preview lai file.");
+            throw new IllegalArgumentException("Preview import đã hết hạn hoặc không tồn tại. Hãy preview lại file.");
         }
         if (!session.readyToImport) {
-            throw new IllegalArgumentException("Preview hien tai van con loi, khong the confirm import.");
+            throw new IllegalArgumentException("Preview hiện tại vẫn còn lỗi, không thể confirm import.");
         }
 
         int createdMatches = 0;
@@ -350,7 +357,7 @@ public class EsportsDraftService {
                 targetMatch.setTeam2Code(plan.matchTeam2.getTeamCode());
                 targetMatch.setTournament(plan.tournament);
                 targetMatch.setTier(resolveMatchTier(plan.tournament));
-                targetMatch.setStage(IMPORT_MATCH_STAGE);
+                targetMatch.setStage(plan.matchStage);
                 targetMatch.setScore1(plan.seriesScore1);
                 targetMatch.setScore2(plan.seriesScore2);
                 targetMatch = esportsMatchRepository.save(targetMatch);
@@ -379,7 +386,11 @@ public class EsportsDraftService {
                 EsportsGameDraft draft = row.overwriteDraftId != null
                         ? requireGameDraft(row.overwriteDraftId)
                         : new EsportsGameDraft();
-                NormalizedDraftWrite normalized = normalizeDraftWrite(targetMatch, draft.getId() != null ? draft : null, row.draftRequest);
+                NormalizedDraftWrite normalized = normalizeDraftWrite(
+                        targetMatch,
+                        draft.getId() != null ? draft : null,
+                        row.draftRequest
+                );
                 applyDraftWrite(draft, normalized);
                 esportsGameDraftRepository.save(draft);
                 if (row.overwriteDraftId != null) {
@@ -397,7 +408,6 @@ public class EsportsDraftService {
         if (rankingsRecalculated) {
             eloCalculationService.calculateAllRankings();
         }
-
         importPreviewSessions.remove(request.previewToken().trim());
         return new EsportsGameDraftImportConfirmResponse(
                 createdDrafts + overwrittenDrafts,
@@ -405,8 +415,9 @@ public class EsportsDraftService {
                 updatedMatches,
                 createdDrafts,
                 overwrittenDrafts,
-                rankingsRecalculated,
-                affectedMatchIds.stream().toList()
+                affectedMatchIds.stream().toList(),
+                affectedMatchIds.size(),
+                rankingsRecalculated
         );
     }
 
@@ -424,11 +435,11 @@ public class EsportsDraftService {
                     ? readExcelRows(file)
                     : readCsvRows(file);
         } catch (IOException exception) {
-            throw new IllegalArgumentException("Khong the doc file import: " + exception.getMessage(), exception);
+            throw new IllegalArgumentException("Không thể đọc file import: " + exception.getMessage(), exception);
         }
 
         if (rawRows.isEmpty()) {
-            throw new IllegalArgumentException("File import khong co du lieu.");
+            throw new IllegalArgumentException("File import không có dữ liệu.");
         }
 
         List<String> headerRow = rawRows.get(0).stream()
@@ -446,10 +457,14 @@ public class EsportsDraftService {
                 .filter(header -> !headerIndex.containsKey(normalizeHeader(header)))
                 .toList();
         if (!missingHeaders.isEmpty()) {
-            throw new IllegalArgumentException("File import thieu cot bat buoc: " + String.join(", ", missingHeaders));
+            throw new IllegalArgumentException("File import thiếu cột bắt buộc: " + String.join(", ", missingHeaders));
         }
 
         List<ImportedSheetRow> rows = new ArrayList<>();
+        List<String> availableImportHeaders = new ArrayList<>(EXPORT_CSV_HEADERS);
+        IMPORT_OPTIONAL_HEADERS.stream()
+                .filter(header -> headerIndex.containsKey(normalizeHeader(header)))
+                .forEach(availableImportHeaders::add);
         for (int rowIndex = 1; rowIndex < rawRows.size(); rowIndex++) {
             List<String> values = rawRows.get(rowIndex);
             boolean blank = values.stream().allMatch(value -> !StringUtils.hasText(cleanCellText(value)));
@@ -458,7 +473,7 @@ public class EsportsDraftService {
             }
 
             Map<String, String> cells = new LinkedHashMap<>();
-            for (String header : EXPORT_CSV_HEADERS) {
+            for (String header : availableImportHeaders) {
                 int columnIndex = headerIndex.get(normalizeHeader(header));
                 String value = columnIndex < values.size() ? values.get(columnIndex) : "";
                 cells.put(header, cleanCellText(value));
@@ -467,7 +482,7 @@ public class EsportsDraftService {
         }
 
         if (rows.isEmpty()) {
-            throw new IllegalArgumentException("File import chi co header, khong co dong du lieu nao.");
+            throw new IllegalArgumentException("File import chỉ có header, không có dòng dữ liệu nào.");
         }
 
         String sourceTag = isExcelFile(filename) ? "excel-import" : "csv-import";
@@ -559,7 +574,7 @@ public class EsportsDraftService {
             }
             return rows;
         } catch (RuntimeException exception) {
-            throw new IllegalArgumentException("File Excel khong hop le hoac dang bi loi du lieu.");
+            throw new IllegalArgumentException("File Excel không hợp lệ hoặc đang bị lỗi dữ liệu.");
         }
     }
 
@@ -581,7 +596,7 @@ public class EsportsDraftService {
         List<EsportsTeam> teams = esportsTeamRepository.findAll();
         List<Hero> heroes = heroRepository.findAllByOrderByNameAsc();
         List<EsportsTournament> tournaments = esportsTournamentRepository.findAll();
-        List<EsportsMatch> matches = esportsMatchRepository.findAllByOrderByMatchDateAsc();
+        List<EsportsMatch> matches = esportsMatchRepository.findAllByOrderByMatchDateAscIdAsc();
 
         Map<Long, Hero> heroesById = new LinkedHashMap<>();
         heroes.forEach(hero -> heroesById.put(hero.getId(), hero));
@@ -640,6 +655,7 @@ public class EsportsDraftService {
                                             String importSource) {
         String dateText = sourceRow.cells.get("Date");
         String tournamentText = sourceRow.cells.get("Tournament");
+        String stageText = sourceRow.cells.getOrDefault("Stage", "");
         String team1Text = sourceRow.cells.get("Team_1");
         String team2Text = sourceRow.cells.get("Team_2");
         String t1SideText = sourceRow.cells.get("T1_Side");
@@ -651,6 +667,7 @@ public class EsportsDraftService {
         MutableImportRow row = new MutableImportRow(sourceRow.rowNumber, dateText, tournamentText, team1Text, team2Text);
 
         row.matchDate = parseImportDate(dateText, row.errors);
+        row.matchStage = parseImportStage(stageText, row.errors);
         row.gameNumber = parseImportGameNumber(matchText, row.errors);
         row.durationSeconds = parseImportDuration(lengthText, row.errors);
 
@@ -669,13 +686,13 @@ public class EsportsDraftService {
         row.team2 = resolveLookupValue(context.teamsByKey, team2Text, "Team_2", row.errors);
 
         if (row.team1 != null && row.team2 != null && row.team1.getId().equals(row.team2.getId())) {
-            row.errors.add("Team_1 va Team_2 khong duoc map vao cung mot team.");
+            row.errors.add("Team_1 và Team_2 không được map vào cùng một team.");
         }
 
         ImportSide t1Side = parseImportSide(t1SideText, "T1_Side", row.errors);
         ImportSide t2Side = parseImportSide(t2SideText, "T2_Side", row.errors);
         if (t1Side != null && t2Side != null && t1Side == t2Side) {
-            row.errors.add("T1_Side va T2_Side phai doi nghich Blue/Red.");
+            row.errors.add("T1_Side và T2_Side phải đối nghịch Blue/Red.");
         }
 
         if (row.team1 != null && row.team2 != null && t1Side != null && t2Side != null && t1Side != t2Side) {
@@ -689,10 +706,20 @@ public class EsportsDraftService {
         }
 
         row.winnerTeam = resolveWinnerTeamForImport(winnerText, row, row.errors);
-        if (row.blueTeam != null && row.redTeam != null && row.matchDate != null && row.tournament != null) {
+        if (row.blueTeam != null
+                && row.redTeam != null
+                && row.matchDate != null
+                && row.tournament != null
+                && row.matchStage != null) {
             long lowerTeamId = Math.min(row.blueTeam.getId(), row.redTeam.getId());
             long higherTeamId = Math.max(row.blueTeam.getId(), row.redTeam.getId());
-            row.groupKey = new SeriesGroupKey(row.matchDate, row.tournament.getId(), lowerTeamId, higherTeamId);
+            row.groupKey = new SeriesGroupKey(
+                    row.matchDate,
+                    row.tournament.getId(),
+                    row.matchStage,
+                    lowerTeamId,
+                    higherTeamId
+            );
         }
 
         List<Long> blueBans = new ArrayList<>();
@@ -762,7 +789,7 @@ public class EsportsDraftService {
 
         row.durationText = formatDurationText(row.durationSeconds);
         if (overwriteExisting) {
-            row.warnings.add("Preview dang bat overwrite duplicate neu match/game da ton tai.");
+            row.warnings.add("Preview đang bật overwrite duplicate nếu match/game đã tồn tại.");
         }
         return row;
     }
@@ -796,7 +823,7 @@ public class EsportsDraftService {
                 })
                 .toList();
         if (!duplicateHeroNames.isEmpty()) {
-            row.errors.add("Khong duoc trung hero trong cung 1 game: " + String.join(", ", duplicateHeroNames) + ".");
+            row.errors.add("Không được trùng hero trong cùng 1 game: " + String.join(", ", duplicateHeroNames) + ".");
         }
     }
 
@@ -828,93 +855,177 @@ public class EsportsDraftService {
                 .sorted(Comparator.comparing(row -> row.gameNumber))
                 .toList();
         if (validRows.isEmpty()) {
-            return new ResolvedGroupPlan(null, false, false, false, null, group.tournament, group.matchTeam1, group.matchTeam2, null, 0, 0, List.of());
+            return new ResolvedGroupPlan(
+                    null,
+                    false,
+                    false,
+                    false,
+                    null,
+                    group.matchStage,
+                    group.tournament,
+                    group.matchTeam1,
+                    group.matchTeam2,
+                    null,
+                    0,
+                    0,
+                    List.of()
+            );
         }
 
-        List<EsportsMatch> sameDateSamePairMatches = context.matches.stream()
+        boolean anyMissingWinner = validRows.stream().anyMatch(row -> row.winnerTeam == null);
+        Map<Long, List<EsportsGameDraft>> draftCache = new LinkedHashMap<>();
+        List<EsportsMatch> sameDateSameStagePairMatches = context.matches.stream()
                 .filter(match -> match.getMatchDate() != null && match.getMatchDate().toLocalDate().equals(group.matchDate))
+                .filter(match -> matchesSameStage(match, group.matchStage))
                 .filter(match -> matchesSameTeamPair(match, group))
                 .toList();
 
-        List<EsportsMatch> exactTournamentMatches = sameDateSamePairMatches.stream()
+        List<EsportsMatch> exactTournamentMatches = sameDateSameStagePairMatches.stream()
                 .filter(match -> match.getTournament() != null
                         && group.tournament != null
                         && match.getTournament().getId() != null
                         && match.getTournament().getId().equals(group.tournament.getId()))
                 .toList();
-        List<EsportsMatch> nullTournamentMatches = sameDateSamePairMatches.stream()
+        List<EsportsMatch> nullTournamentMatches = sameDateSameStagePairMatches.stream()
                 .filter(match -> match.getTournament() == null)
                 .toList();
-        List<EsportsMatch> mismatchedTournamentMatches = sameDateSamePairMatches.stream()
+        List<EsportsMatch> mismatchedTournamentMatches = sameDateSameStagePairMatches.stream()
                 .filter(match -> match.getTournament() != null
                         && (group.tournament == null
                         || !match.getTournament().getId().equals(group.tournament.getId())))
                 .toList();
 
-        if (exactTournamentMatches.size() > 1) {
-            group.rows.forEach(row -> row.errors.add("Tim thay nhieu esports_matches cung ngay/cap doi/tournament. Hay xu ly match cha truoc khi import."));
-            return new ResolvedGroupPlan(null, false, false, false, null, group.tournament, group.matchTeam1, group.matchTeam2, null, 0, 0, List.of());
-        }
-        if (exactTournamentMatches.isEmpty() && nullTournamentMatches.size() > 1) {
-            group.rows.forEach(row -> row.errors.add("Tim thay nhieu esports_matches cung ngay/cap doi nhung chua gan tournament. Khong the tu doan match cha."));
-            return new ResolvedGroupPlan(null, false, false, false, null, group.tournament, group.matchTeam1, group.matchTeam2, null, 0, 0, List.of());
-        }
-        if (exactTournamentMatches.isEmpty() && nullTournamentMatches.isEmpty() && !mismatchedTournamentMatches.isEmpty()) {
-            group.rows.forEach(row -> row.errors.add("Da co esports_matches cung ngay/cap doi nhung tournament khong khop. Hay cap nhat match cha truoc khi import."));
-            return new ResolvedGroupPlan(null, false, false, false, null, group.tournament, group.matchTeam1, group.matchTeam2, null, 0, 0, List.of());
+        List<EsportsMatch> exactScoreTournamentMatches = anyMissingWinner
+                ? List.of()
+                : exactTournamentMatches.stream()
+                .filter(match -> matchesSameSeriesScore(match, validRows))
+                .toList();
+
+        EsportsMatch targetMatch = null;
+        if (!exactScoreTournamentMatches.isEmpty()) {
+            targetMatch = selectCanonicalParentMatch(exactScoreTournamentMatches, draftCache);
+            if (exactScoreTournamentMatches.size() > 1 && targetMatch != null) {
+                Long canonicalMatchId = targetMatch.getId();
+                String duplicateIds = exactScoreTournamentMatches.stream()
+                        .map(match -> "#" + match.getId())
+                        .reduce((left, right) -> left + ", " + right)
+                        .orElse("");
+                validRows.forEach(row -> row.warnings.add(
+                        "Tìm thấy nhiều esports_matches exact cho series này (" + duplicateIds
+                                + "). Preview se uu tien match #" + canonicalMatchId
+                                + " theo uu tien parent da co draft, sau do id nho hon."
+                ));
+            }
         }
 
-        EsportsMatch targetMatch = !exactTournamentMatches.isEmpty()
-                ? exactTournamentMatches.get(0)
-                : (nullTournamentMatches.isEmpty() ? null : nullTournamentMatches.get(0));
-        boolean updateTournamentLink = targetMatch != null
-                && targetMatch.getTournament() == null
+        if (targetMatch == null && exactTournamentMatches.size() > 1) {
+            group.rows.forEach(row -> row.errors.add("Tìm thấy nhiều esports_matches cùng ngày/cặp đội/tournament. Hãy xử lý match cha trước khi import."));
+            return new ResolvedGroupPlan(
+                    null,
+                    false,
+                    false,
+                    false,
+                    null,
+                    group.matchStage,
+                    group.tournament,
+                    group.matchTeam1,
+                    group.matchTeam2,
+                    null,
+                    0,
+                    0,
+                    List.of()
+            );
+        }
+        if (targetMatch == null && exactTournamentMatches.isEmpty() && nullTournamentMatches.size() > 1) {
+            group.rows.forEach(row -> row.errors.add("Tìm thấy nhiều esports_matches cùng ngày/cặp đội nhưng chưa gán tournament. Không thể tự đoán match cha."));
+            return new ResolvedGroupPlan(
+                    null,
+                    false,
+                    false,
+                    false,
+                    null,
+                    group.matchStage,
+                    group.tournament,
+                    group.matchTeam1,
+                    group.matchTeam2,
+                    null,
+                    0,
+                    0,
+                    List.of()
+            );
+        }
+        if (targetMatch == null && exactTournamentMatches.isEmpty() && nullTournamentMatches.isEmpty() && !mismatchedTournamentMatches.isEmpty()) {
+            group.rows.forEach(row -> row.errors.add("Đã có esports_matches cùng ngày/cặp đội nhưng tournament không khớp. Hãy cập nhật match cha trước khi import."));
+            return new ResolvedGroupPlan(
+                    null,
+                    false,
+                    false,
+                    false,
+                    null,
+                    group.matchStage,
+                    group.tournament,
+                    group.matchTeam1,
+                    group.matchTeam2,
+                    null,
+                    0,
+                    0,
+                    List.of()
+            );
+        }
+
+        if (targetMatch == null) {
+            targetMatch = !exactTournamentMatches.isEmpty()
+                    ? exactTournamentMatches.get(0)
+                    : (nullTournamentMatches.isEmpty() ? null : nullTournamentMatches.get(0));
+        }
+        EsportsMatch resolvedTargetMatch = targetMatch;
+        boolean updateTournamentLink = resolvedTargetMatch != null
+                && resolvedTargetMatch.getTournament() == null
                 && group.tournament != null;
 
         int seriesScore1;
         int seriesScore2;
-        if (targetMatch != null) {
-            seriesScore1 = countSeriesWins(validRows, targetMatch.getTeam1Code());
-            seriesScore2 = countSeriesWins(validRows, targetMatch.getTeam2Code());
+        if (resolvedTargetMatch != null) {
+            seriesScore1 = countSeriesWins(validRows, resolvedTargetMatch.getTeam1Code());
+            seriesScore2 = countSeriesWins(validRows, resolvedTargetMatch.getTeam2Code());
         } else {
             seriesScore1 = countSeriesWins(validRows, group.matchTeam1.getTeamCode());
             seriesScore2 = countSeriesWins(validRows, group.matchTeam2.getTeamCode());
         }
 
-        boolean anyMissingWinner = validRows.stream().anyMatch(row -> row.winnerTeam == null);
-        boolean updateSeriesScore = targetMatch != null
+        boolean updateSeriesScore = resolvedTargetMatch != null
                 && !anyMissingWinner
-                && (targetMatch.getScore1() == null || targetMatch.getScore2() == null
-                || targetMatch.getScore1() != seriesScore1 || targetMatch.getScore2() != seriesScore2);
+                && (resolvedTargetMatch.getScore1() == null || resolvedTargetMatch.getScore2() == null
+                || resolvedTargetMatch.getScore1() != seriesScore1 || resolvedTargetMatch.getScore2() != seriesScore2);
 
-        if (targetMatch == null && anyMissingWinner) {
-            validRows.forEach(row -> row.warnings.add("Series moi se duoc tao voi ty so suy ra tu Winner hien co; neu cot Winner con thieu thi score series co the chua day du."));
+        if (resolvedTargetMatch == null && anyMissingWinner) {
+            validRows.forEach(row -> row.warnings.add("Series mới sẽ được tạo với tỷ số suy ra từ Winner hiện có; nếu cột Winner còn thiếu thì score series có thể chưa đầy đủ."));
         }
-        if (targetMatch != null && updateSeriesScore) {
-            validRows.forEach(row -> row.warnings.add("Match #" + targetMatch.getId() + " se duoc cap nhat ty so series tu file import."));
+        if (resolvedTargetMatch != null && updateSeriesScore) {
+            validRows.forEach(row -> row.warnings.add("Match #" + resolvedTargetMatch.getId() + " sẽ được cập nhật tỷ số series từ file import."));
         }
-        if (updateTournamentLink && targetMatch != null) {
-            validRows.forEach(row -> row.warnings.add("Match #" + targetMatch.getId() + " se duoc gan tournament chinh thuc tu file import."));
+        if (updateTournamentLink && resolvedTargetMatch != null) {
+            validRows.forEach(row -> row.warnings.add("Match #" + resolvedTargetMatch.getId() + " sẽ được gán tournament chính thức từ file import."));
         }
 
         for (MutableImportRow row : validRows) {
-            row.matchId = targetMatch != null ? targetMatch.getId() : null;
-            row.matchLabel = targetMatch != null
-                    ? "Match #" + targetMatch.getId()
+            row.matchId = resolvedTargetMatch != null ? resolvedTargetMatch.getId() : null;
+            row.matchLabel = resolvedTargetMatch != null
+                    ? "Match #" + resolvedTargetMatch.getId()
                     : "Match moi";
-            row.matchAction = targetMatch == null
+            row.matchAction = resolvedTargetMatch == null
                     ? "Tao match moi"
                     : (updateTournamentLink || updateSeriesScore
-                    ? "Cap nhat match #" + targetMatch.getId()
-                    : "Dung match #" + targetMatch.getId());
+                    ? "Cập nhật match #" + resolvedTargetMatch.getId()
+                    : "Dùng match #" + resolvedTargetMatch.getId());
 
-            if (targetMatch != null && esportsGameDraftRepository.existsByMatchIdAndGameNumber(targetMatch.getId(), row.gameNumber)) {
-                EsportsGameDraft existingDraft = esportsGameDraftRepository.findByMatchId(targetMatch.getId()).stream()
+            if (resolvedTargetMatch != null && esportsGameDraftRepository.existsByMatchIdAndGameNumber(resolvedTargetMatch.getId(), row.gameNumber)) {
+                EsportsGameDraft existingDraft = esportsGameDraftRepository.findByMatchId(resolvedTargetMatch.getId()).stream()
                         .filter(item -> item.getGameNumber() != null && item.getGameNumber().equals(row.gameNumber))
                         .findFirst()
                         .orElse(null);
                 if (!overwriteExisting) {
-                    row.errors.add("Match #" + targetMatch.getId() + " da co game_number " + row.gameNumber + ". Bat overwrite neu muon ghi de.");
+                    row.errors.add("Match #" + resolvedTargetMatch.getId() + " đã có game_number " + row.gameNumber + ". Bật overwrite nếu muốn ghi đè.");
                 } else if (existingDraft != null) {
                     row.overwriteDraftId = existingDraft.getId();
                     row.draftAction = "Overwrite game draft #" + existingDraft.getId();
@@ -929,19 +1040,46 @@ public class EsportsDraftService {
                 : null;
 
         return new ResolvedGroupPlan(
-                targetMatch != null ? targetMatch.getId() : null,
-                targetMatch == null,
+                resolvedTargetMatch != null ? resolvedTargetMatch.getId() : null,
+                resolvedTargetMatch == null,
                 updateTournamentLink,
                 updateSeriesScore,
                 newMatchDateTime,
+                group.matchStage,
                 group.tournament,
                 group.matchTeam1,
                 group.matchTeam2,
-                targetMatch,
+                resolvedTargetMatch,
                 seriesScore1,
                 seriesScore2,
                 validRows
         );
+    }
+
+    private EsportsMatch selectCanonicalParentMatch(List<EsportsMatch> matches,
+                                                    Map<Long, List<EsportsGameDraft>> draftCache) {
+        return matches.stream()
+                .sorted(Comparator
+                        .comparing((EsportsMatch match) -> hasExistingDraft(match, draftCache) ? 0 : 1)
+                        .thenComparing(match -> match.getId() == null ? Long.MAX_VALUE : match.getId()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private boolean hasExistingDraft(EsportsMatch match,
+                                     Map<Long, List<EsportsGameDraft>> draftCache) {
+        return !loadDraftsForMatch(match != null ? match.getId() : null, draftCache).isEmpty();
+    }
+
+    private List<EsportsGameDraft> loadDraftsForMatch(Long matchId,
+                                                      Map<Long, List<EsportsGameDraft>> draftCache) {
+        if (matchId == null) {
+            return List.of();
+        }
+        return draftCache.computeIfAbsent(matchId, ignored -> {
+            List<EsportsGameDraft> drafts = esportsGameDraftRepository.findByMatchId(matchId);
+            return drafts != null ? drafts : List.of();
+        });
     }
 
     private int countSeriesWins(List<MutableImportRow> rows, String teamCode) {
@@ -953,6 +1091,15 @@ public class EsportsDraftService {
             }
         }
         return wins;
+    }
+
+    private boolean matchesSameSeriesScore(EsportsMatch match, List<MutableImportRow> rows) {
+        if (match == null || match.getScore1() == null || match.getScore2() == null) {
+            return false;
+        }
+        int expectedScore1 = countSeriesWins(rows, match.getTeam1Code());
+        int expectedScore2 = countSeriesWins(rows, match.getTeam2Code());
+        return match.getScore1() == expectedScore1 && match.getScore2() == expectedScore2;
     }
 
     private boolean matchesSameTeamPair(EsportsMatch match, SeriesGroupAccumulator group) {
@@ -967,6 +1114,11 @@ public class EsportsDraftService {
                 || (matchTeam1.equals(groupTeam2) && matchTeam2.equals(groupTeam1));
     }
 
+    private boolean matchesSameStage(EsportsMatch match, String matchStage) {
+        return normalizeImportStage(match != null ? match.getStage() : null)
+                .equals(normalizeImportStage(matchStage));
+    }
+
     private EsportsTeam resolveWinnerTeamForImport(String winnerText,
                                                    MutableImportRow row,
                                                    List<String> errors) {
@@ -976,13 +1128,13 @@ public class EsportsDraftService {
         String normalizedWinner = normalizeLookupValue(winnerText);
         if ("blue".equals(normalizedWinner)) {
             if (row.blueTeam == null) {
-                errors.add("Winner=Blue nhung row nay chua map duoc Blue side.");
+                errors.add("Winner=Blue nhưng row này chưa map được Blue side.");
             }
             return row.blueTeam;
         }
         if ("red".equals(normalizedWinner)) {
             if (row.redTeam == null) {
-                errors.add("Winner=Red nhung row nay chua map duoc Red side.");
+                errors.add("Winner=Red nhưng row này chưa map được Red side.");
             }
             return row.redTeam;
         }
@@ -996,7 +1148,7 @@ public class EsportsDraftService {
                 || normalizedWinner.equals(normalizeLookupValue(row.team2.getTeamName())))) {
             return row.team2;
         }
-        errors.add("Winner khong map duoc vao Team_1 hoac Team_2.");
+        errors.add("Winner không map được vào Team_1 hoặc Team_2.");
         return null;
     }
 
@@ -1009,11 +1161,11 @@ public class EsportsDraftService {
         }
         List<T> candidates = lookup.getOrDefault(normalizeLookupValue(rawValue), List.of());
         if (candidates.isEmpty()) {
-            errors.add(fieldName + " khong match du lieu hien co: " + rawValue);
+            errors.add(fieldName + " không match dữ liệu hiện có: " + rawValue);
             return null;
         }
         if (candidates.size() > 1) {
-            errors.add(fieldName + " dang match nhieu ban ghi, khong the tu doan: " + rawValue);
+            errors.add(fieldName + " đang match nhiều bản ghi, không thể tự đoán: " + rawValue);
             return null;
         }
         return candidates.get(0);
@@ -1048,7 +1200,7 @@ public class EsportsDraftService {
                 // try next format
             }
         }
-        errors.add("Date khong hop le: " + cleaned);
+        errors.add("Date không hợp lệ: " + cleaned);
         return null;
     }
 
@@ -1065,12 +1217,12 @@ public class EsportsDraftService {
         try {
             int numeric = Integer.parseInt(candidate);
             if (numeric <= 0) {
-                errors.add("Match / game_number phai lon hon 0.");
+                errors.add("Match / game_number phải lớn hơn 0.");
                 return null;
             }
             return numeric;
         } catch (NumberFormatException exception) {
-            errors.add("Match / game_number khong hop le: " + cleaned);
+            errors.add("Match / game_number không hợp lệ: " + cleaned);
             return null;
         }
     }
@@ -1085,16 +1237,27 @@ public class EsportsDraftService {
         }
         java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("^(\\d+):(\\d{1,2})$").matcher(cleaned);
         if (!matcher.matches()) {
-            errors.add("Length phai co dang mm:ss hoac so giay.");
+            errors.add("Length phải có dạng mm:ss hoặc số giây.");
             return null;
         }
         int minutes = Integer.parseInt(matcher.group(1));
         int seconds = Integer.parseInt(matcher.group(2));
         if (seconds >= 60) {
-            errors.add("Length mm:ss khong hop le: " + cleaned);
+            errors.add("Length mm:ss không hợp lệ: " + cleaned);
             return null;
         }
         return minutes * 60 + seconds;
+    }
+
+    private String parseImportStage(String stageText, List<String> errors) {
+        if (!StringUtils.hasText(stageText)) {
+            return DEFAULT_IMPORT_MATCH_STAGE;
+        }
+        return EsportsStageSupport.toCanonicalStage(stageText)
+                .orElseGet(() -> {
+                    errors.add("Stage không hợp lệ: " + cleanCellText(stageText));
+                    return null;
+                });
     }
 
     private ImportSide parseImportSide(String rawValue, String fieldName, List<String> errors) {
@@ -1113,15 +1276,7 @@ public class EsportsDraftService {
     }
 
     private String resolveMatchTier(EsportsTournament tournament) {
-        if (tournament != null && tournament.getAerTier() != null && tournament.getAerTier() > 0) {
-            return String.valueOf(tournament.getAerTier());
-        }
-        if (tournament != null && StringUtils.hasText(tournament.getTierLevel())) {
-            String tierLevel = tournament.getTierLevel().trim();
-            String resolvedLegacyTier = EsportsTournamentCatalog.resolveTournamentTier(tierLevel);
-            return resolvedLegacyTier != null ? resolvedLegacyTier : tierLevel;
-        }
-        return "1";
+        return EsportsTierSupport.resolveTournamentSnapshotTier(tournament);
     }
 
     private void pruneExpiredImportPreviewSessions() {
@@ -1159,6 +1314,13 @@ public class EsportsDraftService {
 
     private String normalizeHeader(String header) {
         return cleanCellText(header).toUpperCase(Locale.ROOT);
+    }
+
+    private String normalizeImportStage(String value) {
+        if (!StringUtils.hasText(value)) {
+            return DEFAULT_IMPORT_MATCH_STAGE;
+        }
+        return EsportsStageSupport.normalizeStageKey(value);
     }
 
     private String cleanCellText(String value) {
@@ -1203,16 +1365,16 @@ public class EsportsDraftService {
         EsportsTeam winnerTeam = resolveWinnerTeam(request.winnerTeamId(), blueTeam, redTeam);
 
         if (blueTeam.getId().equals(redTeam.getId())) {
-            throw new IllegalArgumentException("blueTeamId va redTeamId khong duoc trung nhau.");
+            throw new IllegalArgumentException("blueTeamId và redTeamId không được trùng nhau.");
         }
 
         Long existingId = existingDraft == null ? null : existingDraft.getId();
         if (existingId == null) {
             if (esportsGameDraftRepository.existsByMatchIdAndGameNumber(match.getId(), gameNumber)) {
-                throw new IllegalArgumentException("gameNumber da ton tai trong match nay.");
+                throw new IllegalArgumentException("gameNumber đã tồn tại trong match này.");
             }
         } else if (esportsGameDraftRepository.existsByMatchIdAndGameNumberAndIdNot(match.getId(), gameNumber, existingId)) {
-            throw new IllegalArgumentException("gameNumber da ton tai trong match nay.");
+            throw new IllegalArgumentException("gameNumber đã tồn tại trong match này.");
         }
 
         List<Long> blueBans = normalizeHeroSlots(request.blueBans(), "blueBans");
@@ -1296,7 +1458,7 @@ public class EsportsDraftService {
                                                        LocalDate dateFrom,
                                                        LocalDate dateTo) {
         if (dateFrom != null && dateTo != null && dateFrom.isAfter(dateTo)) {
-            throw new IllegalArgumentException("date range khong hop le.");
+            throw new IllegalArgumentException("date range không hợp lệ.");
         }
         TournamentScope tournamentScope = resolveTournamentScope(tournamentId, tournamentName);
         return new DraftExportFilter(
@@ -1412,7 +1574,7 @@ public class EsportsDraftService {
     }
 
     private String buildExportRow(EsportsGameDraft draft, Map<Long, Hero> heroesById) {
-        return buildCsvLine(List.of(
+        return buildCsvLine(Arrays.asList(
                 formatMatchDateForExport(draft.getMatch()),
                 resolveTournamentLabelForExport(draft.getMatch()),
                 draft.getGameNumber() == null ? "" : String.valueOf(draft.getGameNumber()),
@@ -1476,10 +1638,7 @@ public class EsportsDraftService {
         if (match.getTournament() != null && StringUtils.hasText(match.getTournament().getName())) {
             return match.getTournament().getName().trim();
         }
-        if (!StringUtils.hasText(match.getTier())) {
-            return "";
-        }
-        String rawTier = match.getTier().trim();
+        String rawTier = EsportsTierSupport.resolveEffectiveTier(match);
         String resolvedTier = EsportsTournamentCatalog.resolveTournamentTier(rawTier);
         if (resolvedTier != null) {
             return EsportsTournamentCatalog.resolveTournamentName(resolvedTier);
@@ -1508,17 +1667,17 @@ public class EsportsDraftService {
 
     private EsportsMatch requireMatch(Long matchId) {
         return esportsMatchRepository.findById(matchId)
-                .orElseThrow(() -> new NoSuchElementException("Khong tim thay esports match voi ID: " + matchId));
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy esports match với ID: " + matchId));
     }
 
     private EsportsGameDraft requireGameDraft(Long gameDraftId) {
         return esportsGameDraftRepository.findById(gameDraftId)
-                .orElseThrow(() -> new NoSuchElementException("Khong tim thay esports game draft voi ID: " + gameDraftId));
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy esports game draft với ID: " + gameDraftId));
     }
 
     private EsportsTeam requireTeam(Long teamId) {
         return esportsTeamRepository.findById(teamId)
-                .orElseThrow(() -> new NoSuchElementException("Khong tim thay esports team voi ID: " + teamId));
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy esports team với ID: " + teamId));
     }
 
     private Map<Long, Hero> loadHeroesById(Collection<Long> heroIds) {
@@ -1532,7 +1691,7 @@ public class EsportsDraftService {
 
         for (Long heroId : heroIds) {
             if (heroId != null && !heroesById.containsKey(heroId)) {
-                throw new NoSuchElementException("Khong tim thay hero voi ID: " + heroId);
+                throw new NoSuchElementException("Không tìm thấy hero với ID: " + heroId);
             }
         }
         return heroesById;
@@ -1560,7 +1719,7 @@ public class EsportsDraftService {
 
     private void validateDurationSeconds(Integer durationSeconds) {
         if (durationSeconds != null && durationSeconds < 0) {
-            throw new IllegalArgumentException("durationSeconds khong duoc am.");
+            throw new IllegalArgumentException("durationSeconds không được âm.");
         }
     }
 
@@ -1570,7 +1729,7 @@ public class EsportsDraftService {
         matchTeamCodes.add(normalizeCode(match.getTeam2Code()));
         if (!matchTeamCodes.contains(normalizeCode(blueTeam.getTeamCode()))
                 || !matchTeamCodes.contains(normalizeCode(redTeam.getTeamCode()))) {
-            throw new IllegalArgumentException("blueTeamId va redTeamId phai thuoc dung 2 doi cua esports match.");
+            throw new IllegalArgumentException("blueTeamId và redTeamId phải thuộc đúng 2 đội của esports match.");
         }
     }
 
@@ -1581,7 +1740,7 @@ public class EsportsDraftService {
 
         EsportsTeam winnerTeam = requireTeam(winnerTeamId);
         if (!winnerTeam.getId().equals(blueTeam.getId()) && !winnerTeam.getId().equals(redTeam.getId())) {
-            throw new IllegalArgumentException("winnerTeamId phai la blue team hoac red team cua game.");
+            throw new IllegalArgumentException("winnerTeamId phải là blue team hoặc red team của game.");
         }
         return winnerTeam;
     }
@@ -1589,7 +1748,7 @@ public class EsportsDraftService {
     private List<Long> normalizeHeroSlots(List<Long> heroIds, String fieldName) {
         List<Long> slots = heroIds == null ? new ArrayList<>() : new ArrayList<>(heroIds);
         if (slots.size() > MAX_BANS_PER_SIDE) {
-            throw new IllegalArgumentException(fieldName + " chi duoc toi da 5 slot.");
+            throw new IllegalArgumentException(fieldName + " chỉ được tối đa 5 slot.");
         }
         while (slots.size() < MAX_BANS_PER_SIDE) {
             slots.add(null);
@@ -1634,7 +1793,7 @@ public class EsportsDraftService {
                 .toList();
 
         if (!duplicateHeroNames.isEmpty()) {
-            throw new IllegalArgumentException("Khong duoc trung hero trong cung game draft: "
+            throw new IllegalArgumentException("Không được trùng hero trong cùng game draft: "
                     + String.join(", ", duplicateHeroNames) + ".");
         }
     }
@@ -1660,7 +1819,7 @@ public class EsportsDraftService {
             throw new IllegalArgumentException(fieldName + " la bat buoc.");
         }
         if (value <= 0) {
-            throw new IllegalArgumentException(fieldName + " phai lon hon 0.");
+            throw new IllegalArgumentException(fieldName + " phải lớn hơn 0.");
         }
         return value;
     }
@@ -1668,7 +1827,7 @@ public class EsportsDraftService {
     private TournamentScope resolveTournamentScope(Long tournamentId, String tournamentName) {
         if (tournamentId != null) {
             EsportsTournament tournament = esportsTournamentRepository.findById(tournamentId)
-                    .orElseThrow(() -> new IllegalArgumentException("tournamentId khong hop le."));
+                    .orElseThrow(() -> new IllegalArgumentException("tournamentId không hợp lệ."));
             return new TournamentScope(tournament.getId(), null);
         }
 
@@ -1700,7 +1859,7 @@ public class EsportsDraftService {
             }
         }
 
-        throw new IllegalArgumentException("tournamentName khong hop le.");
+        throw new IllegalArgumentException("tournamentName không hợp lệ.");
     }
 
     private String resolveLegacyTournamentLabel(String tournamentTier) {
@@ -1724,7 +1883,7 @@ public class EsportsDraftService {
         try {
             return objectMapper.writeValueAsString(request);
         } catch (JacksonException exception) {
-            throw new IllegalArgumentException("Khong the serialize raw_draft_json.");
+            throw new IllegalArgumentException("Không thể serialize raw_draft_json.");
         }
     }
 
@@ -1913,23 +2072,17 @@ public class EsportsDraftService {
         }
     }
 
-    private static final class SeriesGroupKey {
-        private final LocalDate matchDate;
-        private final Long tournamentId;
-        private final long lowerTeamId;
-        private final long higherTeamId;
-
-        private SeriesGroupKey(LocalDate matchDate, Long tournamentId, long lowerTeamId, long higherTeamId) {
-            this.matchDate = matchDate;
-            this.tournamentId = tournamentId;
-            this.lowerTeamId = lowerTeamId;
-            this.higherTeamId = higherTeamId;
-        }
+    private record SeriesGroupKey(LocalDate matchDate,
+                                  Long tournamentId,
+                                  String matchStage,
+                                  long lowerTeamId,
+                                  long higherTeamId) {
     }
 
     private static final class SeriesGroupAccumulator {
         private final SeriesGroupKey groupKey;
         private final LocalDate matchDate;
+        private final String matchStage;
         private final EsportsTournament tournament;
         private final EsportsTeam matchTeam1;
         private final EsportsTeam matchTeam2;
@@ -1937,11 +2090,13 @@ public class EsportsDraftService {
 
         private SeriesGroupAccumulator(SeriesGroupKey groupKey,
                                        LocalDate matchDate,
+                                       String matchStage,
                                        EsportsTournament tournament,
                                        EsportsTeam matchTeam1,
                                        EsportsTeam matchTeam2) {
             this.groupKey = groupKey;
             this.matchDate = matchDate;
+            this.matchStage = matchStage;
             this.tournament = tournament;
             this.matchTeam1 = matchTeam1;
             this.matchTeam2 = matchTeam2;
@@ -1954,6 +2109,7 @@ public class EsportsDraftService {
         private final boolean updateTournamentLink;
         private final boolean updateSeriesScore;
         private final LocalDateTime newMatchDateTime;
+        private final String matchStage;
         private final EsportsTournament tournament;
         private final EsportsTeam matchTeam1;
         private final EsportsTeam matchTeam2;
@@ -1967,6 +2123,7 @@ public class EsportsDraftService {
                                   boolean updateTournamentLink,
                                   boolean updateSeriesScore,
                                   LocalDateTime newMatchDateTime,
+                                  String matchStage,
                                   EsportsTournament tournament,
                                   EsportsTeam matchTeam1,
                                   EsportsTeam matchTeam2,
@@ -1979,6 +2136,7 @@ public class EsportsDraftService {
             this.updateTournamentLink = updateTournamentLink;
             this.updateSeriesScore = updateSeriesScore;
             this.newMatchDateTime = newMatchDateTime;
+            this.matchStage = matchStage;
             this.tournament = tournament;
             this.matchTeam1 = matchTeam1;
             this.matchTeam2 = matchTeam2;
@@ -2016,6 +2174,7 @@ public class EsportsDraftService {
         private final List<String> warnings = new ArrayList<>();
 
         private LocalDate matchDate;
+        private String matchStage;
         private EsportsTournament tournament;
         private EsportsTeam team1;
         private EsportsTeam team2;
@@ -2051,5 +2210,4 @@ public class EsportsDraftService {
             return !errors.isEmpty();
         }
     }
-
 }

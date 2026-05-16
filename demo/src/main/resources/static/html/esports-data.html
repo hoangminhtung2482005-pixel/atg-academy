@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Esports Data - ATG Academy</title>
-    <meta name="description" content="Esports Data cua ATG Academy: thong ke draft, ban/pick, blue side win rate va hero analytics theo giai dau.">
+    <meta name="description" content="Esports Data của ATG Academy: thống kê draft, ban/pick, blue side win rate và hero analytics theo giải đấu.">
     <link rel="stylesheet" href="/css/style.css?v=20260507-css-modules">
-    <link rel="stylesheet" href="/css/esports.css?v=20260512-esports-data-direction-b">
+    <link rel="stylesheet" href="/css/esports.css?v=20260515-hero-visual">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -18,11 +18,9 @@
         <div class="ed-hero-card">
             <div class="ed-hero-copy">
                 <span class="ed-eyebrow">Esports Data</span>
-                <h1>Draft analytics doc tu game-level records</h1>
-                <p>
-                    Trang nay tong hop ban/pick, side advantage va hero statistics tu
-                    <code>esports_game_drafts</code>. Moi dong du lieu tuong ung 1 van dau thuc te,
-                    giup analytics ro rang hon va san sang cho workflow import Excel 1 dong = 1 van.
+                <h1>Draft Analytics</h1>
+                <p class="ed-hero-summary">
+                    Track ban and pick patterns, side advantage, and hero trends across major AoV leagues.
                 </p>
                 <div class="ed-hero-tags">
                     <span>Top bans</span>
@@ -33,20 +31,32 @@
             </div>
 
             <div class="ed-hero-panel">
+                <div class="ed-hero-stage" aria-hidden="true">
+                    <span class="ed-hero-stage-kicker">Featured leagues</span>
+                    <div class="ed-hero-stage-logos">
+                        <div class="ed-hero-stage-logo ed-hero-stage-logo-rpl">
+                            <img src="/images/leagues/RPL_logo.png" alt="">
+                        </div>
+                        <div class="ed-hero-stage-logo ed-hero-stage-logo-aog">
+                            <img src="/images/leagues/AOG_logo.png" alt="">
+                        </div>
+                        <div class="ed-hero-stage-logo ed-hero-stage-logo-gcs">
+                            <img src="/images/leagues/GCS_logo.png" alt="">
+                        </div>
+                    </div>
+                </div>
                 <div class="ed-filter-card">
                     <label class="ed-filter-field" for="tournament-filter">
-                        <span>Giai dau</span>
+                        <span>Giải đấu</span>
                         <select id="tournament-filter">
-                            <option value="">Tat ca giai dau</option>
+                            <option value="">Tất cả giải đấu</option>
                         </select>
                     </label>
-                    <button id="tournament-reset-button" type="button" class="ed-secondary-button">Dat lai</button>
+                    <button id="tournament-reset-button" type="button" class="ed-secondary-button">Đặt lại</button>
                 </div>
-                <div class="ed-scope-card">
-                    <span class="ed-scope-label">Scope hien tai</span>
-                    <strong id="scope-label">Tat ca giai dau</strong>
-                    <p id="scope-note">Dang tong hop toan bo game draft records trong he thong.</p>
-                    <small id="last-updated">Chua tai du lieu.</small>
+                <div id="scope-card" class="ed-scope-card">
+                    <span class="ed-scope-label">Giải đấu đang xem</span>
+                    <strong id="scope-label" aria-live="polite">Tất cả giải đấu</strong>
                 </div>
             </div>
         </div>
@@ -59,39 +69,44 @@
             <article class="ed-card ed-kpi-card">
                 <span class="ed-kpi-label">Total games</span>
                 <strong id="kpi-total-games">0</strong>
-                <p id="kpi-total-games-note">So van duoc aggregate theo filter hien tai.</p>
             </article>
             <article class="ed-card ed-kpi-card">
-                <span class="ed-kpi-label">Total matches</span>
+                <span class="ed-kpi-label">Total series</span>
                 <strong id="kpi-total-matches">0</strong>
-                <p id="kpi-total-matches-note">So series cha trong <code>esports_matches</code>.</p>
             </article>
             <article class="ed-card ed-kpi-card">
                 <span class="ed-kpi-label">Blue side WR</span>
                 <strong id="kpi-blue-win-rate">0%</strong>
-                <p id="kpi-blue-win-rate-note">Chi tinh cac game da co winner.</p>
             </article>
             <article class="ed-card ed-kpi-card">
                 <span class="ed-kpi-label">Most banned hero</span>
                 <strong id="kpi-most-banned">N/A</strong>
-                <p id="kpi-most-banned-note">Top ban overall trong scope hien tai.</p>
             </article>
             <article class="ed-card ed-kpi-card">
                 <span class="ed-kpi-label">Most picked hero</span>
                 <strong id="kpi-most-picked">N/A</strong>
-                <p id="kpi-most-picked-note">Top pick lay tu 10 slot lineup cua moi game.</p>
             </article>
         </div>
     </section>
 
-    <section class="ed-shell ed-two-column">
+    <section class="ed-shell ed-ban-grid">
         <article class="ed-card">
             <div class="ed-section-head">
                 <div>
                     <span class="ed-section-kicker">Overall</span>
                     <h2>Top Banned Heroes</h2>
-                    <p>Thong ke tu 10 cot ban trong <code>esports_game_drafts</code>.</p>
                 </div>
+                <button
+                    id="top-banned-toggle"
+                    type="button"
+                    class="ed-secondary-button ed-table-toggle"
+                    data-table-toggle="topBanned"
+                    aria-controls="top-banned-body"
+                    aria-expanded="false"
+                    hidden
+                >
+                    Xem t&#7845;t c&#7843;
+                </button>
             </div>
             <div class="ed-table-wrap">
                 <table class="ed-table">
@@ -104,46 +119,29 @@
                     </tr>
                     </thead>
                     <tbody id="top-banned-body">
-                    <tr><td colspan="4" class="ed-empty-row">Dang tai du lieu...</td></tr>
+                    <tr><td colspan="4" class="ed-empty-row">&#272;ang t&#7843;i d&#7919; li&#7879;u...</td></tr>
                     </tbody>
                 </table>
             </div>
         </article>
 
-        <article class="ed-card">
-            <div class="ed-section-head">
-                <div>
-                    <span class="ed-section-kicker">Blue Side</span>
-                    <h2>Top Blue Side Bans</h2>
-                    <p>Chi tinh 5 slot ban cua ben xanh tren moi game draft record.</p>
-                </div>
-            </div>
-            <div class="ed-table-wrap">
-                <table class="ed-table">
-                    <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Hero</th>
-                        <th>Blue bans</th>
-                        <th>Share</th>
-                    </tr>
-                    </thead>
-                    <tbody id="top-blue-banned-body">
-                    <tr><td colspan="4" class="ed-empty-row">Dang tai du lieu...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </article>
-    </section>
-
-    <section class="ed-shell ed-two-column ed-two-column-narrow">
         <article class="ed-card">
             <div class="ed-section-head">
                 <div>
                     <span class="ed-section-kicker">Lineup Picks</span>
                     <h2>Top Picked Heroes</h2>
-                    <p>Top pick duoc tinh tu 10 slot lineup DSL/JGL/MID/ADL/SUP cua 2 ben.</p>
                 </div>
+                <button
+                    id="top-picked-toggle"
+                    type="button"
+                    class="ed-secondary-button ed-table-toggle"
+                    data-table-toggle="topPicked"
+                    aria-controls="top-picked-body"
+                    aria-expanded="false"
+                    hidden
+                >
+                    Xem t&#7845;t c&#7843;
+                </button>
             </div>
             <div class="ed-table-wrap">
                 <table class="ed-table">
@@ -156,18 +154,89 @@
                     </tr>
                     </thead>
                     <tbody id="top-picked-body">
-                    <tr><td colspan="4" class="ed-empty-row">Dang tai du lieu...</td></tr>
+                    <tr><td colspan="4" class="ed-empty-row">&#272;ang t&#7843;i d&#7919; li&#7879;u...</td></tr>
                     </tbody>
                 </table>
             </div>
         </article>
 
+        <article class="ed-card">
+            <div class="ed-section-head">
+                <div>
+                    <span class="ed-section-kicker">Blue Side</span>
+                    <h2>Top Blue Side Bans</h2>
+                </div>
+                <button
+                    id="top-blue-banned-toggle"
+                    type="button"
+                    class="ed-secondary-button ed-table-toggle"
+                    data-table-toggle="topBlueBanned"
+                    aria-controls="top-blue-banned-body"
+                    aria-expanded="false"
+                    hidden
+                >
+                    Xem t&#7845;t c&#7843;
+                </button>
+            </div>
+            <div class="ed-table-wrap">
+                <table class="ed-table">
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Hero</th>
+                        <th>Blue bans</th>
+                        <th>Share</th>
+                    </tr>
+                    </thead>
+                    <tbody id="top-blue-banned-body">
+                    <tr><td colspan="4" class="ed-empty-row">&#272;ang t&#7843;i d&#7919; li&#7879;u...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </article>
+
+        <article class="ed-card">
+            <div class="ed-section-head">
+                <div>
+                    <span class="ed-section-kicker">Red Side</span>
+                    <h2>Top Red Side Bans</h2>
+                </div>
+                <button
+                    id="top-red-banned-toggle"
+                    type="button"
+                    class="ed-secondary-button ed-table-toggle"
+                    data-table-toggle="topRedBanned"
+                    aria-controls="top-red-banned-body"
+                    aria-expanded="false"
+                    hidden
+                >
+                    Xem t&#7845;t c&#7843;
+                </button>
+            </div>
+            <div class="ed-table-wrap">
+                <table class="ed-table">
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Hero</th>
+                        <th>Red bans</th>
+                        <th>Share</th>
+                    </tr>
+                    </thead>
+                    <tbody id="top-red-banned-body">
+                    <tr><td colspan="4" class="ed-empty-row">&#272;ang t&#7843;i d&#7919; li&#7879;u...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </section>
+
+    <section class="ed-shell">
         <article class="ed-card ed-side-card">
             <div class="ed-section-head">
                 <div>
                     <span class="ed-section-kicker">Side Advantage</span>
                     <h2>Blue vs Red</h2>
-                    <p>Blue side win rate va red side win rate duoc tinh truc tiep tu <code>winner_team_id</code>.</p>
                 </div>
             </div>
 
@@ -189,9 +258,7 @@
                 <div id="red-win-bar" class="ed-side-bar-red" style="width: 0%;"></div>
             </div>
 
-            <div id="side-summary" class="ed-side-summary">
-                Dang cho du lieu winner de tinh side advantage.
-            </div>
+            <div id="side-summary" class="ed-side-summary" hidden></div>
         </article>
     </section>
 
@@ -201,26 +268,44 @@
                 <div>
                     <span class="ed-section-kicker">Hero Detail</span>
                     <h2>Hero Statistics</h2>
-                    <p>Picks, bans, presence, wins va win rate cua tung hero trong scope hien tai.</p>
                 </div>
             </div>
 
-            <div class="ed-table-wrap">
-                <table class="ed-table ed-table-wide">
+            <div class="ed-table-wrap ed-hero-stats-wrap">
+                <table class="ed-table ed-hero-stats-table">
                     <thead>
-                    <tr>
-                        <th>Hero</th>
-                        <th>Picks</th>
-                        <th>Bans</th>
-                        <th>Presence</th>
-                        <th>Wins</th>
-                        <th>Pick WR</th>
-                        <th>Blue bans</th>
-                        <th>Red bans</th>
+                    <tr class="ed-hero-stats-group-row">
+                        <th class="ed-hero-stats-rank-col" rowspan="2" scope="col">#</th>
+                        <th class="ed-hero-stats-hero-col" rowspan="2" scope="col">Hero</th>
+                        <th colspan="5" scope="colgroup">Picks</th>
+                        <th colspan="4" scope="colgroup">Blue Side</th>
+                        <th colspan="4" scope="colgroup">Red Side</th>
+                        <th colspan="2" scope="colgroup">Bans</th>
+                        <th colspan="2" scope="colgroup">Picks &amp; Bans</th>
+                        <th rowspan="2" scope="col">Details</th>
+                    </tr>
+                    <tr class="ed-hero-stats-subhead-row">
+                        <th scope="col">Σ</th>
+                        <th scope="col">W</th>
+                        <th scope="col">L</th>
+                        <th scope="col">WR</th>
+                        <th class="ed-hero-stats-divider" scope="col">%T</th>
+                        <th scope="col">Σ</th>
+                        <th scope="col">W</th>
+                        <th scope="col">L</th>
+                        <th class="ed-hero-stats-divider" scope="col">WR</th>
+                        <th scope="col">Σ</th>
+                        <th scope="col">W</th>
+                        <th scope="col">L</th>
+                        <th class="ed-hero-stats-divider" scope="col">WR</th>
+                        <th scope="col">Σ</th>
+                        <th class="ed-hero-stats-divider" scope="col">%T</th>
+                        <th scope="col">Σ</th>
+                        <th class="ed-hero-stats-divider" scope="col">%T</th>
                     </tr>
                     </thead>
                     <tbody id="hero-stats-body">
-                    <tr><td colspan="8" class="ed-empty-row">Dang tai du lieu...</td></tr>
+                    <tr><td colspan="20" class="ed-empty-row">Đang tải dữ liệu...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -228,8 +313,11 @@
     </section>
 </main>
 
-<script src="/js/esports-data.js?v=20260512-game-drafts"></script>
+<div id="footer-placeholder"></div>
+
+<script src="/js/esports-data.js?v=20260515-hero-statistics"></script>
 <script src="/js/auth.js?v=20260424-account-profile"></script>
-<script src="/js/header-loader.js?v=20260508-esports-data"></script>
+<script src="/js/header-loader.js?v=20260514-layout-partials"></script>
 </body>
 </html>
+

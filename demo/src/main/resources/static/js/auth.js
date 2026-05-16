@@ -12,6 +12,9 @@ const AUTH_STORAGE_KEY = 'aov_user';
 const PROFILE_STORAGE_PREFIX = 'aov_profile_';
 const AUTH_EXPIRY_SKEW_MS = 30 * 1000;
 const ACCOUNT_LEVELS = ['Normal', 'Vip'];
+const DEFAULT_PLAYER_BADGE_CODE = 'default';
+const DEFAULT_PLAYER_BADGE_NAME = 'ATG Player';
+const DEFAULT_PLAYER_CARD_TITLE = '\u2726 T\u00e2n Binh Ban/Pick \u2726';
 
 const originalFetch = window.fetch ? window.fetch.bind(window) : null;
 let googleIdentityInitialized = false;
@@ -75,7 +78,11 @@ function writeStoredProfile(user) {
 
     localStorage.setItem(key, JSON.stringify({
         displayName: user.displayName || user.name || 'User',
-        level: normalizeAccountLevel(user.level)
+        level: normalizeAccountLevel(user.level),
+        playerBadgeCode: user.playerBadgeCode || DEFAULT_PLAYER_BADGE_CODE,
+        playerBadgeName: user.playerBadgeName || DEFAULT_PLAYER_BADGE_NAME,
+        playerBadgeIconUrl: typeof user.playerBadgeIconUrl === 'string' ? user.playerBadgeIconUrl.trim() : '',
+        playerTitle: user.playerTitle || DEFAULT_PLAYER_CARD_TITLE
     }));
 }
 
@@ -91,6 +98,21 @@ function normalizeAccountLevel(level) {
     return ACCOUNT_LEVELS.includes(level) ? level : 'Normal';
 }
 
+function normalizePlayerCardField(value, fallbackValue) {
+    if (typeof value !== 'string') {
+        return fallbackValue;
+    }
+    const normalized = value.trim();
+    return normalized || fallbackValue;
+}
+
+function normalizePlayerCardIconUrl(value) {
+    if (typeof value !== 'string') {
+        return '';
+    }
+    return value.trim();
+}
+
 function normalizeAuthUser(user) {
     if (!user) return null;
 
@@ -98,7 +120,11 @@ function normalizeAuthUser(user) {
     return {
         ...user,
         displayName,
-        level: normalizeAccountLevel(user.level)
+        level: normalizeAccountLevel(user.level),
+        playerBadgeCode: normalizePlayerCardField(user.playerBadgeCode, DEFAULT_PLAYER_BADGE_CODE),
+        playerBadgeName: normalizePlayerCardField(user.playerBadgeName, DEFAULT_PLAYER_BADGE_NAME),
+        playerBadgeIconUrl: normalizePlayerCardIconUrl(user.playerBadgeIconUrl),
+        playerTitle: normalizePlayerCardField(user.playerTitle, DEFAULT_PLAYER_CARD_TITLE)
     };
 }
 
@@ -161,7 +187,11 @@ function updateAuthProfile(updates) {
         displayName: typeof updates.displayName === 'string'
             ? updates.displayName.trim() || user.name || 'User'
             : user.displayName,
-        level: updates.level || user.level
+        level: updates.level || user.level,
+        playerBadgeCode: updates.playerBadgeCode ?? user.playerBadgeCode,
+        playerBadgeName: updates.playerBadgeName ?? user.playerBadgeName,
+        playerBadgeIconUrl: updates.playerBadgeIconUrl ?? user.playerBadgeIconUrl,
+        playerTitle: updates.playerTitle ?? user.playerTitle
     });
 
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser));
@@ -181,7 +211,11 @@ function applyAuthUserProfile(profile) {
         email: profile.email || user.email,
         displayName: typeof profile.displayName === 'string' ? profile.displayName : user.displayName,
         role: profile.role || user.role,
-        level: profile.level || user.level
+        level: profile.level || user.level,
+        playerBadgeCode: profile.playerBadgeCode ?? user.playerBadgeCode,
+        playerBadgeName: profile.playerBadgeName ?? user.playerBadgeName,
+        playerBadgeIconUrl: profile.playerBadgeIconUrl ?? user.playerBadgeIconUrl,
+        playerTitle: profile.playerTitle ?? user.playerTitle
     });
 
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser));
@@ -392,6 +426,10 @@ function handleGoogleLogin(response) {
             name: payload.name,
             displayName: storedProfile?.displayName || (shouldPreserveProfile ? existingUser.displayName : payload.name),
             level: storedProfile?.level || (shouldPreserveProfile ? existingUser.level : 'Normal'),
+            playerBadgeCode: storedProfile?.playerBadgeCode || (shouldPreserveProfile ? existingUser.playerBadgeCode : DEFAULT_PLAYER_BADGE_CODE),
+            playerBadgeName: storedProfile?.playerBadgeName || (shouldPreserveProfile ? existingUser.playerBadgeName : DEFAULT_PLAYER_BADGE_NAME),
+            playerBadgeIconUrl: storedProfile?.playerBadgeIconUrl || (shouldPreserveProfile ? existingUser.playerBadgeIconUrl : ''),
+            playerTitle: storedProfile?.playerTitle || (shouldPreserveProfile ? existingUser.playerTitle : DEFAULT_PLAYER_CARD_TITLE),
             picture: payload.picture,
             email: payload.email,
             role: checkUserRole(payload.email),

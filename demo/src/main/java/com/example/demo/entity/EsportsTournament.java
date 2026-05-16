@@ -1,5 +1,6 @@
 package com.example.demo.entity;
 
+import com.example.demo.util.EsportsTierSupport;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -82,16 +83,21 @@ public class EsportsTournament {
         if (status == null || status.isBlank()) {
             status = "UPCOMING";
         }
-        if (aerTier == null || aerTier < 1) {
-            aerTier = 1;
-        }
+        normalizeAerTier();
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
-        if (aerTier == null || aerTier < 1) {
+        normalizeAerTier();
+    }
+
+    private void normalizeAerTier() {
+        if (aerTier == null) {
             aerTier = 1;
+        }
+        if (!EsportsTierSupport.isValidAerTier(aerTier)) {
+            throw new IllegalStateException("aerTier chi hop le 0, 1 hoac 2.");
         }
     }
 }

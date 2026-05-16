@@ -244,6 +244,60 @@ body {
             border-radius: 14px;
             padding: 18px;
         }
+        .account-sidebar {
+            display: grid;
+            gap: 18px;
+            align-content: start;
+        }
+        .account-player-card-panel {
+            display: grid;
+            gap: 14px;
+        }
+        .account-player-card-head p {
+            color: #64748b;
+            font-size: 0.82rem;
+            line-height: 1.45;
+        }
+        .account-player-card-head p {
+            margin-top: -4px;
+        }
+        .account-player-card-preview .atg-player-card {
+            margin: 0;
+        }
+        .account-player-card-state {
+            background: #ffffff;
+            border: 1px dashed #cbd5e1;
+            border-radius: 12px;
+            color: #64748b;
+            font-size: 0.82rem;
+            line-height: 1.45;
+            padding: 12px;
+        }
+        .account-player-card-form {
+            display: grid;
+            gap: 12px;
+        }
+        .account-player-card-grid {
+            display: grid;
+            gap: 12px;
+        }
+        .account-player-card-actions {
+            display: grid;
+            gap: 8px;
+        }
+        .account-player-card-actions .profile-save-btn {
+            width: 100%;
+        }
+        .account-player-card-helper {
+            color: #64748b;
+            font-size: 0.76rem;
+            line-height: 1.5;
+        }
+        .account-player-card-note {
+            color: #64748b;
+            font-size: 0.76rem;
+            line-height: 1.5;
+        }
         .personal-content-panel {
             display: flex;
             flex-direction: column;

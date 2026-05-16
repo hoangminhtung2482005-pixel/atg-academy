@@ -1808,6 +1808,8 @@ async function openCreateModal(options={}){
     }
     const modal=document.getElementById('create-modal');
     modal?.classList.add('active');
+    modal?.scrollTo?.({top:0,left:0});
+    modal?.querySelector('.community-tier-editor-modal-body')?.scrollTo?.({top:0,left:0});
     document.body.style.overflow='hidden';
     const grid=document.getElementById('modal-hero-grid');
     if(grid) grid.innerHTML='<div class="draft-warning" style="grid-column:1/-1">Đang tải danh sách tướng...</div>';

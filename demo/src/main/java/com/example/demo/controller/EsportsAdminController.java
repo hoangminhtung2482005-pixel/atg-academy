@@ -5,8 +5,11 @@ import com.example.demo.dto.esports.EsportsTournamentRequest;
 import com.example.demo.dto.esports.EsportsTournamentTeamRequest;
 import com.example.demo.dto.esports.EsportsGameDraftImportConfirmRequest;
 import com.example.demo.dto.esports.EsportsGameDraftRequest;
+import com.example.demo.dto.esports.EsportsMatchRequest;
+import com.example.demo.dto.esports.EsportsResetDataRequest;
 import com.example.demo.entity.EsportsMatch;
 import com.example.demo.entity.EsportsTeam;
+import com.example.demo.service.EsportsAdminMaintenanceService;
 import com.example.demo.service.EsportsAdminService;
 import com.example.demo.service.EsportsDraftService;
 import com.example.demo.service.EsportsFranchiseService;
@@ -38,15 +41,18 @@ import java.util.NoSuchElementException;
 public class EsportsAdminController {
 
     private final EsportsAdminService esportsAdminService;
+    private final EsportsAdminMaintenanceService esportsAdminMaintenanceService;
     private final EsportsDraftService esportsDraftService;
     private final EsportsFranchiseService esportsFranchiseService;
     private final EsportsTournamentService esportsTournamentService;
 
     public EsportsAdminController(EsportsAdminService esportsAdminService,
+                                  EsportsAdminMaintenanceService esportsAdminMaintenanceService,
                                   EsportsDraftService esportsDraftService,
                                   EsportsFranchiseService esportsFranchiseService,
                                   EsportsTournamentService esportsTournamentService) {
         this.esportsAdminService = esportsAdminService;
+        this.esportsAdminMaintenanceService = esportsAdminMaintenanceService;
         this.esportsDraftService = esportsDraftService;
         this.esportsFranchiseService = esportsFranchiseService;
         this.esportsTournamentService = esportsTournamentService;
@@ -191,7 +197,7 @@ public class EsportsAdminController {
     public ResponseEntity<?> deleteTeam(@PathVariable Long id) {
         try {
             esportsAdminService.deleteTeam(id);
-            return ResponseEntity.ok(Map.of("message", "Da xoa doi tuyen voi ID: " + id));
+            return ResponseEntity.ok(Map.of("message", "Đã xóa đội tuyển với ID: " + id));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", e.getMessage()));
@@ -203,12 +209,12 @@ public class EsportsAdminController {
         try {
             int importedCount = esportsAdminService.importMatchesFromText(rawData);
             return ResponseEntity.ok(Map.of(
-                    "message", "Da reset du lieu cu va import " + importedCount + " tran moi.",
+                    "message", "Đã reset dữ liệu cũ và import " + importedCount + " trận mới.",
                     "importedCount", importedCount
             ));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "Import that bai: " + e.getMessage()));
+                    .body(Map.of("error", "Import thất bại: " + e.getMessage()));
         }
     }
 
@@ -219,11 +225,22 @@ public class EsportsAdminController {
 
     @DeleteMapping("/matches")
     public ResponseEntity<?> resetMatchHistory() {
-        long deletedCount = esportsAdminService.resetMatchHistory();
-        return ResponseEntity.ok(Map.of(
-                "message", "Da xoa toan bo Match History va reset Elo.",
-                "deletedCount", deletedCount
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(Map.of(
+                "error", "Endpoint reset cũ đã bị khóa để tránh xóa dữ liệu không cần confirmation. Hãy dùng POST /api/admin/esports/reset-data trên trang admin-esports-data.html."
         ));
+    }
+
+    @PostMapping("/reset-data")
+    public ResponseEntity<?> resetEsportsData(@RequestBody EsportsResetDataRequest request) {
+        try {
+            return ResponseEntity.ok(esportsAdminMaintenanceService.resetEsportsData(request));
+        } catch (IllegalArgumentException e) {
+            return error(HttpStatus.BAD_REQUEST, e);
+        } catch (UnsupportedOperationException e) {
+            return error(HttpStatus.FORBIDDEN, e);
+        } catch (IllegalStateException e) {
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, e);
+        }
     }
 
     @GetMapping("/matches/{id}")
@@ -237,9 +254,9 @@ public class EsportsAdminController {
     }
 
     @PostMapping("/matches")
-    public ResponseEntity<?> addMatch(@RequestBody EsportsMatch match) {
+    public ResponseEntity<?> addMatch(@RequestBody EsportsMatchRequest request) {
         try {
-            EsportsMatch created = esportsAdminService.addMatch(match);
+            EsportsMatch created = esportsAdminService.addMatch(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -248,9 +265,9 @@ public class EsportsAdminController {
     }
 
     @PutMapping("/matches/{id}")
-    public ResponseEntity<?> updateMatch(@PathVariable Long id, @RequestBody EsportsMatch match) {
+    public ResponseEntity<?> updateMatch(@PathVariable Long id, @RequestBody EsportsMatchRequest request) {
         try {
-            return ResponseEntity.ok(esportsAdminService.updateMatch(id, match));
+            return ResponseEntity.ok(esportsAdminService.updateMatch(id, request));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", e.getMessage()));
@@ -261,7 +278,7 @@ public class EsportsAdminController {
     public ResponseEntity<?> deleteMatch(@PathVariable Long id) {
         try {
             esportsAdminService.deleteMatch(id);
-            return ResponseEntity.ok(Map.of("message", "Da xoa tran dau voi ID: " + id));
+            return ResponseEntity.ok(Map.of("message", "Đã xóa trận đấu với ID: " + id));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", e.getMessage()));

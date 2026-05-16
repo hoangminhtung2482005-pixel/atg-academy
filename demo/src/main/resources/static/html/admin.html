@@ -38,7 +38,8 @@
 <div id="toast" class="toast-box"></div>
 
 <!-- ==================== SIDEBAR ==================== -->
-<aside class="w-64 flex-shrink-0 h-screen bg-white shadow-lg border-r border-slate-200 flex flex-col fixed left-0 top-0 z-40">
+<div id="admin-sidebar-placeholder"></div>
+<aside class="w-64 flex-shrink-0 h-screen bg-white shadow-lg border-r border-slate-200 flex flex-col fixed left-0 top-0 z-40" hidden>
     <!-- Logo -->
     <div class="px-5 py-5 border-b border-slate-200">
         <a href="/html/index.html"
@@ -249,7 +250,7 @@
                     <div>
                         <p class="text-[0.68rem] text-accent-blue font-bold uppercase tracking-[3px] mb-2">AER Data</p>
                         <h2 class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Ranking / Teams / Match History</h2>
-                        <p class="text-sm text-slate-500 mt-2">Module này giữ workflow AER/ranking cũ: quản lý đội, bulk import, match history và reset Elo. Flow nhập draft chi tiết đã tách sang trang <strong class="text-slate-700">Esports Data</strong>.</p>
+                        <p class="text-sm text-slate-500 mt-2">Module này giữ workflow AER/ranking cũ: quản lý đội, bulk import và match history. Các thao tác quản trị dữ liệu chi tiết đã tách sang trang <strong class="text-slate-700">Esports Data</strong>.</p>
                     </div>
                     <a href="/html/admin-esports-data.html" class="btn-press inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-all hover:bg-white">
                         <span>🎮</span>
@@ -393,9 +394,6 @@
                             <p class="text-xs text-slate-500 mt-0.5">Lịch sử các trận đấu — <span id="match-count" class="text-accent-blue">0</span> trận</p>
                         </div>
                     </div>
-                    <button onclick="resetMatchHistory()" id="btn-reset-matches" class="btn-press text-xs text-accent-red/70 hover:text-accent-red border border-accent-red/20 hover:border-accent-red/40 hover:bg-accent-red/5 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5">
-                        <span class="text-xs">Reset dữ liệu</span>
-                    </button>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full min-w-[800px]">
@@ -526,6 +524,7 @@
 </div>
 
 <script src="/js/auth.js?v=20260424-account-profile"></script>
+<script src="/js/header-loader.js?v=20260514-layout-partials"></script>
 <script>
     requireRoleAccess('Admin', '/html/index.html');
 
@@ -568,12 +567,19 @@
         }
     }
 
-    document.querySelector('nav').addEventListener('click', function(event) {
-        var item = event.target.closest('.nav-item[data-page]');
-        if (item) {
-            switchPage(item.dataset.page);
-        }
-    });
+    function bindAdminSidebarNavigation() {
+        var adminNav = document.querySelector('.admin-sidebar .sidebar-nav');
+        if (!adminNav || adminNav.dataset.bound === 'true') return;
+
+        adminNav.addEventListener('click', function(event) {
+            var item = event.target.closest('.nav-item[data-page]');
+            if (item) {
+                switchPage(item.dataset.page);
+            }
+        });
+
+        adminNav.dataset.bound = 'true';
+    }
 
     function openHashPage() {
         var pageId = window.location.hash ? window.location.hash.substring(1) : '';
@@ -585,7 +591,21 @@
         }
     }
     window.addEventListener('hashchange', openHashPage);
-    openHashPage();
+
+    document.addEventListener('adminSidebarLoaded', function() {
+        bindAdminSidebarNavigation();
+        openHashPage();
+    });
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            bindAdminSidebarNavigation();
+            openHashPage();
+        }, { once: true });
+    } else {
+        bindAdminSidebarNavigation();
+        openHashPage();
+    }
 
     // ==================== TOAST ====================
     function showToast(msg, type) {
@@ -867,23 +887,6 @@
                 '</tr>';
             }).join('');
         } catch (error) { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-16 text-accent-red/60 text-sm">⚠ ' + error.message + '</td></tr>'; }
-    }
-
-    async function resetMatchHistory() {
-        if (!confirm('Reset dữ liệu sẽ xóa toàn bộ Match History hiện tại và đưa Elo về trạng thái không có trận. Tiếp tục?')) return;
-        setBtnLoading('btn-reset-matches', true);
-        try {
-            var response = await fetch('/api/admin/esports/matches', { method: 'DELETE' });
-            if (!response.ok) { var err = await response.json(); throw new Error(err.error || 'Reset dữ liệu thất bại'); }
-            var result = await response.json();
-            showToast(result.message || 'Đã reset dữ liệu Match History.', 'ok');
-            loadMatches();
-            loadTeams();
-        } catch (error) {
-            showToast(error.message, 'err');
-        } finally {
-            setBtnLoading('btn-reset-matches', false);
-        }
     }
 
     function getStageName(stage) {

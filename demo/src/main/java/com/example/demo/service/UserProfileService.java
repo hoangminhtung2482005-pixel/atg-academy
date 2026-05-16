@@ -11,6 +11,8 @@ import com.example.demo.repository.GuideRepository;
 import com.example.demo.repository.TierListRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.security.GoogleUserPrincipal;
+import com.example.demo.support.PlayerCardDefaults;
+import com.example.demo.support.PlayerCardDefaults.PlayerBadgePreset;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,6 +78,7 @@ public class UserProfileService {
             user.setLevel("Normal");
         }
 
+        applyPlayerCardConfig(user, request);
         return UserProfileResponse.from(userRepository.save(user));
     }
 
@@ -136,7 +139,124 @@ public class UserProfileService {
                 return allowedLevel;
             }
         }
-        throw badRequest("Cap do khong hop le");
+        throw badRequest("Cấp độ không hợp lệ");
+    }
+
+    private void applyPlayerCardConfig(User user, UserProfileUpdateRequest request) {
+        if (user == null) {
+            return;
+        }
+
+        if (request == null) {
+            ensurePlayerCardDefaults(user);
+            return;
+        }
+
+        boolean hasPlayerCardPatch = request.playerBadgeCode() != null
+                || request.playerBadgeName() != null
+                || request.playerBadgeIconUrl() != null
+                || request.playerTitle() != null;
+
+        if (!hasPlayerCardPatch) {
+            ensurePlayerCardDefaults(user);
+            return;
+        }
+
+        PlayerBadgePreset preset = resolveBadgePreset(request.playerBadgeCode(), user);
+        user.setPlayerBadgeCode(preset.code());
+        user.setPlayerBadgeName(resolveBadgeName(request.playerBadgeName(), user, preset));
+        user.setPlayerBadgeIconUrl(resolveBadgeIconUrl(request.playerBadgeIconUrl(), user, preset));
+        user.setPlayerTitle(resolvePlayerTitle(request.playerTitle(), user));
+    }
+
+    private void ensurePlayerCardDefaults(User user) {
+        if (!StringUtils.hasText(user.getPlayerBadgeCode())) {
+            user.setPlayerBadgeCode(PlayerCardDefaults.DEFAULT_BADGE_CODE);
+        }
+        if (!StringUtils.hasText(user.getPlayerBadgeName())) {
+            user.setPlayerBadgeName(PlayerCardDefaults.resolvePreset(user.getPlayerBadgeCode()).name());
+        }
+        if (!StringUtils.hasText(user.getPlayerTitle())) {
+            user.setPlayerTitle(PlayerCardDefaults.DEFAULT_TITLE);
+        }
+        if (user.getPlayerBadgeIconUrl() != null && user.getPlayerBadgeIconUrl().isBlank()) {
+            user.setPlayerBadgeIconUrl(null);
+        }
+    }
+
+    private PlayerBadgePreset resolveBadgePreset(String requestedCode, User user) {
+        String candidateCode = requestedCode != null
+                ? normalizeBadgeCode(requestedCode)
+                : user.resolvePlayerBadgeCode();
+        if (!PlayerCardDefaults.isSupportedBadgeCode(candidateCode)) {
+            throw badRequest("Badge Player Card khong hop le");
+        }
+        return PlayerCardDefaults.resolvePreset(candidateCode);
+    }
+
+    private String resolveBadgeName(String requestedBadgeName, User user, PlayerBadgePreset preset) {
+        if (requestedBadgeName == null) {
+            return StringUtils.hasText(user.getPlayerBadgeName()) ? user.resolvePlayerBadgeName() : preset.name();
+        }
+        String badgeName = normalizeOptionalText(
+                requestedBadgeName,
+                PlayerCardDefaults.MAX_BADGE_NAME_LENGTH,
+                "Ten badge toi da 80 ky tu"
+        );
+        return StringUtils.hasText(badgeName) ? badgeName : preset.name();
+    }
+
+    private String resolveBadgeIconUrl(String requestedIconUrl, User user, PlayerBadgePreset preset) {
+        if (requestedIconUrl == null) {
+            if (StringUtils.hasText(user.getPlayerBadgeIconUrl())) {
+                return user.getPlayerBadgeIconUrl().trim();
+            }
+            return preset.iconUrl();
+        }
+
+        String iconUrl = normalizeOptionalText(
+                requestedIconUrl,
+                PlayerCardDefaults.MAX_BADGE_ICON_URL_LENGTH,
+                "Badge icon URL toi da 500 ky tu"
+        );
+        if (!StringUtils.hasText(iconUrl)) {
+            return preset.iconUrl();
+        }
+        if (iconUrl.startsWith("http://") || iconUrl.startsWith("https://") || iconUrl.startsWith("/")) {
+            return iconUrl;
+        }
+        throw badRequest("Badge icon URL khong hop le");
+    }
+
+    private String resolvePlayerTitle(String requestedTitle, User user) {
+        if (requestedTitle == null) {
+            return user.resolvePlayerTitle();
+        }
+        String title = normalizeOptionalText(
+                requestedTitle,
+                PlayerCardDefaults.MAX_TITLE_LENGTH,
+                "Title Player Card toi da 60 ky tu"
+        );
+        return StringUtils.hasText(title) ? title : PlayerCardDefaults.DEFAULT_TITLE;
+    }
+
+    private String normalizeBadgeCode(String value) {
+        String badgeCode = PlayerCardDefaults.normalizeBadgeCode(value);
+        if (!PlayerCardDefaults.SAFE_BADGE_CODE.matcher(badgeCode).matches()) {
+            throw badRequest("Ma badge chi duoc gom chu thuong, so, gach ngang hoac gach duoi");
+        }
+        return badgeCode;
+    }
+
+    private String normalizeOptionalText(String value, int maxLength, String tooLongMessage) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim().replaceAll("\\s+", " ");
+        if (normalized.length() > maxLength) {
+            throw badRequest(tooLongMessage);
+        }
+        return normalized;
     }
 
     private ResponseStatusException badRequest(String message) {

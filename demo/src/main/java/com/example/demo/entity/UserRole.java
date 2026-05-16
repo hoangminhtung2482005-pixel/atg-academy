@@ -24,6 +24,6 @@ public enum UserRole {
                 .filter(role -> role.name().equalsIgnoreCase(normalized)
                         || role.storageValue.equalsIgnoreCase(normalized))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Vai tro khong hop le"));
+                .orElseThrow(() -> new IllegalArgumentException("Vai trò không hợp lệ"));
     }
 }

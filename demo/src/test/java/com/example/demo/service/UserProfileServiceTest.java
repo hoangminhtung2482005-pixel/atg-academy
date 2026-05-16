@@ -48,21 +48,36 @@ class UserProfileServiceTest {
     }
 
     @Test
-    void updateCurrentProfilePersistsDisplayNameAndLevel() {
+    void updateCurrentProfilePersistsDisplayNameLevelAndPlayerCard() {
         User user = user(1L, "player@example.com", "Google Name");
         when(userRepository.findByEmail("player@example.com")).thenReturn(Optional.of(user));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         UserProfileResponse response = service.updateCurrentProfile(
                 principal("player@example.com"),
-                new UserProfileUpdateRequest("  Minh Tùng Hoàng  ", "Vip")
+                new UserProfileUpdateRequest(
+                        "  Minh Tùng Hoàng  ",
+                        "Vip",
+                        "shot-caller",
+                        "Shot Caller",
+                        "",
+                        "  ✦ Ban/Pick Captain ✦  "
+                )
         );
 
         assertThat(user.getName()).isEqualTo("Google Name");
         assertThat(user.getDisplayName()).isEqualTo("Minh Tùng Hoàng");
         assertThat(user.getLevel()).isEqualTo("Vip");
+        assertThat(user.getPlayerBadgeCode()).isEqualTo("shot-caller");
+        assertThat(user.getPlayerBadgeName()).isEqualTo("Shot Caller");
+        assertThat(user.getPlayerBadgeIconUrl()).isNull();
+        assertThat(user.getPlayerTitle()).isEqualTo("✦ Ban/Pick Captain ✦");
         assertThat(response.displayName()).isEqualTo("Minh Tùng Hoàng");
         assertThat(response.level()).isEqualTo("Vip");
+        assertThat(response.playerBadgeCode()).isEqualTo("shot-caller");
+        assertThat(response.playerBadgeName()).isEqualTo("Shot Caller");
+        assertThat(response.playerBadgeIconUrl()).isNull();
+        assertThat(response.playerTitle()).isEqualTo("✦ Ban/Pick Captain ✦");
     }
 
     @Test
@@ -72,7 +87,7 @@ class UserProfileServiceTest {
 
         assertThatThrownBy(() -> service.updateCurrentProfile(
                 principal("player@example.com"),
-                new UserProfileUpdateRequest("   ", "Normal")
+                new UserProfileUpdateRequest("   ", "Normal", null, null, null, null)
         )).isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
             assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
             assertThat(exception.getReason()).isNotBlank();
@@ -80,7 +95,7 @@ class UserProfileServiceTest {
     }
 
     @Test
-    void getCurrentProfileFallsBackToStoredGoogleName() {
+    void getCurrentProfileFallsBackToStoredGoogleNameAndDefaultPlayerCard() {
         User user = user(1L, "player@example.com", "Google Name");
         user.setLevel(null);
         when(userRepository.findByEmail("player@example.com")).thenReturn(Optional.of(user));
@@ -89,6 +104,45 @@ class UserProfileServiceTest {
 
         assertThat(response.displayName()).isEqualTo("Google Name");
         assertThat(response.level()).isEqualTo("Normal");
+        assertThat(response.playerBadgeCode()).isEqualTo("default");
+        assertThat(response.playerBadgeName()).isEqualTo("ATG Player");
+        assertThat(response.playerBadgeIconUrl()).isNull();
+        assertThat(response.playerTitle()).isEqualTo("✦ Tân Binh Ban/Pick ✦");
+    }
+
+    @Test
+    void updateCurrentProfileKeepsExistingPlayerCardWhenRequestOmitsPlayerCardPatch() {
+        User user = user(1L, "player@example.com", "Google Name");
+        user.setPlayerBadgeCode("meta-reader");
+        user.setPlayerBadgeName("Meta Reader");
+        user.setPlayerBadgeIconUrl("https://cdn.example.com/meta-reader.png");
+        user.setPlayerTitle("✦ Đọc Meta Như Mở Sách ✦");
+        when(userRepository.findByEmail("player@example.com")).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UserProfileResponse response = service.updateCurrentProfile(
+                principal("player@example.com"),
+                new UserProfileUpdateRequest("Người Chơi Mới", "Normal", null, null, null, null)
+        );
+
+        assertThat(response.playerBadgeCode()).isEqualTo("meta-reader");
+        assertThat(response.playerBadgeName()).isEqualTo("Meta Reader");
+        assertThat(response.playerBadgeIconUrl()).isEqualTo("https://cdn.example.com/meta-reader.png");
+        assertThat(response.playerTitle()).isEqualTo("✦ Đọc Meta Như Mở Sách ✦");
+    }
+
+    @Test
+    void updateCurrentProfileRejectsUnsupportedPlayerBadgeCode() {
+        User user = user(1L, "player@example.com", "Google Name");
+        when(userRepository.findByEmail("player@example.com")).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> service.updateCurrentProfile(
+                principal("player@example.com"),
+                new UserProfileUpdateRequest("Google Name", "Normal", "drop table", "Oops", null, "Title")
+        )).isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
+            assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(exception.getReason()).isNotBlank();
+        });
     }
 
     @Test
