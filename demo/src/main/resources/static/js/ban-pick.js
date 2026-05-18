@@ -185,6 +185,128 @@
             `;
         }
 
+        function normalizeSoloTab(value) {
+            const normalized = String(value || '').trim().toLowerCase();
+            if (normalized === 'profile' || normalized === 'leaderboard') {
+                return normalized;
+            }
+            return 'matchmaking';
+        }
+
+        function isCurrentLeaderboardUser(player) {
+            const authUser = getCurrentAuthUser();
+            if (!authUser?.email) return false;
+            return String(player?.user?.email || '').trim().toLowerCase() === String(authUser.email).trim().toLowerCase();
+        }
+
+        function getLeaderboardRankDisplay(player) {
+            const rankCode = String(player?.rankCode || '').trim().toUpperCase();
+            return rankCode && rankCode !== 'UNRANKED' ? rankCode : '—';
+        }
+
+        function renderSoloLeaderboardRows(players) {
+            return players.map((player, index) => {
+                const isCurrentUser = isCurrentLeaderboardUser(player);
+                return `
+                    <article class="solo-leaderboard-row ${isCurrentUser ? 'is-current-user' : ''}">
+                        <div class="solo-leaderboard-rank">
+                            <span class="solo-leaderboard-rank-index">#${formatProfileNumber(index + 1)}</span>
+                            <strong class="solo-leaderboard-rank-badge" title="${escapeBanPickHtml(player?.rankLabel || 'Unranked')}">${escapeBanPickHtml(getLeaderboardRankDisplay(player))}</strong>
+                        </div>
+                        <div class="solo-leaderboard-player">
+                            <strong>${escapeBanPickHtml(player?.user?.name || 'Người chơi')}</strong>
+                            <span>${formatProfileNumber(player?.totalMatches)} trận gần nhất</span>
+                        </div>
+                        <div class="solo-leaderboard-metric">
+                            <span>ELO</span>
+                            <strong>${formatProfileNumber(player?.rating, 1000)}</strong>
+                        </div>
+                        <div class="solo-leaderboard-metric">
+                            <span>W / L</span>
+                            <strong>${formatProfileNumber(player?.wins)}/${formatProfileNumber(player?.losses)}</strong>
+                        </div>
+                        <div class="solo-leaderboard-metric">
+                            <span>Win rate</span>
+                            <strong>${escapeBanPickHtml(formatProfileWinRate(player?.winRate))}</strong>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+        }
+
+        function renderSoloLeaderboardPanel() {
+            const summary = document.getElementById('solo-leaderboard-summary');
+            const root = document.getElementById('solo-leaderboard-root');
+            if (!summary || !root) return;
+
+            if (!soloLeaderboardLoaded && !soloLeaderboardLoading && !soloLeaderboardError) {
+                summary.textContent = 'Mở tab này để tải bảng xếp hạng Solo Ban/Pick hiện tại.';
+                root.innerHTML = '<div class="solo-leaderboard-empty">Chọn tab Bảng xếp hạng để tải dữ liệu mới nhất hoặc mở trang leaderboard riêng nếu bạn muốn xem toàn màn hình.</div>';
+                return;
+            }
+
+            if (soloLeaderboardLoading) {
+                summary.textContent = 'Đang tải bảng xếp hạng Solo Ban/Pick...';
+                root.innerHTML = '<div class="solo-leaderboard-empty">Đang tải bảng xếp hạng...</div>';
+                return;
+            }
+
+            if (soloLeaderboardError) {
+                summary.textContent = soloLeaderboardError;
+                root.innerHTML = '<div class="solo-leaderboard-empty is-error">Không thể tải leaderboard lúc này. Bạn có thể thử mở lại tab hoặc vào trang bảng xếp hạng riêng.</div>';
+                return;
+            }
+
+            if (!soloLeaderboard.length) {
+                summary.textContent = 'Chưa có dữ liệu xếp hạng Solo Ban/Pick.';
+                root.innerHTML = '<div class="solo-leaderboard-empty">Chưa có người chơi đủ điều kiện lên bảng xếp hạng.</div>';
+                return;
+            }
+
+            summary.textContent = `Top ${formatProfileNumber(soloLeaderboard.length)} người chơi Solo Ban/Pick hiện đang có dữ liệu xếp hạng.`;
+            root.innerHTML = `
+                <div class="solo-leaderboard-header">
+                    <span>Hạng</span>
+                    <span>Người chơi</span>
+                    <span>ELO</span>
+                    <span>W / L</span>
+                    <span>Win rate</span>
+                </div>
+                <div class="solo-leaderboard-body">
+                    ${renderSoloLeaderboardRows(soloLeaderboard)}
+                </div>
+            `;
+        }
+
+        async function loadSoloLeaderboard(options = {}) {
+            if (soloLeaderboardLoading) return;
+            if (soloLeaderboardLoaded && !options.force) {
+                renderSoloLeaderboardPanel();
+                return;
+            }
+
+            soloLeaderboardLoading = true;
+            soloLeaderboardError = '';
+            renderSoloLeaderboardPanel();
+
+            try {
+                const response = await fetch('/api/ban-pick/leaderboard');
+                const payload = await response.json().catch(() => []);
+                if (!response.ok) {
+                    throw new Error(payload?.message || 'Không thể tải bảng xếp hạng Solo Ban/Pick.');
+                }
+                soloLeaderboard = Array.isArray(payload) ? payload : [];
+                soloLeaderboardLoaded = true;
+            } catch (error) {
+                soloLeaderboard = [];
+                soloLeaderboardLoaded = false;
+                soloLeaderboardError = error?.message || 'Không thể tải bảng xếp hạng Solo Ban/Pick.';
+            } finally {
+                soloLeaderboardLoading = false;
+                renderSoloLeaderboardPanel();
+            }
+        }
+
         async function loadHeroesFromApi() {
             try {
                 const response = await fetch('/api/wiki/heroes', { headers: { 'Accept': 'application/json' } });
@@ -256,6 +378,11 @@
         let onlineProfile = null;
         let onlineProfileLoading = false;
         let onlineProfileError = "";
+        let soloActiveTab = "matchmaking";
+        let soloLeaderboard = [];
+        let soloLeaderboardLoaded = false;
+        let soloLeaderboardLoading = false;
+        let soloLeaderboardError = "";
         let onlineNewActionSlots = new Set();
         let onlinePresence = null;
         let suppressOnlineStatusMessage = false;
@@ -341,13 +468,15 @@
         const modeLabels = {
             standard: "Cấm chọn tiêu chuẩn",
             free: "Cấm chọn tự do",
-            "solo-1v1": "Solo Ban/Pick 1v1 Online"
+            "solo-1v1": "Giả lập Solo 1v1 Online",
+            "ranked": "Rank Mode"
         };
 
         function normalizeConfiguredMode(mode) {
             if (!mode) return "";
             const normalized = String(mode).trim().toLowerCase();
             if (normalized === "solo") return "solo-1v1";
+            if (normalized === "ranked") return "ranked";
             if (normalized === "solo-1v1" || normalized === "standard" || normalized === "free") return normalized;
             return "";
         }
@@ -365,7 +494,11 @@
         }
 
         function isSoloOneVOneMode() {
-            return currentMode === "solo-1v1";
+            return currentMode === "solo-1v1" || currentMode === "ranked";
+        }
+
+        function isRankedMode() {
+            return currentMode === "ranked";
         }
 
         function isOnlineLineupAdjustment() {
@@ -400,6 +533,9 @@
 
             // 2. Render hero grid
             renderHeroGrid();
+            bindSoloTabNavigation();
+            syncSoloTabPanels();
+            renderSoloLeaderboardPanel();
 
             // 3. Slot drag-drop setup
             document.querySelectorAll('.slot').forEach(slot => {
@@ -461,6 +597,15 @@
             }
 
             if (configuredMode === "solo-1v1") {
+                setSoloTab('matchmaking', { skipDataLoad: true });
+                showPvpSetup();
+                loadOnlineProfile({ silent: true });
+                initializeOnlineRoomFromUrl();
+                return;
+            }
+
+            if (configuredMode === "ranked") {
+                setSoloTab('matchmaking', { skipDataLoad: true });
                 showPvpSetup();
                 loadOnlineProfile({ silent: true });
                 initializeOnlineRoomFromUrl();
@@ -561,6 +706,7 @@
             resetDraftState();
 
             if (currentMode === "solo-1v1") {
+                setSoloTab('matchmaking', { skipDataLoad: true });
                 showPvpSetup();
                 renderOnlineSetup();
                 return;
@@ -582,6 +728,7 @@
             onlineShareableUrl = "";
             onlineInfoMessage = "";
             onlineErrorMessage = "";
+            soloActiveTab = "matchmaking";
             resetDraftState();
             document.body.classList.remove('app-layout-active');
             document.getElementById('draft-status-panel').classList.add('is-hidden');
@@ -622,6 +769,8 @@
             document.getElementById('online-series-panel').classList.add('is-hidden');
             document.getElementById('draft-summary-panel').classList.add('is-hidden');
             document.getElementById('pvp-setup-panel').classList.remove('is-hidden');
+            bindSoloTabNavigation();
+            syncSoloTabPanels();
             renderOnlineSetup();
         }
 
@@ -633,6 +782,7 @@
             sideAssigned = false;
             diceRolling = false;
             setOnlineSeriesType("BO1");
+            setSoloTab('matchmaking', { skipDataLoad: true });
             renderOnlineSetup();
         }
 
@@ -641,7 +791,7 @@
         }
 
         function isOnlineRoomMode() {
-            return currentMode === "solo-1v1";
+            return currentMode === "solo-1v1" || currentMode === "ranked";
         }
 
         function isOnlineParticipant() {
@@ -706,6 +856,57 @@
             feedback.className = `online-room-feedback ${type}`.trim();
         }
 
+        function bindSoloTabNavigation() {
+            document.querySelectorAll('[data-solo-tab]').forEach(button => {
+                if (button.dataset.soloTabBound === '1') return;
+                button.dataset.soloTabBound = '1';
+                button.addEventListener('click', () => {
+                    setSoloTab(button.getAttribute('data-solo-tab'));
+                });
+            });
+        }
+
+        function syncSoloTabPanels() {
+            const activeTab = normalizeSoloTab(soloActiveTab);
+            document.querySelectorAll('[data-solo-tab]').forEach(button => {
+                const isActive = button.getAttribute('data-solo-tab') === activeTab;
+                button.classList.toggle('is-active', isActive);
+                button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                if (isActive) {
+                    button.removeAttribute('tabindex');
+                } else {
+                    button.setAttribute('tabindex', '-1');
+                }
+            });
+            document.querySelectorAll('[data-solo-panel]').forEach(panel => {
+                const isActive = panel.getAttribute('data-solo-panel') === activeTab;
+                panel.classList.toggle('is-active', isActive);
+                panel.hidden = !isActive;
+            });
+        }
+
+        function setSoloTab(nextTab, options = {}) {
+            soloActiveTab = normalizeSoloTab(nextTab);
+            syncSoloTabPanels();
+
+            if (options.skipDataLoad) return;
+
+            if (soloActiveTab === 'profile') {
+                renderOnlineProfilePanelV2();
+                if (getCurrentAuthUser() && !onlineProfileLoading && (!onlineProfile || onlineProfileError)) {
+                    loadOnlineProfile({ silent: Boolean(onlineProfile) });
+                }
+            }
+
+            if (soloActiveTab === 'leaderboard') {
+                if (!soloLeaderboardLoaded || soloLeaderboardError) {
+                    loadSoloLeaderboard({ force: Boolean(soloLeaderboardError) });
+                } else {
+                    renderSoloLeaderboardPanel();
+                }
+            }
+        }
+
         function renderOnlineProfilePanelV2() {
             const panel = document.getElementById('online-player-stats-card');
             const summary = document.getElementById('online-player-stats-summary');
@@ -724,7 +925,7 @@
             panel.classList.toggle('is-error', loggedIn && Boolean(onlineProfileError) && !onlineProfile);
 
             if (!loggedIn) {
-                summary.textContent = "Đăng nhập để xem Player Card.";
+                summary.textContent = "Đăng nhập để xem thông tin cá nhân.";
                 cardModule.hidden = true;
                 statsPanel.hidden = true;
                 playerCard.innerHTML = "";
@@ -777,7 +978,7 @@
         }
 
         async function loadOnlineProfile(options = {}) {
-            if (getPageMode() !== "solo-1v1" && currentMode !== "solo-1v1") {
+            if (getPageMode() !== "solo-1v1" && getPageMode() !== "ranked" && currentMode !== "solo-1v1" && currentMode !== "ranked") {
                 return;
             }
 
@@ -1006,6 +1207,7 @@
             currentMode = "solo-1v1";
             onlineRoomCode = roomCode;
             document.getElementById('mode-selector-panel').classList.add('is-hidden');
+            setSoloTab('matchmaking', { skipDataLoad: true });
             showPvpSetup();
             const joinInput = document.getElementById('join-room-code');
             if (joinInput) joinInput.value = roomCode;
@@ -1031,7 +1233,36 @@
         }
 
         function renderOnlineSetup() {
+            bindSoloTabNavigation();
+            syncSoloTabPanels();
             renderOnlineProfilePanelV2();
+            renderSoloLeaderboardPanel();
+
+            // Update lobby header for ranked vs simulation
+            const lobbyHeader = document.querySelector('#pvp-setup-panel .mode-selector-header h1');
+            const lobbyKicker = document.querySelector('#pvp-setup-panel .mode-selector-header .phase-progress');
+            if (lobbyHeader && lobbyKicker) {
+                if (isRankedMode()) {
+                    lobbyKicker.textContent = 'Rank Mode';
+                    lobbyHeader.textContent = 'Solo Ban/Pick Xếp Hạng';
+                } else {
+                    lobbyKicker.textContent = 'Giả lập Solo';
+                    lobbyHeader.textContent = 'Giả lập Solo 1v1 Online';
+                }
+            }
+
+            // Update sidebar kicker
+            const sidebarKicker = document.querySelector('.solo-sidebar-copy .phase-progress');
+            if (sidebarKicker) {
+                sidebarKicker.textContent = isRankedMode() ? 'Rank Mode' : 'Giả lập Solo';
+            }
+
+            // Hide series type selector for ranked (always BO1 real, virtual BO7)
+            const seriesSelector = document.querySelector('.online-series-selector');
+            if (seriesSelector) {
+                seriesSelector.classList.toggle('is-hidden', isRankedMode());
+            }
+
             const loggedIn = Boolean(getCurrentAuthUser());
             document.getElementById('online-login-gate').classList.toggle('is-hidden', loggedIn);
             document.getElementById('online-room-shell').classList.toggle('is-hidden', !loggedIn);
@@ -1128,15 +1359,17 @@
             }
             setOnlineFeedback("Đang tạo phòng...");
             try {
+                const roomMode = isRankedMode() ? "RANKED" : "SIMULATION";
+                const requestBody = { seriesType: selectedOnlineSeriesType, mode: roomMode };
                 const payload = await onlineRoomRequest('/api/ban-pick/rooms', {
                     method: 'POST',
-                    body: JSON.stringify({ seriesType: selectedOnlineSeriesType })
+                    body: JSON.stringify(requestBody)
                 });
                 onlineShareableUrl = payload.shareableUrl || buildOnlineRoomLink(payload.roomCode);
                 applyOnlineRoomState(payload.room);
                 window.history.replaceState({}, "", `?room=${encodeURIComponent(payload.roomCode)}`);
                 startOnlineRealtime(payload.roomCode);
-                showBanPickToast("Đã tạo phòng solo.");
+                showBanPickToast(isRankedMode() ? "Đã tạo phòng Rank Mode." : "Đã tạo phòng giả lập.");
             } catch (error) {
                 setOnlineFeedback(error.message, "error");
             }
@@ -1555,19 +1788,72 @@
             panels.forEach(panel => panel.classList.toggle('is-hidden', !shouldShow));
             if (!shouldShow) return;
 
-            const seriesType = onlineRoom.seriesType || "BO1";
-            const currentGame = onlineRoom.currentGameNumber || 1;
-            const maxGames = onlineRoom.maxGames || 1;
-            document.getElementById('online-series-type-label').textContent = seriesType;
-            document.getElementById('online-series-game-label').textContent = `Ván ${currentGame} / ${maxGames}`;
+            const isRankedRoom = onlineRoom.mode === "RANKED";
+            const virtualGameIndex = onlineRoom.virtualGameIndex;
+            const isUltimateBattle = Boolean(onlineRoom.ultimateBattle);
+
+            // Series type label: show virtual BO7 context for ranked
+            if (isRankedRoom && onlineRoom.virtualSeriesFormat) {
+                document.getElementById('online-series-type-label').textContent = `Rank Mode · ${onlineRoom.virtualSeriesFormat}`;
+                document.getElementById('online-series-game-label').textContent = isUltimateBattle
+                    ? 'Ultimate Battle'
+                    : `Game ${virtualGameIndex || '?'} / 7`;
+            } else {
+                const seriesType = onlineRoom.seriesType || "BO1";
+                const currentGame = onlineRoom.currentGameNumber || 1;
+                const maxGames = onlineRoom.maxGames || 1;
+                document.getElementById('online-series-type-label').textContent = seriesType;
+                document.getElementById('online-series-game-label').textContent = `Ván ${currentGame} / ${maxGames}`;
+            }
+
             const resetLabel = document.getElementById('online-series-reset-label');
-            resetLabel.hidden = !onlineRoom.bo7ResetActive;
-            document.getElementById('online-blue-used-picks').innerHTML = formatUsedHeroIcons(getOnlineUsedHeroIdsByTeam("blue"));
-            document.getElementById('online-red-used-picks').innerHTML = formatUsedHeroIcons(getOnlineUsedHeroIdsByTeam("red"));
+            resetLabel.hidden = !onlineRoom.bo7ResetActive && !isUltimateBattle;
+            if (isUltimateBattle) {
+                resetLabel.textContent = 'Ultimate Battle: Không ban, blind-pick only.';
+                resetLabel.hidden = false;
+            } else if (onlineRoom.bo7ResetActive) {
+                resetLabel.textContent = 'Ván 7: reset giới hạn tướng đã chọn.';
+            }
+
+            // Previous-used heroes display for ranked mode
+            if (isRankedRoom) {
+                const blueLockedIds = onlineRoom.bluePreviousUsedHeroIds || [];
+                const redLockedIds = onlineRoom.redPreviousUsedHeroIds || [];
+                const userSide = getOnlineUserSide();
+
+                if (blueLockedIds.length > 0) {
+                    blueUsedPanel?.classList.remove('is-hidden');
+                    const blueLabel = blueUsedPanel?.querySelector('strong');
+                    if (blueLabel) blueLabel.textContent = userSide === 'blue'
+                        ? 'Tướng bên bạn đã dùng (không thể pick lại)'
+                        : 'Tướng đối thủ đã dùng (bạn vẫn chọn được)';
+                    document.getElementById('online-blue-used-picks').innerHTML = formatUsedHeroIcons(blueLockedIds);
+                } else {
+                    blueUsedPanel?.classList.add('is-hidden');
+                }
+
+                if (redLockedIds.length > 0) {
+                    redUsedPanel?.classList.remove('is-hidden');
+                    const redLabel = redUsedPanel?.querySelector('strong');
+                    if (redLabel) redLabel.textContent = userSide === 'red'
+                        ? 'Tướng bên bạn đã dùng (không thể pick lại)'
+                        : 'Tướng đối thủ đã dùng (bạn vẫn chọn được)';
+                    document.getElementById('online-red-used-picks').innerHTML = formatUsedHeroIcons(redLockedIds);
+                } else {
+                    redUsedPanel?.classList.add('is-hidden');
+                }
+            } else {
+                document.getElementById('online-blue-used-picks').innerHTML = formatUsedHeroIcons(getOnlineUsedHeroIdsByTeam("blue"));
+                document.getElementById('online-red-used-picks').innerHTML = formatUsedHeroIcons(getOnlineUsedHeroIdsByTeam("red"));
+            }
+
+            // Hide ban slots for Ultimate Battle
+            const banSlots = document.querySelectorAll('.bans-col');
+            banSlots.forEach(col => col.classList.toggle('is-hidden', isRankedRoom && isUltimateBattle));
         }
 
         function syncOnlineRoomToDraft(room) {
-            currentMode = "solo-1v1";
+            currentMode = room.mode === "RANKED" ? "ranked" : "solo-1v1";
             playerBlue = room.blueUser?.name || "Bên Xanh";
             playerRed = room.redUser?.name || "Bên Đỏ";
             phaseDuration = room.phaseDurationSeconds || 60;
@@ -2081,6 +2367,7 @@
                 btn.disabled = isUsed || isSeriesRestricted || draftNotStarted || standardComplete || onlineBlocked || lineupBlocked;
                 btn.draggable = !btn.disabled;
             });
+            sortHeroGridByStrategyPool();
             filterHeroes();
         }
 
@@ -2305,6 +2592,7 @@
             renderPreview();
             syncConfirmDockState();
             renderHeroButtons();
+            renderRankedPrepPhase();
         }
 
         function selectHero(heroName) {
@@ -2778,6 +3066,130 @@
                 const matchesSearch = heroName.includes(query);
                 btn.style.display = matchesRole && matchesSearch ? 'flex' : 'none';
             });
+        }
+
+        /**
+         * Sort hero grid: strategy pool heroes first, then alphabetical.
+         * Only applies when in ranked mode and myStrategyPool is available.
+         */
+        function sortHeroGridByStrategyPool() {
+            if (!isRankedMode() || !onlineRoom?.myStrategyPool?.length) return;
+            const grid = document.getElementById('hero-grid');
+            if (!grid) return;
+            const poolSet = new Set(onlineRoom.myStrategyPool.map(String));
+            const buttons = Array.from(grid.querySelectorAll('.hero-btn'));
+            buttons.sort((a, b) => {
+                const aId = a.getAttribute('data-hero-id') || '';
+                const bId = b.getAttribute('data-hero-id') || '';
+                const aInPool = poolSet.has(aId);
+                const bInPool = poolSet.has(bId);
+                if (aInPool && !bInPool) return -1;
+                if (!aInPool && bInPool) return 1;
+                if (aInPool && bInPool) {
+                    return onlineRoom.myStrategyPool.indexOf(Number(aId)) - onlineRoom.myStrategyPool.indexOf(Number(bId));
+                }
+                const aName = (a.getAttribute('data-hero-name') || '').toLowerCase();
+                const bName = (b.getAttribute('data-hero-name') || '').toLowerCase();
+                return aName.localeCompare(bName);
+            });
+            buttons.forEach(btn => grid.appendChild(btn));
+        }
+
+        /**
+         * Render prep phase countdown and strategy pool UI for ranked mode.
+         */
+        function renderRankedPrepPhase() {
+            const prepPanel = document.getElementById('ranked-prep-panel');
+            if (!prepPanel) return;
+            if (!isRankedMode() || !onlineRoom || onlineRoom.status !== "IN_PROGRESS") {
+                prepPanel.classList.add('is-hidden');
+                return;
+            }
+            const prepEnd = onlineRoom.prepPhaseEndAt;
+            if (!prepEnd) {
+                prepPanel.classList.add('is-hidden');
+                return;
+            }
+            const deadlineMs = new Date(prepEnd).getTime();
+            const remaining = Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000));
+            if (remaining <= 0) {
+                prepPanel.classList.add('is-hidden');
+                return;
+            }
+            prepPanel.classList.remove('is-hidden');
+            const countdownEl = document.getElementById('ranked-prep-countdown');
+            if (countdownEl) countdownEl.textContent = `Prep Phase: ${remaining}s`;
+            const poolListEl = document.getElementById('ranked-strategy-pool-list');
+            if (poolListEl) {
+                const pool = onlineRoom.myStrategyPool || [];
+                poolListEl.innerHTML = pool.length
+                    ? pool.map(id => renderHeroIcon(id, true)).join('')
+                    : '<span class="hero-icon-empty">Chưa có hero trong pool</span>';
+            }
+        }
+
+        /**
+         * Add hero to strategy pool via WebSocket/REST.
+         * Blocks own locked heroes on frontend (backend also rejects).
+         */
+        function addToStrategyPool(heroId) {
+            if (!onlineRoomCode || !isRankedMode()) return;
+            const currentPool = onlineRoom?.myStrategyPool || [];
+            if (currentPool.includes(heroId)) return;
+            // Block own locked heroes
+            if (getOwnLockedHeroIdSet().has(String(heroId))) {
+                showBanPickToast("Không thể thêm tướng đã bị khóa bởi đội bạn vào pool.");
+                return;
+            }
+            const newPool = [...currentPool, heroId];
+            sendStrategyPoolUpdate(newPool);
+        }
+
+        /**
+         * Remove hero from strategy pool.
+         */
+        function removeFromStrategyPool(heroId) {
+            if (!onlineRoomCode || !isRankedMode()) return;
+            const currentPool = onlineRoom?.myStrategyPool || [];
+            const newPool = currentPool.filter(id => id !== heroId);
+            sendStrategyPoolUpdate(newPool);
+        }
+
+        /**
+         * Returns Set of own locked hero IDs for the current user's side.
+         * Used for frontend validation of strategy pool additions.
+         */
+        function getOwnLockedHeroIdSet() {
+            if (!onlineRoom || onlineRoom.mode !== "RANKED") return new Set();
+            const userSide = getOnlineUserSide();
+            if (!userSide) return new Set();
+            const lockedIds = userSide === "blue"
+                ? onlineRoom.bluePreviousUsedHeroIds
+                : onlineRoom.redPreviousUsedHeroIds;
+            return getHeroIdSet(lockedIds);
+        }
+
+        /**
+         * Send strategy pool update to backend.
+         */
+        function sendStrategyPoolUpdate(heroIds) {
+            if (!onlineRoomCode) return;
+            const payload = { heroIds };
+            if (onlineSocketConnected && onlineStompClient) {
+                onlineStompClient.publish({
+                    destination: `/app/ban-pick/${encodeURIComponent(onlineRoomCode)}/strategy-pool`,
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                onlineRoomRequest(`/api/ban-pick/rooms/${encodeURIComponent(onlineRoomCode)}/strategy-pool`, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                }).then(room => {
+                    if (room) applyOnlineRoomState(room);
+                }).catch(error => {
+                    setOnlineFeedback(error.message, "error");
+                });
+            }
         }
 
         initApp();

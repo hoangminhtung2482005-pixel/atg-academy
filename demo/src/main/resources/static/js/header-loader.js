@@ -183,6 +183,8 @@
                     return 'admin-users';
                 case '#guides':
                     return 'admin-guides';
+                case '#ban-pick-rating':
+                    return 'admin-ban-pick-rating';
                 case '#aer-data':
                 case '#teams':
                 case '#esports':

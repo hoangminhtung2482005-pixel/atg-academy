@@ -21,6 +21,9 @@ public interface HeroRepository extends JpaRepository<Hero, Long> {
 
     List<Hero> findAllByOrderByNameAsc();
 
+    @EntityGraph(attributePaths = {"primaryRole"})
+    List<Hero> findAllByPrimaryRoleIsNotNullOrderByNameAsc();
+
     /**
      * Lấy toàn bộ hero kèm roles và attributes trong 1 query duy nhất.
      * Dùng LEFT JOIN FETCH để tránh N+1 query.

@@ -6,6 +6,7 @@ import com.example.demo.dto.banpick.PlayerStatsResponse;
 import com.example.demo.dto.banpick.RecordDraftWinnerRequest;
 import com.example.demo.entity.BanPickAction;
 import com.example.demo.entity.BanPickActionType;
+import com.example.demo.entity.BanPickMatchMode;
 import com.example.demo.entity.BanPickRoom;
 import com.example.demo.entity.BanPickTeamSide;
 import com.example.demo.entity.DraftHistory;
@@ -124,6 +125,7 @@ class BanPickHistoryServiceTest {
                     LocalDateTime windowStart = invocation.getArgument(0);
                     LocalDateTime windowEnd = invocation.getArgument(1);
                     return historiesById.values().stream()
+                            .filter(this::isRankedHistory)
                             .filter(history -> {
                                 LocalDateTime recordedAt = sortTime(history);
                                 return recordedAt != null
@@ -144,6 +146,7 @@ class BanPickHistoryServiceTest {
                     LocalDateTime windowStart = invocation.getArgument(2);
                     LocalDateTime windowEnd = invocation.getArgument(3);
                     return historiesById.values().stream()
+                            .filter(this::isRankedHistory)
                             .filter(history -> matchesPair(history, lowerUserId, higherUserId))
                             .filter(history -> {
                                 LocalDateTime recordedAt = sortTime(history);
@@ -245,6 +248,80 @@ class BanPickHistoryServiceTest {
         assertThat(redStats.getWins()).isEqualTo(0);
         assertThat(redStats.getLosses()).isEqualTo(1);
         assertThat(redStats.getRating()).isEqualTo(980);
+    }
+
+    @Test
+    void recordFinishedDraftSimulationModeSkipsRankStatsAndStoresZeroDeltaSnapshot() {
+        User blueUser = user(1L, "blue@example.com");
+        User redUser = user(2L, "red@example.com");
+        BanPickRoom room = finishedRoom("ROOM-SIM", blueUser, redUser, "3,1,2,4,5", "6,7,8,9,10");
+        room.setMode(BanPickMatchMode.SIMULATION);
+        registerHeroes(
+                hero(1L, "Aoi", "8.50"),
+                hero(2L, "Zata", "8.00"),
+                hero(3L, "Alice", "7.50"),
+                hero(4L, "Ryoma", "7.00"),
+                hero(5L, "Thane", "6.00"),
+                hero(6L, "Krixi", "5.00"),
+                hero(7L, "Grakk", "4.00"),
+                hero(8L, "Slimz", "4.00"),
+                hero(9L, "Arthur", "3.00"),
+                hero(10L, "Mina", "2.00")
+        );
+
+        DraftHistory history = service.recordFinishedDraft(room, draftActions(room, blueUser, redUser));
+
+        assertThat(history.getMode()).isEqualTo(BanPickMatchMode.SIMULATION);
+        assertThat(history.getWinnerUser()).isEqualTo(blueUser);
+        assertThat(history.getWinRatingDelta()).isZero();
+        assertThat(history.getLossRatingDelta()).isZero();
+        assertThat(statsByUserId).isEmpty();
+        verify(playerStatsRepository, never()).save(any(PlayerStats.class));
+    }
+
+    @Test
+    void getProfileBuildsStatsFromRankedOnlyButKeepsSimulationHistoryVisible() {
+        User user = user(1L, "mixed-mode@example.com");
+        User opponent = user(2L, "opponent@example.com");
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+
+        DraftHistory rankedWin = storedHistory(
+                1L,
+                "RANKED-WIN",
+                user,
+                opponent,
+                user,
+                LocalDateTime.of(2026, 5, 10, 12, 0),
+                "Aoi",
+                "Enemy"
+        );
+        persistHistory(rankedWin);
+
+        DraftHistory simulationLoss = storedHistory(
+                2L,
+                "SIM-LOSS",
+                user,
+                opponent,
+                opponent,
+                LocalDateTime.of(2026, 5, 10, 12, 30),
+                "Alice",
+                "Enemy"
+        );
+        simulationLoss.setMode(BanPickMatchMode.SIMULATION);
+        simulationLoss.setWinRatingDelta(0);
+        simulationLoss.setLossRatingDelta(0);
+        persistHistory(simulationLoss);
+
+        BanPickProfileResponse profile = service.getProfile(principal(user.getEmail()));
+
+        assertThat(profile.history()).hasSize(2);
+        assertThat(profile.history()).extracting(DraftHistoryResponse::mode)
+                .containsExactly(BanPickMatchMode.SIMULATION, BanPickMatchMode.RANKED);
+        assertThat(profile.stats().totalMatches()).isEqualTo(1);
+        assertThat(profile.stats().wins()).isEqualTo(1);
+        assertThat(profile.stats().losses()).isZero();
+        assertThat(profile.stats().rating()).isEqualTo(1030);
+        assertThat(profile.playerCard().elo()).isEqualTo(1030);
     }
 
     @Test
@@ -1023,6 +1100,65 @@ class BanPickHistoryServiceTest {
     }
 
     @Test
+    void getProfileUsesRatingAnchorAndSkipsReplayBeforeReset() {
+        User user = user(1L, "anchored@example.com");
+        User opponent = user(2L, "opponent@example.com");
+        LocalDateTime anchorAt = LocalDateTime.of(2026, 5, 10, 0, 0);
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+
+        PlayerStats anchoredStats = statsRow(user, 4, 2, 2, 1200);
+        anchoredStats.setRatingAnchor(1200);
+        anchoredStats.setRatingAnchorAt(anchorAt);
+        anchoredStats.setLastResetType(com.example.demo.entity.BanPickSeasonResetType.SOFT);
+        statsByUserId.put(user.getId(), anchoredStats);
+
+        DraftHistory preResetWin = storedHistory(1L, "PRE-RESET-WIN", user, opponent, user, anchorAt.minusHours(2), "Aoi", "Enemy");
+        preResetWin.setWinRatingDelta(30);
+        persistHistory(preResetWin);
+
+        DraftHistory preResetLoss = storedHistory(2L, "PRE-RESET-LOSS", user, opponent, opponent, anchorAt.minusHours(1), "Alice", "Enemy");
+        preResetLoss.setLossRatingDelta(-20);
+        persistHistory(preResetLoss);
+
+        DraftHistory postResetWin = storedHistory(3L, "POST-RESET-WIN", user, opponent, user, anchorAt.plusHours(1), "Ryoma", "Enemy");
+        postResetWin.setWinRatingDelta(34);
+        persistHistory(postResetWin);
+
+        DraftHistory postResetLoss = storedHistory(4L, "POST-RESET-LOSS", user, opponent, opponent, anchorAt.plusHours(2), "Thane", "Enemy");
+        postResetLoss.setLossRatingDelta(-18);
+        persistHistory(postResetLoss);
+
+        BanPickProfileResponse profile = service.getProfile(principal(user.getEmail()));
+
+        assertThat(profile.history()).hasSize(4);
+        assertThat(profile.stats().rating()).isEqualTo(1216);
+        assertThat(profile.stats().totalMatches()).isEqualTo(4);
+        assertThat(profile.stats().wins()).isEqualTo(2);
+        assertThat(profile.stats().losses()).isEqualTo(2);
+    }
+
+    @Test
+    void getProfileReturnsAnchorRatingImmediatelyAfterResetWhenNoPostResetHistoryExists() {
+        User user = user(1L, "reset-now@example.com");
+        User opponent = user(2L, "opponent@example.com");
+        LocalDateTime anchorAt = LocalDateTime.of(2026, 6, 1, 0, 0);
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+
+        PlayerStats anchoredStats = statsRow(user, 2, 1, 1, 1350);
+        anchoredStats.setRatingAnchor(1350);
+        anchoredStats.setRatingAnchorAt(anchorAt);
+        anchoredStats.setLastResetType(com.example.demo.entity.BanPickSeasonResetType.HARD);
+        statsByUserId.put(user.getId(), anchoredStats);
+
+        persistHistory(storedHistory(1L, "PRE-RESET-ONLY", user, opponent, user, anchorAt.minusMinutes(5), "Aoi", "Enemy"));
+
+        BanPickProfileResponse profile = service.getProfile(principal(user.getEmail()));
+
+        assertThat(profile.stats().rating()).isEqualTo(1350);
+        assertThat(profile.history()).hasSize(1);
+    }
+
+    @Test
     void getLeaderboardUsesPercentileRanksFromBackendForEachPlayer() {
         User rankD = user(1L, "rank-d@example.com");
         User rankC = user(2L, "rank-c@example.com");
@@ -1166,6 +1302,10 @@ class BanPickHistoryServiceTest {
         return pairLower == lowerUserId && pairHigher == higherUserId;
     }
 
+    private boolean isRankedHistory(DraftHistory history) {
+        return history != null && BanPickMatchMode.defaultIfNull(history.getMode()) == BanPickMatchMode.RANKED;
+    }
+
     private boolean isSameUser(User first, User second) {
         return first != null && second != null && first.getId() != null && first.getId().equals(second.getId());
     }
@@ -1177,6 +1317,7 @@ class BanPickHistoryServiceTest {
                                             String redPickOrder) {
         BanPickRoom room = new BanPickRoom();
         room.setRoomCode(roomCode);
+        room.setMode(BanPickMatchMode.RANKED);
         room.setBlueUser(blueUser);
         room.setRedUser(redUser);
         room.setBluePickOrder(bluePickOrder);
@@ -1228,6 +1369,7 @@ class BanPickHistoryServiceTest {
         DraftHistory history = new DraftHistory();
         history.setId(id);
         history.setRoomCode(roomCode);
+        history.setMode(BanPickMatchMode.RANKED);
         history.setBlueUser(blueUser);
         history.setRedUser(redUser);
         history.setWinnerUser(winnerUser);

@@ -27,7 +27,7 @@ Báo cáo này dựa trên đọc mã nguồn và cấu hình hiện có; tôi k
 - `demo/src/main/java/com/example/demo/component`: startup seeder/logger.
 - `demo/src/main/java/com/example/demo/dto`: DTO cho `wiki`, `user`, `admin`, `banpick`, `home`.
 - `demo/src/main/resources/static/html`: UI/views tĩnh; chứa `index`, `wiki`, `tier-list`, `giao-an`, `create-guide`, `guide-detail`, `esports`, `ban-pick`, `account`, `admin`.
-- `demo/src/main/resources/static/js`: client logic; `auth.js`, `tier-list-*`, `tactics-guides.js`, `admin.js`, `admin-heroes.js`.
+- `demo/src/main/resources/static/js`: client logic; `auth.js`, `tier-list-*`, `tactics-guides.js`, `admin.js` (wire `admin.html#ban-pick-rating` cho Solo Ban/Pick Rating Control), `admin-heroes.js`.
 - `demo/src/main/resources/static/css`: CSS tĩnh.
 - `style.css` la shared/base CSS; cac page/module load them `tier-list.css`, `ban-pick.css`, `account.css`, `wiki.css`, `esports.css`, `guides.css`, `admin.css` sau `style.css`.
 - `demo/src/main/resources/static/images`: static assets.
@@ -111,7 +111,7 @@ ATG Academy (module Maven: demo)
 │     ├─ API: /api/ban-pick/rooms/*, /api/ban-pick/history*, /api/ban-pick/profile, /api/ban-pick/leaderboard
 │     ├─ WebSocket: /ws, /app/ban-pick/{roomCode}/*, /topic/ban-pick/{roomCode}
 │     ├─ DB: ban_pick_rooms, ban_pick_room_participants, ban_pick_actions, draft_histories, player_stats
-│     └─ Luồng: create room -> join -> roll side -> ready -> lobby Solo render Player Card nhỏ riêng và Stats Panel 50 trận riêng ngay trên trang khi user đã đăng nhập, guest chỉ thấy message yêu cầu login -> 15 phase draft -> frontend dùng hero pool `/api/wiki/heroes` để cộng `banPickScore` cho tướng đã pick -> lineup adjustment -> cả 2 đội confirm lineup cuối -> mới hiển thị tổng điểm/tỷ lệ thắng dự đoán -> finish -> hệ thống tự xác định winner theo tổng điểm lineup cuối, nếu hòa thì không chọn bừa winner và không cập nhật W/L/rating -> trước khi save history backend chốt Macro Economy snapshot của ngày hiện tại (window 30 ngày tính tới mốc 00:00, active pool là top 50% người chơi có nhiều completed matches nhất, so average rating với mốc 1500, mỗi lệch 10 điểm điều chỉnh 2% win delta, floor +20) -> sau đó áp thêm ELO gap modifier theo rating trước trận của winner/loser (10 điểm lệch = 2%, cap 50%; cửa dưới thắng được thưởng thêm và cửa trên thua bị phạt nặng hơn, cửa trên thắng bị giảm điểm nhận và cửa dưới thua bị phạt nhẹ hơn) -> trước khi chốt snapshot rating backend kiểm tra anti-win-trading theo unordered pair `(minUserId, maxUserId)`: trong cửa sổ 48 giờ, 2 lần gặp đầu vẫn tính điểm, từ lần gặp thứ 3 trở đi override snapshot thành `0/0`, history vẫn lưu nhưng ELO không đổi; quá 48 giờ thì reset pair window -> lưu `win_rating_delta/loss_rating_delta` cuối cùng vào `draft_histories` -> `BanPickHistoryService` rebuild `player_stats` theo 50 draft gần nhất của từng player với base rating khởi tạo 1000, replay winner/loser theo delta snapshot đã lưu, tie không đổi W/L/rating và match bị anti-win-trading cũng không cộng trừ rating nhờ snapshot `0/0` -> backend đồng thời compute percentile rank `S/A/B/C/D` từ `player_stats.rating`, Player Card/leaderboard chỉ render `rankCode`/`rankLabel` trả về -> retention cleanup chỉ xóa history khi row đó đã out top 50 của cả 2 participant
+│     └─ Luồng: create room -> join -> roll side -> ready -> lobby Solo render sidebar/tab nội bộ với `Tìm trận` mặc định, `Thông tin cá nhân`, và `Bảng xếp hạng`; tab `Tìm trận` giữ create/join room + chọn BO1/BO3/BO5/BO7 + cooldown/error room, tab `Thông tin cá nhân` render Player Card nhỏ riêng và Stats Panel 50 trận riêng khi user đã đăng nhập, tab `Bảng xếp hạng` render leaderboard trực tiếp, guest ở tab profile chỉ thấy message yêu cầu login -> 15 phase draft -> frontend dùng hero pool `/api/wiki/heroes` để cộng `banPickScore` cho tướng đã pick -> lineup adjustment -> cả 2 đội confirm lineup cuối -> mới hiển thị tổng điểm/tỷ lệ thắng dự đoán -> finish -> hệ thống tự xác định winner theo tổng điểm lineup cuối, nếu hòa thì không chọn bừa winner và không cập nhật W/L/rating -> trước khi save history backend chốt Macro Economy snapshot của ngày hiện tại (window 30 ngày tính tới mốc 00:00, active pool là top 50% người chơi có nhiều completed matches nhất, so average rating với mốc 1500, mỗi lệch 10 điểm điều chỉnh 2% win delta, floor +20) -> sau đó áp thêm ELO gap modifier theo rating trước trận của winner/loser (10 điểm lệch = 2%, cap 50%; cửa dưới thắng được thưởng thêm và cửa trên thua bị phạt nặng hơn, cửa trên thắng bị giảm điểm nhận và cửa dưới thua bị phạt nhẹ hơn) -> trước khi chốt snapshot rating backend kiểm tra anti-win-trading theo unordered pair `(minUserId, maxUserId)`: trong cửa sổ 48 giờ, 2 lần gặp đầu vẫn tính điểm, từ lần gặp thứ 3 trở đi override snapshot thành `0/0`, history vẫn lưu nhưng ELO không đổi; quá 48 giờ thì reset pair window -> lưu `win_rating_delta/loss_rating_delta` cuối cùng vào `draft_histories` -> `BanPickHistoryService` rebuild `player_stats` theo 50 draft gần nhất của từng player với base rating khởi tạo 1000, replay winner/loser theo delta snapshot đã lưu, tie không đổi W/L/rating và match bị anti-win-trading cũng không cộng trừ rating nhờ snapshot `0/0` -> backend đồng thời compute percentile rank `S/A/B/C/D` từ `player_stats.rating`, Player Card/leaderboard chỉ render `rankCode`/`rankLabel` trả về -> retention cleanup chỉ xóa history khi row đó đã out top 50 của cả 2 participant
 ├─ Authentication & Authorization
 │  ├─ Backend: stateless bearer auth, validate issuer/audience/email_verified của Google token
 │  ├─ Public GET: wiki heroes, spells, enchantments, guides, tier-lists, esports, một phần ban-pick result read-only legacy route/leaderboard
@@ -155,10 +155,11 @@ ATG Academy (module Maven: demo)
 | Esports | BXH public | Trả danh sách đội xếp theo Elo và recent matches | `EsportsController`, `static/html/esports.html` | `/api/esports/teams`, `/matches/recent` | `esports_teams`, `esports_matches` | `esports.html` hiện dùng team list; cột leaderboard `Series W/L` đọc từ `matchWins/matchLosses`, không phải `gameWins/gameLosses`; recent feed cần xác minh thêm |
 | Esports | Esports Data | Dashboard analytics public cho draft esports theo model `1 series = 1 esports_matches`, `1 game = 1 esports_game_drafts` | `EsportsController`, `EsportsDataService`, `EsportsGameDraftRepository`, `static/html/esports-data.html`, `static/js/esports-data.js`, `static/css/esports.css` | `/esports/data`, `/api/esports/data/*` | `heroes`, `esports_matches`, `esports_game_drafts` | Public page đọc từ `esports_game_drafts`; `Total Games` = số row game draft, `Total Series` = distinct `match_id`; KPI/top bans/top picks/side WR/hero stats không còn aggregate runtime từ các bảng draft cũ |
 | Ban/Pick | Room draft online | Create room, join, ready, roll side, start, confirm pick/ban, reorder lineup, next game, reset; Free/Standard giữ panel compact hiển thị tổng điểm đội hình và tỷ lệ thắng dự đoán trong lúc draft, còn Solo Online chỉ hiện sau khi room finish và cả 2 đội confirm lineup cuối; màn tổng kết không còn nút chia sẻ draft | `BanPickRoomController`, `BanPickRoomService`, `BanPickRoomWebSocketController`, `ban-pick-free.html`, `ban-pick-standard.html`, `ban-pick-solo.html`, `ban-pick-shell.html`, `ban-pick.js` | `/api/ban-pick/rooms/*`, `/ws`, `/api/wiki/heroes` | `ban_pick_rooms`, `ban_pick_actions`, `ban_pick_room_participants`, `heroes` | Navbar dropdown là luồng chuyển mode chính; chỉ còn legacy entry route `/ban-pick*` redirect/fallback; không cộng điểm tướng bị ban |
-| Ban/Pick | Lịch sử/BXH/solo stats | Lưu draft finished, auto-resolve winner theo Ban/Pick Score, leaderboard public, và panel thống kê cá nhân gắn thẳng vào Solo page; route/profile page cũ chỉ còn legacy redirect về Solo | `BanPickHistoryController`, `BanPickHistoryService`, `BanPickMacroEconomyService`, `ban-pick-solo.html`, `ban-pick-shell.html`, `ban-pick.js` | `/api/ban-pick/history*`, `/leaderboard`, `/profile` | `draft_histories`, `player_stats` | Stats current user chỉ lấy 50 draft gần nhất; `player_stats` được rebuild theo 50 draft gần nhất của từng player sau mỗi Solo draft finished; rating khởi tạo `1000`, floor `0`; winner trước hết dùng macro-adjusted `currentWinDelta` từ snapshot ngày 00:00 dựa trên average rating của top 50% active players trong 30 ngày gần nhất, mỗi lệch `10` điểm so với mốc `1500` điều chỉnh `2%`, floor `+20`, rồi áp ELO gap modifier theo rating trước trận của 2 người chơi với rule `10 điểm = 2%`, cap `50%`; cửa dưới thắng được tăng win delta và cửa trên thua bị phạt nặng hơn, cửa trên thắng bị giảm win delta và cửa dưới thua bị phạt nhẹ hơn; sau đó anti-win-trading kiểm tra unordered pair trong cửa sổ `48 giờ`, cho phép 2 lần gặp đầu giữ nguyên delta và từ lần gặp thứ 3 override snapshot về `0/0`; `draft_histories` lưu snapshot `win_rating_delta/loss_rating_delta` cuối cùng để replay chính xác; history cũ chỉ bị xóa khi đã nằm ngoài top 50 của cả blue lẫn red participant; score hòa thì không cập nhật W/L/rating; chưa làm dodge penalty hay seasonal reset |
+| Ban/Pick | Lịch sử/BXH/solo stats | Lưu draft finished, auto-resolve winner theo Ban/Pick Score, leaderboard public, panel thống kê cá nhân gắn thẳng vào Solo page qua sidebar/tab nội bộ `Tìm trận` / `Thông tin cá nhân` / `Bảng xếp hạng`, và seasonal reset toàn server cho rating/rank Solo Ban/Pick | `BanPickHistoryController`, `BanPickHistoryService`, `BanPickMacroEconomyService`, `BanPickSeasonResetService`, `ban-pick-solo.html`, `ban-pick-shell.html`, `ban-pick.js` | `/api/ban-pick/history*`, `/leaderboard`, `/profile`, `/api/admin/ban-pick/rank-reset*`, `/api/admin/ban-pick/rating-settings*` | `draft_histories`, `player_stats`, `ban_pick_rank_resets`, `ban_pick_rating_config` | Stats current user vẫn chỉ lấy 50 draft gần nhất; `player_stats` được rebuild theo 50 draft gần nhất của từng player sau mỗi Solo draft finished; tab `Tìm trận` giữ create/join + BO + cooldown, tab `Thông tin cá nhân` giữ Player Card tách riêng Stats Panel, tab `Bảng xếp hạng` render leaderboard trực tiếp bằng API hiện có; rating khởi tạo `1000`, floor `0`; winner trước hết dùng macro-adjusted `currentWinDelta` từ snapshot ngày 00:00 dựa trên average rating của top 50% active players trong 30 ngày gần nhất, mỗi lệch `10` điểm so với mốc `1500` điều chỉnh `2%`, floor `+20`, rồi áp ELO gap modifier theo rating trước trận của 2 người chơi với rule `10 điểm = 2%`, cap `50%`; cửa dưới thắng được tăng win delta và cửa trên thua bị phạt nặng hơn, cửa trên thắng bị giảm win delta và cửa dưới thua bị phạt nhẹ hơn; sau đó anti-win-trading kiểm tra unordered pair trong cửa sổ `48 giờ`, cho phép 2 lần gặp đầu giữ nguyên delta và từ lần gặp thứ 3 override snapshot về `0/0`; `draft_histories` lưu snapshot `win_rating_delta/loss_rating_delta` cuối cùng để replay chính xác; seasonal reset dùng `rating_anchor` + `rating_anchor_at` để replay rating chỉ cộng các trận sau reset, còn history panel 50 trận gần nhất vẫn giữ nguyên; lịch reset cố định `01/02 SOFT`, `01/04 SOFT`, `01/06 HARD`, `01/08 SOFT`, `01/10 SOFT`, `01/12 HARD`; score hòa thì không cập nhật W/L/rating |
 | Admin | Quản lý user | List/search/filter user, chỉnh `name/avatar/role/status/note` | `AdminUserController`, `AdminUserService`, `static/html/admin.html` | `/api/admin/users*` | `users` | Admin không thể tự hạ role/khoá chính mình |
 | Admin | Quản lý hero wiki | Sửa basic info, class, role, attribute, difficulty, `banPickScore`; admin panel validate min/max/2 chữ số thập phân trước khi lưu DB | `AdminWikiHeroController`, `AdminWikiHeroService`, `static/html/admin-heroes.html`, `static/js/admin-heroes.js` | `/api/admin/wiki/heroes*` | `heroes`, join tables hero_* | Có gợi ý role theo class; user thường không có quyền sửa |
 | Admin | Quản lý hero attributes | Có 2 API admin attribute khác nhau | `AdminWikiAttributeController`, `HeroAttributeController`, `AdminWikiHeroService`, `HeroAttributeService` | `/api/admin/wiki/attributes*`, `/api/admin/attributes*` | `hero_attributes`, `hero_attribute_mapping` | Hành vi delete không nhất quán |
+| Admin | Solo Ban/Pick Rating Control | Admin panel `admin.html#ban-pick-rating` cho Base Rating, Macro Economy, ELO Gap, Anti-win-trading, Dodge Penalty, Seasonal Reset preview/execute, diagnostics; wiring bằng `static/js/admin.js` và style trong `static/css/admin.css` | `AdminBanPickController`, `BanPickRatingSettingsService`, `BanPickSeasonResetService`, `BanPickSeasonResetScheduler`, `static/html/admin.html`, `static/js/admin.js`, `static/css/admin.css` | `GET/PUT /api/admin/ban-pick/rating-settings`, `POST /api/admin/ban-pick/rating-settings/reset-defaults`, `GET /api/admin/ban-pick/rank-reset/preview?type=SOFT|HARD`, `POST /api/admin/ban-pick/rank-reset` | `ban_pick_rating_config`, `player_stats`, `ban_pick_rank_resets` | Reset không xóa `draft_histories`; `SOFT = round((currentRating + 1000) / 2)`, `HARD = 1000`; scheduler mặc định disabled; `dodgeRejectResetDuringDraft` hiện để read-only trong UI vì backend chưa support toggle độc lập rõ ràng; log `ban_pick_rank_resets` chặn chạy trùng cùng `scheduled_date` |
 | Admin | AER Data | CRUD team/match, bulk import, recalculation Elo cho workflow ranking/AER tổng quát; không còn nút reset dữ liệu legacy trên trang này | `EsportsAdminController`, `EsportsAdminService`, `static/html/admin.html`, `static/css/admin.css` | `/api/admin/esports/teams*`, `/api/admin/esports/matches*`, `/api/admin/esports/teams/matches/bulk-import` | `esports_teams`, `esports_matches` | Sidebar admin có entry `AER Data`; canonical route là `admin.html#aer-data`, vẫn alias `#teams` và `#esports` để không gãy flow cũ; reset full esports data phải dùng `admin-esports-data.html` |
 | Admin | Esports Data | Quản lý từng ván đấu theo `game draft record`, preview import Excel/CSV trước khi commit DB, group các dòng game thành series cha trước khi ghi DB, export CSV cho thống kê public `/esports/data`, và cập nhật ranking AER/Elo trực tiếp từ DB ngay sau khi confirm import | `EsportsAdminController`, `EsportsAdminService`, `EsportsDraftService`, `EsportsTournamentService`, `static/html/admin-esports-data.html`, `static/js/admin-esports-data.js`, `static/css/admin.css` | `/api/admin/esports/franchises*`, `/api/admin/esports/tournaments*`, `/api/admin/esports/tournaments/{id}/teams*`, `/api/admin/esports/matches*`, `/api/admin/esports/matches/{matchId}/game-drafts`, `/api/admin/esports/game-drafts/{id}`, `/api/admin/esports/game-drafts/export`, `/api/admin/esports/game-drafts/import/preview`, `/api/admin/esports/game-drafts/import/confirm` | `esports_franchises`, `esports_tournaments`, `esports_tournament_teams`, `esports_matches`, `esports_game_drafts` | Sidebar admin có entry `Esports Data`; import file hiểu `Match = game_number`, group series theo `Date + Tournament + Stage + team pair`, sau đó resolve parent theo `date-only + tournament_id + stage + unordered team pair + score`; nếu có nhiều parent exact thì ưu tiên parent đã có draft rồi mới tới `id` nhỏ hơn; `esports_tournaments.aer_tier` là source of truth, `esports_matches.tier` chỉ là fallback/legacy snapshot, tier hợp lệ gồm `0/1/2`; stage canonical lưu trong DB chỉ được là `ck/playoff/bang/vongloai`, admin create/update match sẽ normalize alias như `final/group/qualifier/play-off` về canonical, và unknown stage bị reject để tránh Elo fallback sai; update `aer_tier` sẽ sync snapshot match link và recalculate ranking, UI chính chỉ hiện summary import/ranking, không có AER JSON trung gian, và không có bước preview/download file riêng |
 
@@ -205,6 +206,8 @@ ATG Academy (module Maven: demo)
 | GET | `/api/ban-pick/history`, `/api/ban-pick/history/{id}` | `BanPickHistoryController` | `BanPickHistoryService` | `id` optional | `DraftHistoryResponse[]` / `DraftHistoryResponse` | Lịch sử draft |
 | POST | `/api/ban-pick/history/{id}/winner` | `BanPickHistoryController` | `BanPickHistoryService` | legacy request | `DraftHistoryResponse` | Endpoint legacy bị reject với message winner được tính tự động theo Ban/Pick score |
 | GET | `/api/ban-pick/leaderboard`, `/api/ban-pick/profile` | `BanPickHistoryController` | `BanPickHistoryService` | none | `PlayerStatsResponse[]`, `BanPickProfileResponse` | BXH public và stats cá nhân trên Solo page; `BanPickProfileResponse` gồm `user`, `stats`, `playerCard`, `history` để Solo page và Account preview dùng chung |
+| GET | `/api/admin/ban-pick/rank-reset/preview` | `AdminBanPickController` | `BanPickSeasonResetService` | `type=SOFT|HARD` | `BanPickSeasonResetPreviewResponse` | Preview seasonal reset toàn server, trả count + min/max/avg rating trước/sau + sample player, không mutate DB |
+| POST | `/api/admin/ban-pick/rank-reset` | `AdminBanPickController` | `BanPickSeasonResetService` | `type, confirmationText, note` | `BanPickSeasonResetExecuteResponse` | Execute seasonal reset thủ công toàn server; bắt buộc `confirmationText = RESET SOLO RANK`; ghi audit log và chặn chạy trùng cùng ngày |
 | GET, PUT | `/api/admin/users`, `/api/admin/users/{id}` | `AdminUserController` | `AdminUserService` | list filters; update `name/avatarUrl/role/status/note` | page/detail DTO | Quản lý user |
 | GET, PUT | `/api/admin/wiki/heroes`, `/api/admin/wiki/heroes/{id}` | `AdminWikiHeroController` | `AdminWikiHeroService` | update basic info + `banPickScore` | hero list/detail DTO kèm `banPickScore` | Quản lý hero |
 | PUT | `/api/admin/wiki/heroes/{id}/roles`, `/api/admin/wiki/heroes/{id}/attributes` | `AdminWikiHeroController` | `AdminWikiHeroService` | `roles[]`, `attributes[]` | hero detail DTO | Gán role/attribute |
@@ -258,8 +261,9 @@ Ghi chú realtime:
 | `ban_pick_rooms` | `id,roomCode,status,phaseType,seriesType,currentGameNumber,host/guest/blue/red user,ready flags,deadline fields,pick history` | N-1 nhiều lần về `users`; 1-N `ban_pick_actions`, `ban_pick_room_participants` | `BanPickRoomRepository` | Trạng thái draft room |
 | `ban_pick_room_participants` | `id,room_id,user_id,role,teamSide,joinedAt` | N-1 `ban_pick_rooms`, N-1 `users` | `BanPickRoomParticipantRepository` | Thành viên phòng |
 | `ban_pick_actions` | `id,room_id,user_id,teamSide,actionType,heroId,phaseIndex,confirmedAt` | N-1 `ban_pick_rooms`, N-1 `users` | `BanPickActionRepository` | Log ban/pick từng phase |
-| `draft_histories` | `id,roomCode,blue_user_id,red_user_id,winner_user_id,bluePicks,redPicks,blueBans,redBans,resultRecordedAt,win_rating_delta,loss_rating_delta` | N-1 `users` | `DraftHistoryRepository` | Lịch sử draft đã hoàn tất; mỗi row lưu snapshot delta rating cuối cùng của trận sau macro + ELO gap, và nếu bị anti-win-trading thì snapshot bị override thành `0/0`; rolling-50 replay vì vậy giữ đúng lịch sử rating kể cả match bị block; retention cleanup chỉ xóa row khi history đó không còn nằm trong top 50 gần nhất của cả 2 participant |
-| `player_stats` | `id,user_id,totalMatches,wins,losses,rating,pickedHeroCounts` | 1-1 `users` | `PlayerStatsRepository` | Aggregate Ban/Pick synced theo 50 draft gần nhất của từng user để phục vụ profile/leaderboard; rating base khởi tạo `1000`, floor `0`, tie không đổi W/L/rating; winner/loss penalty đều đọc lại snapshot `win_rating_delta/loss_rating_delta` đã lưu sau Macro Economy 30 ngày + ELO gap modifier (`10 điểm = 2%`, cap `50%`), rồi bị giữ nguyên `0/0` nếu match đã bị anti-win-trading block; rank `S/A/B/C/D` được backend tính động theo percentile từ pool rating hiện tại, không hardcode ở frontend và chưa gồm anti-cheat, dodge penalty hay seasonal reset |
+| `draft_histories` | `id,roomCode,blue_user_id,red_user_id,winner_user_id,bluePicks,redPicks,blueBans,redBans,resultRecordedAt,win_rating_delta,loss_rating_delta` | N-1 `users` | `DraftHistoryRepository` | Lịch sử draft đã hoàn tất; mỗi row lưu snapshot delta rating cuối cùng của trận sau macro + ELO gap, và nếu bị anti-win-trading thì snapshot bị override thành `0/0`; rolling-50 replay vì vậy giữ đúng lịch sử rating kể cả match bị block; seasonal reset không xóa history mà chỉ đổi mốc replay bằng anchor; retention cleanup chỉ xóa row khi history đó không còn nằm trong top 50 gần nhất của cả 2 participant |
+| `player_stats` | `id,user_id,totalMatches,wins,losses,rating,rating_anchor,rating_anchor_at,last_reset_type,pickedHeroCounts` | 1-1 `users` | `PlayerStatsRepository` | Aggregate Ban/Pick synced theo 50 draft gần nhất của từng user để phục vụ profile/leaderboard; rating base khởi tạo `1000`, floor `0`, tie không đổi W/L/rating; winner/loss penalty đều đọc lại snapshot `win_rating_delta/loss_rating_delta` đã lưu sau Macro Economy 30 ngày + ELO gap modifier (`10 điểm = 2%`, cap `50%`), rồi bị giữ nguyên `0/0` nếu match đã bị anti-win-trading block; seasonal reset toàn server sẽ cập nhật `rating`, `rating_anchor`, `rating_anchor_at`, `last_reset_type` để replay sau reset không cộng lại history cũ trước mùa; rank `S/A/B/C/D` được backend tính động theo percentile từ pool rating hiện tại |
+| `ban_pick_rank_resets` | `id,reset_type,scheduled_date,executed_at,affected_players,base_rating,formula,executed_by,note` | N/A | `BanPickRankResetLogRepository` | Audit/idempotency cho seasonal reset toàn server; unique `scheduled_date` để scheduler/manual không chạy trùng; lưu loại reset, công thức, số player bị ảnh hưởng, người chạy và ghi chú |
 
 **7. Kết luận**
 
@@ -720,18 +724,21 @@ Ban/Pick Navigation & Routing
 |  |- Wrapper page: `demo/src/main/resources/static/html/ban-pick-solo.html`
 |  |- Khong con nut quay ve landing page trong lobby/summary/status shell
 |  |- Shareable room link di thang toi `/html/ban-pick-solo.html?room={roomCode}`
-|  |- Player stats khong con page rieng; lobby render `Player Card` nho tach rieng module stats 50 tran
+|  |- Lobby co sidebar/tab noi bo gom `Tìm trận`, `Thông tin cá nhân`, `Bảng xếp hạng`; tab mac dinh la `Tìm trận`
+|  |- Tab `Tìm trận` giu nguyen create room, join room, chon BO1/BO3/BO5/BO7, cooldown message, va room feedback/error hien co
+|  |- Player stats khong con page rieng; tab `Thông tin cá nhân` render `Player Card` nho tach rieng module stats 50 tran
 |  |- `Player Card` chi hien avatar Google, IGN/display name, rank, ELO, badge, title; layout/logic dung chung `static/js/components/player-card.js` + `static/css/player-card.css`
 |  |- Badge/title cua `Player Card` doc tu DB (`users.player_badge_*`, `users.player_title`) qua `GET /api/ban-pick/profile`; Solo page chi render, khong co UI chinh truc tiep
 |  |- `rankCode`/`rankLabel` cua Player Card do backend tinh theo percentile rank tren pool `player_stats.rating`; frontend khong tu map rank theo nguong ELO
 |  |- Stats Panel rieng hien W/L, win rate, tong tran, top hero pick, va 3 recent draft; khong tron vao Player Card
-|  |- Guest tren Solo page chi thay message gon yeu cau dang nhap de xem thong ke; khong co menu/link noi bo tro toi `ban-pick-profile.html`
+|  |- Tab `Bảng xếp hạng` render leaderboard truc tiep bang `GET /api/ban-pick/leaderboard`; page leaderboard rieng van duoc giu lai
+|  |- Guest tren Solo page chi thay message gon yeu cau dang nhap de xem thong tin ca nhan; khong co menu/link noi bo tro toi `ban-pick-profile.html`
 |  |- Hero pool van lay tu `GET /api/wiki/heroes`; moi hero co `banPickScore` tu backend/database
 |  `- Cac nut nghiep vu room nhu join, ready, start, reset, next game, lineup confirm van giu nguyen; panel `Đánh giá đội hình` bi an trong suot draft/lineup adjustment va chi mo lai o man tong ket sau khi ca 2 doi confirm lineup cuoi
 |- CSS ownership
 |  |- `ban-pick-free.html`, `ban-pick-standard.html`, `ban-pick-solo.html`, `ban-pick-leaderboard.html` deu load `style.css` + `ban-pick.css`
 |  |- `ban-pick-solo.html` va `account.html` load them `player-card.css` khi can render component Player Card dung chung
-|  |- `style.css` giu token/base va mot so hero-pool primitive shared; `ban-pick.css` own draft board, pick/ban slots, team panel, status, solo-player-stats, va leaderboard layout
+|  |- `style.css` giu token/base va mot so hero-pool primitive shared; `ban-pick.css` own draft board, pick/ban slots, team panel, status, solo-player-stats, solo-tab layout, va leaderboard layout
 |  |- Cac page Ban/Pick dat body flag de `header-loader.js` bo qua shared footer, giu them khong gian thao tac draft; shared header van duoc inject nhu cu
 |  `- `ban-pick-shell.html` tiep tuc la shell DOM chung; khong doi JS state machine, route API, hay DB room flow; `GET /api/ban-pick/profile` giu payload `playerCard` va nay lay badge/title tu DB thay vi fallback hardcode
 |- Routing / Static Pages
@@ -1265,4 +1272,92 @@ Admin Esports Reset Data
    |- Can test remaining counts ve 0 sau reset va row counts cua `esports_teams`, `esports_tournaments`, `heroes` khong bi giam
    |- Can test import lai XLSX/CSV sau reset va verify summary import/ranking van cap nhat tu DB
    `- Can test production profile guard truoc khi cho phep dung tren moi truong nhay cam
+```
+## 2026-05 Ranked Mode Note
+
+- Solo Ban/Pick is now split into `SIMULATION` and `RANKED`.
+- `SIMULATION` keeps the old solo draft behavior and does not affect leaderboard/rank.
+- `RANKED` is a real BO1 room with a persisted virtual context `BO7` stored on `ban_pick_rooms`.
+- Persisted ranked context fields: `virtual_series_format`, `virtual_game_index`, `ultimate_battle`, `prep_duration_seconds`, `blue_previous_used_hero_ids`, `red_previous_used_hero_ids`, `prep_phase_start_at`, `prep_phase_end_at`.
+- Previous-used hero generation uses `heroes.primary_role_id` as the role source, not global bans and not sub-role mapping.
+
+
+## 2026-05-18 Frontend Split: Giả lập Solo vs Rank Mode
+
+```text
+Frontend Split: Giả lập Solo vs Rank Mode
+|- Feature name
+|  `- Frontend Split: Giả lập Solo vs Rank Mode
+|- Purpose
+|  |- Tách frontend Solo Ban/Pick thành 2 page riêng biệt
+|  |- Giả lập Solo (SIMULATION): luyện tập, không tính rank
+|  |- Rank Mode (RANKED): xếp hạng thật với virtual BO7 context
+|  `- Không trộn 2 mode vào cùng 1 page
+|- Related users
+|  |- Authenticated users chơi Giả lập Solo hoặc Rank Mode
+|  `- Public users xem leaderboard
+|- Main HTML, JavaScript, and CSS files
+|  |- `demo/src/main/resources/static/html/ban-pick-solo.html` (Giả lập Solo)
+|  |- `demo/src/main/resources/static/html/ban-pick-ranked.html` (Rank Mode - MỚI)
+|  |- `demo/src/main/resources/static/html/ban-pick-shell.html` (shared shell)
+|  |- `demo/src/main/resources/static/html/header.html` (navigation)
+|  |- `demo/src/main/resources/static/js/ban-pick.js`
+|  |- `demo/src/main/resources/static/js/ban-pick-page.js`
+|  `- `demo/src/main/resources/static/css/ban-pick.css`
+|- Navigation
+|  |- Header dropdown `Ban/Pick` có 4 entry:
+|  |  |- Cấm chọn tự do
+|  |  |- Cấm chọn tiêu chuẩn
+|  |  |- Giả lập Solo
+|  |  `- Rank Mode
+|  `- Mobile nav cũng có 4 entry tương ứng
+|- Mode detection
+|  |- `ban-pick-solo.html`: `body[data-ban-pick-mode="solo"]` → mode `solo-1v1` → gửi `mode: SIMULATION`
+|  |- `ban-pick-ranked.html`: `body[data-ban-pick-mode="ranked"]` → mode `ranked` → gửi `mode: RANKED`
+|  `- `normalizeConfiguredMode()` nhận "ranked" trả "ranked"
+|- Giả lập Solo
+|  |- Không hiển thị virtual context, previous-used, prep phase, strategy pool
+|  |- Không tính rating/rank/leaderboard
+|  |- Lobby header: "Giả lập Solo 1v1 Online"
+|  |- Sidebar kicker: "Giả lập Solo"
+|  `- Vẫn có series selector BO1/BO3/BO5/BO7
+|- Rank Mode
+|  |- Lobby header: "Solo Ban/Pick Xếp Hạng"
+|  |- Sidebar kicker: "Rank Mode"
+|  |- Ẩn series selector (backend luôn dùng BO1 thật, virtual BO7)
+|  |- Hiển thị virtual context: "Game X / 7" hoặc "Ultimate Battle"
+|  |- Previous-used heroes panel:
+|  |  |- Blue panel: label "Tướng bên bạn đã dùng" (nếu user là Blue) hoặc "Tướng đối thủ đã dùng"
+|  |  |- Red panel: tương tự
+|  |  `- Ẩn panel nếu danh sách rỗng (Game 1)
+|  |- Prep phase (Game 2-6):
+|  |  |- Countdown hiển thị trong `ranked-prep-panel`
+|  |  |- Strategy Pool UI cho add/remove hero
+|  |  `- Hết giờ → chuyển draft (backend scheduler xử lý)
+|  |- Strategy Pool:
+|  |  |- Hero trong pool hiển thị trước trong hero grid
+|  |  |- `sortHeroGridByStrategyPool()` reorder DOM
+|  |  |- Gửi qua WebSocket hoặc REST
+|  |  |- Frontend block add own locked hero (+ backend cũng reject)
+|  |  `- Cho phép add opponent locked hero
+|  |- Own locked heroes:
+|  |  |- Disabled trong hero grid (class `series-restricted`)
+|  |  `- Không thể pick (backend reject 409)
+|  |- Opponent locked heroes:
+|  |  `- Vẫn chọn được bình thường
+|  |- Ultimate Battle (Game 7):
+|  |  |- Ẩn ban slots (`.bans-col.is-hidden`)
+|  |  |- Label "Ultimate Battle: Không ban, blind-pick only."
+|  |  `- Chỉ pick phases
+|  `- Summary: winner = player có Ban/Pick Score cao hơn; tie = hòa
+|- API
+|  |- `POST /api/ban-pick/rooms` body gửi `mode: "RANKED"` hoặc `mode: "SIMULATION"` explicit
+|  |- `POST /api/ban-pick/rooms/{roomCode}/strategy-pool` hoặc WebSocket `/app/ban-pick/{roomCode}/strategy-pool`
+|  `- Room state response chứa `myStrategyPool`, `bluePreviousUsedHeroIds`, `redPreviousUsedHeroIds`, `ultimateBattle`, `virtualGameIndex`, `prepPhaseEndAt`
+|- Database
+|  `- Không đổi DB trong task frontend này
+`- Risk notes
+   |- Manual smoke test cần cover Game 1, Game 2-6, Game 7 (random từ backend)
+   |- Strategy pool sort chỉ reorder DOM, không ảnh hưởng validation
+   `- Mobile responsive cần test previous-used panels và prep phase UI
 ```

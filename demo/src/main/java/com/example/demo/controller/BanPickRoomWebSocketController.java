@@ -69,6 +69,15 @@ public class BanPickRoomWebSocketController {
         broadcast(banPickRoomService.readyRoom(roomCode, currentUser(principal)));
     }
 
+    @MessageMapping("/ban-pick/{roomCode}/strategy-pool")
+    public void updateStrategyPool(@DestinationVariable String roomCode,
+                                   @Payload com.example.demo.dto.banpick.BanPickStrategyPoolRequest request,
+                                   Principal principal) {
+        // Strategy pool update is personal — broadcast the full state so the user gets their pool back,
+        // but the broadcast strips pool data for the opponent (handled by withoutCurrentUserSide).
+        broadcast(banPickRoomService.updateStrategyPool(roomCode, request, currentUser(principal)));
+    }
+
     private void broadcast(BanPickRoomStateResponse roomState) {
         banPickRoomBroadcaster.broadcast(roomState);
     }

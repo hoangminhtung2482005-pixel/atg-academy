@@ -41,6 +41,7 @@ public interface DraftHistoryRepository extends JpaRepository<DraftHistory, Long
             FROM DraftHistory h
             WHERE COALESCE(h.resultRecordedAt, h.createdAt) >= :windowStart
               AND COALESCE(h.resultRecordedAt, h.createdAt) < :windowEnd
+              AND h.mode = com.example.demo.entity.BanPickMatchMode.RANKED
             """)
     List<DraftHistory> findCompletedBetween(@Param("windowStart") LocalDateTime windowStart,
                                             @Param("windowEnd") LocalDateTime windowEnd);
@@ -50,6 +51,7 @@ public interface DraftHistoryRepository extends JpaRepository<DraftHistory, Long
             FROM DraftHistory h
             WHERE COALESCE(h.resultRecordedAt, h.createdAt) >= :windowStart
               AND COALESCE(h.resultRecordedAt, h.createdAt) < :windowEnd
+              AND h.mode = com.example.demo.entity.BanPickMatchMode.RANKED
               AND (
                     (h.blueUser.id = :lowerUserId AND h.redUser.id = :higherUserId)
                  OR (h.blueUser.id = :higherUserId AND h.redUser.id = :lowerUserId)

@@ -32,6 +32,10 @@ public class DraftHistory {
     @Column(nullable = false, length = 16)
     private String roomCode;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    private BanPickMatchMode mode = BanPickMatchMode.SIMULATION;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "blue_user_id", nullable = false)
     private User blueUser;
@@ -79,6 +83,9 @@ public class DraftHistory {
     protected void onCreate() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
+        }
+        if (mode == null) {
+            mode = BanPickMatchMode.SIMULATION;
         }
         if (winRatingDelta == null) {
             winRatingDelta = 30;

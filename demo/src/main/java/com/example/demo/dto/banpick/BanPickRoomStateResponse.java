@@ -1,5 +1,6 @@
 package com.example.demo.dto.banpick;
 
+import com.example.demo.entity.BanPickMatchMode;
 import com.example.demo.entity.BanPickRoomStatus;
 import com.example.demo.entity.BanPickSeriesType;
 import com.example.demo.entity.BanPickPhaseType;
@@ -12,6 +13,15 @@ import java.util.Map;
 public record BanPickRoomStateResponse(
         Long id,
         String roomCode,
+        BanPickMatchMode mode,
+        BanPickSeriesType virtualSeriesFormat,
+        Integer virtualGameIndex,
+        Boolean ultimateBattle,
+        Integer prepDurationSeconds,
+        LocalDateTime prepPhaseStartAt,
+        LocalDateTime prepPhaseEndAt,
+        List<Long> bluePreviousUsedHeroIds,
+        List<Long> redPreviousUsedHeroIds,
         BanPickRoomStatus status,
         BanPickPhaseType phaseType,
         BanPickSeriesType seriesType,
@@ -41,6 +51,12 @@ public record BanPickRoomStateResponse(
         List<Long> bluePickOrder,
         List<Long> redPickOrder,
         BanPickTeamSide currentUserSide,
+        /**
+         * Strategy pool for the current user only (hero IDs they want to prioritize).
+         * Null when the state is broadcast to all (withoutCurrentUserSide).
+         * Strategy pool is private per player and not shared with the opponent.
+         */
+        List<Long> myStrategyPool,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         Long draftHistoryId,
@@ -48,13 +64,32 @@ public record BanPickRoomStateResponse(
         List<BanPickParticipantResponse> participants,
         List<BanPickActionResponse> actions
 ) {
+    /**
+     * Returns a copy of this state without the current user's side and strategy pool.
+     * Used when broadcasting to all subscribers so each player only sees their own pool.
+     */
     public BanPickRoomStateResponse withoutCurrentUserSide() {
-        if (currentUserSide == null) {
+        if (currentUserSide == null && myStrategyPool == null) {
             return this;
         }
+        // Strip strategy pools from all participant entries when broadcasting
+        List<BanPickParticipantResponse> strippedParticipants = participants == null ? null :
+                participants.stream()
+                        .map(p -> new BanPickParticipantResponse(
+                                p.user(), p.role(), p.teamSide(), p.joinedAt(), null))
+                        .toList();
         return new BanPickRoomStateResponse(
                 id,
                 roomCode,
+                mode,
+                virtualSeriesFormat,
+                virtualGameIndex,
+                ultimateBattle,
+                prepDurationSeconds,
+                prepPhaseStartAt,
+                prepPhaseEndAt,
+                bluePreviousUsedHeroIds,
+                redPreviousUsedHeroIds,
                 status,
                 phaseType,
                 seriesType,
@@ -84,11 +119,12 @@ public record BanPickRoomStateResponse(
                 bluePickOrder,
                 redPickOrder,
                 null,
+                null,
                 createdAt,
                 updatedAt,
                 draftHistoryId,
                 currentPhase,
-                participants,
+                strippedParticipants,
                 actions
         );
     }

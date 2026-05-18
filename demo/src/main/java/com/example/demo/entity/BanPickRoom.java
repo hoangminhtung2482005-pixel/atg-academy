@@ -36,6 +36,35 @@ public class BanPickRoom {
     private String roomCode;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    private BanPickMatchMode mode = BanPickMatchMode.SIMULATION;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "virtual_series_format", length = 8)
+    private BanPickSeriesType virtualSeriesFormat;
+
+    @Column(name = "virtual_game_index")
+    private Integer virtualGameIndex;
+
+    @Column(name = "ultimate_battle", nullable = false, columnDefinition = "boolean default false")
+    private Boolean ultimateBattle = false;
+
+    @Column(name = "prep_duration_seconds", nullable = false)
+    private Integer prepDurationSeconds = 0;
+
+    @Column(name = "blue_previous_used_hero_ids", columnDefinition = "TEXT")
+    private String bluePreviousUsedHeroIds;
+
+    @Column(name = "red_previous_used_hero_ids", columnDefinition = "TEXT")
+    private String redPreviousUsedHeroIds;
+
+    @Column(name = "prep_phase_start_at")
+    private LocalDateTime prepPhaseStartAt;
+
+    @Column(name = "prep_phase_end_at")
+    private LocalDateTime prepPhaseEndAt;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private BanPickRoomStatus status = BanPickRoomStatus.WAITING;
 
@@ -130,6 +159,9 @@ public class BanPickRoom {
         LocalDateTime now = LocalDateTime.now();
         this.createdAt = now;
         this.updatedAt = now;
+        if (this.mode == null) this.mode = BanPickMatchMode.SIMULATION;
+        if (this.ultimateBattle == null) this.ultimateBattle = false;
+        if (this.prepDurationSeconds == null) this.prepDurationSeconds = 0;
         if (this.status == null) this.status = BanPickRoomStatus.WAITING;
         if (this.phaseType == null) this.phaseType = BanPickPhaseType.DRAFT;
         if (this.seriesType == null) this.seriesType = BanPickSeriesType.BO1;

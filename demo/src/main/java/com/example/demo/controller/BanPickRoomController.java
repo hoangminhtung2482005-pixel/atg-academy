@@ -110,6 +110,14 @@ public class BanPickRoomController {
         return ResponseEntity.ok(broadcast(banPickRoomService.resetRoom(roomCode, currentUser(authentication))));
     }
 
+    @PostMapping("/{roomCode}/strategy-pool")
+    public ResponseEntity<BanPickRoomStateResponse> updateStrategyPool(
+            @PathVariable String roomCode,
+            @RequestBody(required = false) com.example.demo.dto.banpick.BanPickStrategyPoolRequest request,
+            Authentication authentication) {
+        return ResponseEntity.ok(broadcast(banPickRoomService.updateStrategyPool(roomCode, request, currentUser(authentication))));
+    }
+
     private BanPickRoomStateResponse broadcast(BanPickRoomStateResponse roomState) {
         banPickRoomBroadcaster.broadcast(roomState);
         return roomState;

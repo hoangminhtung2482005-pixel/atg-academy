@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.entity.PlayerStats;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -17,6 +18,16 @@ public class BanPickRankService {
     private static final RankProfile RANK_B = new RankProfile("B", "Rank B", 40.0);
     private static final RankProfile RANK_C = new RankProfile("C", "Rank C", 20.0);
     private static final RankProfile RANK_D = new RankProfile("D", "Rank D", 0.0);
+    private final BanPickRatingSettingsAccessor settingsAccessor;
+
+    public BanPickRankService() {
+        this(BanPickRatingSettingsSnapshot::defaults);
+    }
+
+    @Autowired
+    public BanPickRankService(BanPickRatingSettingsAccessor settingsAccessor) {
+        this.settingsAccessor = settingsAccessor;
+    }
 
     public RankProfile resolveRank(PlayerStats targetStats, List<PlayerStats> allStats) {
         if (!isRankEligible(targetStats)) {
@@ -130,7 +141,7 @@ public class BanPickRankService {
     }
 
     private int safeRating(Integer value) {
-        return value != null ? Math.max(0, value) : 1000;
+        return value != null ? Math.max(0, value) : settingsAccessor.getCurrentSettings().initialRating();
     }
 
     private record RankedEntry(

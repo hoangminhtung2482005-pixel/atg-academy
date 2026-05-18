@@ -2,6 +2,8 @@ package com.example.demo.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -43,6 +45,16 @@ public class PlayerStats {
 
     @Column(nullable = false)
     private Integer rating = 1000;
+
+    @Column(name = "rating_anchor")
+    private Integer ratingAnchor;
+
+    @Column(name = "rating_anchor_at")
+    private LocalDateTime ratingAnchorAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "last_reset_type", length = 16)
+    private BanPickSeasonResetType lastResetType;
 
     @Column(columnDefinition = "TEXT")
     private String pickedHeroCounts;

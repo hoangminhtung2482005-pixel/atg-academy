@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.entity.BanPickMatchMode;
 import com.example.demo.entity.DraftHistory;
 import com.example.demo.entity.PlayerStats;
 import com.example.demo.entity.User;
@@ -156,6 +157,7 @@ class BanPickMacroEconomyServiceTest {
         DraftHistory history = new DraftHistory();
         history.setId(id);
         history.setRoomCode("ROOM-" + id);
+        history.setMode(BanPickMatchMode.RANKED);
         history.setBlueUser(blueUser);
         history.setRedUser(redUser);
         history.setCreatedAt(recordedAt);

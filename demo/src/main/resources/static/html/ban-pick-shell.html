@@ -9,8 +9,7 @@
                     <input type="radio" id="mode-free" name="draftMode" value="free" onchange="renderModeOptions()">
                     <span>
                         <strong>Cấm chọn tự do</strong>
-                        <small>Tự do cấm/chọn không theo lượt, phù hợp để thử nghiệm chiến
-                            thuật.</small>
+                        <small>Tự do cấm/chọn không theo lượt, phù hợp để thử nghiệm chiến thuật.</small>
                     </span>
                 </label>
                 <label class="mode-option is-selected" for="mode-standard">
@@ -26,9 +25,7 @@
                         onchange="renderModeOptions()">
                     <span>
                         <strong>Solo Ban/Pick 1v1 Online</strong>
-                        <small>Tạo hoặc tham gia phòng online, tung xúc xắc chọn bên rồi draft theo lượt
-                            tiêu
-                            chuẩn.</small>
+                        <small>Tạo hoặc tham gia phòng online, tung xúc xắc chọn bên rồi draft theo lượt tiêu chuẩn.</small>
                     </span>
                 </label>
             </div>
@@ -41,128 +38,200 @@
                 <span class="phase-progress">Solo online</span>
                 <h1>Solo Ban/Pick 1v1 Online</h1>
             </div>
-            <div class="online-login-gate is-hidden" id="online-login-gate">
-                <strong>Bạn cần đăng nhập để tạo phòng, tham gia phòng và xem thống kê solo.</strong>
-                <p>Đăng nhập Google ở góc phải để xem rating, W/L và draft gần đây của bạn.</p>
-                <button type="button" class="control-btn primary" onclick="handleCustomGoogleLogin()">Đăng
-                    nhập</button>
-            </div>
-            <section class="online-player-stats-card" id="online-player-stats-card"
-                aria-labelledby="online-player-stats-title">
-                <div class="online-player-stats-head">
-                    <div>
-                        <span class="phase-progress">Player Card</span>
-                        <h2 id="online-player-stats-title">Hồ sơ Solo Ban/Pick</h2>
+            <div class="solo-page-layout">
+                <aside class="solo-sidebar" aria-label="Solo Ban/Pick navigation">
+                    <div class="solo-sidebar-copy">
+                        <span class="phase-progress">Solo lobby</span>
+                        <h2>Chọn nhanh tính năng cần dùng</h2>
+                        <p>Lobby được chia gọn thành các khu vực riêng để matchmaking, thông tin cá nhân và bảng xếp hạng dễ theo dõi hơn.</p>
                     </div>
-                    <a class="online-player-stats-link" href="/ban-pick/leaderboard">Bảng xếp hạng</a>
-                </div>
-                <p class="online-player-stats-summary" id="online-player-stats-summary">Đăng nhập để xem Player Card.</p>
-                <div class="online-player-profile-layout">
-                    <section class="online-player-card-module" id="online-player-card-module" hidden aria-label="Player Card">
-                        <div class="online-player-card-slot" id="solo-player-card"></div>
-                    </section>
-                    <section class="online-player-stats-panel" id="online-player-stats-panel" hidden aria-labelledby="online-player-stats-panel-title">
-                        <div class="online-player-stats-panel-head">
-                            <div>
-                                <span class="phase-progress">Thống kê 50 trận gần nhất</span>
-                                <h3 id="online-player-stats-panel-title">Solo stats</h3>
+                    <div class="solo-tab-nav" role="tablist" aria-label="Solo Ban/Pick sections">
+                        <button type="button" class="solo-tab-btn is-active" id="solo-tab-trigger-matchmaking"
+                            data-solo-tab="matchmaking" role="tab" aria-controls="solo-tab-matchmaking"
+                            aria-selected="true">
+                            <span class="solo-tab-btn-kicker">01</span>
+                            <span class="solo-tab-btn-copy">
+                                <strong>Tìm trận</strong>
+                                <small>Tạo phòng, join room, chọn BO và xem cooldown.</small>
+                            </span>
+                        </button>
+                        <button type="button" class="solo-tab-btn" id="solo-tab-trigger-profile"
+                            data-solo-tab="profile" role="tab" aria-controls="solo-tab-profile"
+                            aria-selected="false" tabindex="-1">
+                            <span class="solo-tab-btn-kicker">02</span>
+                            <span class="solo-tab-btn-copy">
+                                <strong>Thông tin cá nhân</strong>
+                                <small>Player Card, W/L, win rate, top picks và 3 draft gần nhất.</small>
+                            </span>
+                        </button>
+                        <button type="button" class="solo-tab-btn" id="solo-tab-trigger-leaderboard"
+                            data-solo-tab="leaderboard" role="tab" aria-controls="solo-tab-leaderboard"
+                            aria-selected="false" tabindex="-1">
+                            <span class="solo-tab-btn-kicker">03</span>
+                            <span class="solo-tab-btn-copy">
+                                <strong>Bảng xếp hạng</strong>
+                                <small>Theo dõi ELO, rank và phong độ Solo Ban/Pick hiện tại.</small>
+                            </span>
+                        </button>
+                    </div>
+                </aside>
+
+                <div class="solo-content">
+                    <section class="solo-tab-panel is-active" id="solo-tab-matchmaking" data-solo-panel="matchmaking"
+                        role="tabpanel" aria-labelledby="solo-tab-trigger-matchmaking">
+                        <div class="solo-panel-intro">
+                            <span class="phase-progress">Matchmaking</span>
+                            <h2>Tạo phòng hoặc tham gia phòng ngay tại đây</h2>
+                            <p>Giữ nguyên toàn bộ luồng create/join/start hiện có. Bạn chỉ cần chọn thể thức và vào room.</p>
+                        </div>
+
+                        <div class="online-login-gate is-hidden" id="online-login-gate">
+                            <strong>Bạn cần đăng nhập để tạo phòng, tham gia phòng và xem thông tin solo.</strong>
+                            <p>Đăng nhập Google ở góc phải để dùng matchmaking, xem rating, W/L và lịch sử draft gần nhất.</p>
+                            <button type="button" class="control-btn primary" onclick="handleCustomGoogleLogin()">Đăng
+                                nhập</button>
+                        </div>
+
+                        <div class="online-room-shell" id="online-room-shell">
+                            <div class="online-room-actions" id="online-room-actions">
+                                <article class="online-action-card">
+                                    <span>A</span>
+                                    <h2>Tạo phòng</h2>
+                                    <p>Tạo phòng mới và gửi link cho đối thủ.</p>
+                                    <div class="online-series-selector" aria-label="Chọn thể thức series">
+                                        <strong>Thể thức series</strong>
+                                        <div class="online-series-options">
+                                            <button type="button" class="series-type-btn is-active" data-series-type="BO1"
+                                                onclick="setOnlineSeriesType('BO1')">BO1</button>
+                                            <button type="button" class="series-type-btn" data-series-type="BO3"
+                                                onclick="setOnlineSeriesType('BO3')">BO3</button>
+                                            <button type="button" class="series-type-btn" data-series-type="BO5"
+                                                onclick="setOnlineSeriesType('BO5')">BO5</button>
+                                            <button type="button" class="series-type-btn" data-series-type="BO7"
+                                                onclick="setOnlineSeriesType('BO7')">BO7</button>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="control-btn primary" id="create-room-btn"
+                                        onclick="createOnlineRoom()">Tạo phòng</button>
+                                </article>
+                                <article class="online-action-card">
+                                    <span>B</span>
+                                    <h2>Tham gia phòng</h2>
+                                    <p>Nhập mã phòng hoặc mở link mời.</p>
+                                    <div class="online-join-row">
+                                        <input type="text" id="join-room-code" placeholder="ABC123" maxlength="12">
+                                        <button type="button" class="control-btn primary" id="join-room-btn"
+                                            onclick="joinOnlineRoom()">Tham gia</button>
+                                    </div>
+                                </article>
                             </div>
-                        </div>
-                        <div class="online-player-stats-metrics" id="online-player-stats-metrics"></div>
-                        <div class="online-player-stats-detail" id="online-player-stats-detail">
-                            <section class="online-player-stats-block">
-                                <div class="online-player-stats-block-head">
-                                    <h3>Tướng pick nhiều</h3>
-                                    <small>Top 4 trong 50 draft gần nhất</small>
+                            <div class="online-room-card is-hidden" id="online-room-card">
+                                <div class="online-room-head">
+                                    <div>
+                                        <span class="phase-progress">Mã phòng</span>
+                                        <strong id="online-room-code">-</strong>
+                                    </div>
+                                    <button type="button" class="control-btn" onclick="copyOnlineRoomLink()">Sao chép link</button>
                                 </div>
-                                <div class="online-player-pills" id="online-player-pills"></div>
-                            </section>
-                            <section class="online-player-stats-block">
-                                <div class="online-player-stats-block-head">
-                                    <h3>Draft gần đây</h3>
-                                    <small>3 room mới nhất của bạn</small>
+                                <div class="online-room-link" id="online-room-link">-</div>
+                                <div class="online-realtime-indicator" id="online-realtime-indicator">Realtime chưa kết nối
                                 </div>
-                                <div class="online-player-history" id="online-player-history"></div>
-                            </section>
+                                <div class="online-lobby-grid">
+                                    <div class="online-player-card blue">
+                                        <span>Chủ phòng</span>
+                                        <strong id="online-host-player">Đang chờ</strong>
+                                        <small id="online-host-ready">Chưa sẵn sàng</small>
+                                        <small id="online-blue-player">Bên Xanh: Chưa xác định</small>
+                                    </div>
+                                    <div class="online-player-card red">
+                                        <span>Người tham gia</span>
+                                        <strong id="online-guest-player">Đang chờ đối thủ</strong>
+                                        <small id="online-guest-ready">Chưa sẵn sàng</small>
+                                        <small id="online-red-player">Bên Đỏ: Chưa xác định</small>
+                                    </div>
+                                    <div class="online-status-card">
+                                        <span>Trạng thái</span>
+                                        <strong id="online-room-status">WAITING</strong>
+                                        <small id="online-room-message">Đang chờ đối thủ...</small>
+                                    </div>
+                                </div>
+                                <div class="draft-controls online-lobby-controls">
+                                    <button type="button" class="control-btn" id="online-roll-side-btn"
+                                        onclick="rollOnlineSide()">Tung xúc xắc chọn bên</button>
+                                    <button type="button" class="control-btn primary" id="online-ready-room-btn"
+                                        onclick="readyOnlineRoom()">Sẵn sàng</button>
+                                    <button type="button" class="control-btn primary" id="online-start-room-btn"
+                                        onclick="startOnlineRoom()">Bắt đầu cấm chọn</button>
+                                    <button type="button" class="control-btn" onclick="copyOnlineRoomLink()">Sao chép lời
+                                        mời</button>
+                                </div>
+                            </div>
+                            <div class="online-room-feedback" id="online-room-feedback" aria-live="polite"></div>
                         </div>
                     </section>
-                </div>
-            </section>
-            <div class="online-room-shell" id="online-room-shell">
-                <div class="online-room-actions" id="online-room-actions">
-                    <article class="online-action-card">
-                        <span>A</span>
-                        <h2>Tạo phòng</h2>
-                        <p>Tạo phòng mới và gửi link cho đối thủ.</p>
-                        <div class="online-series-selector" aria-label="Chọn thể thức series">
-                            <strong>Thể thức series</strong>
-                            <div class="online-series-options">
-                                <button type="button" class="series-type-btn is-active" data-series-type="BO1"
-                                    onclick="setOnlineSeriesType('BO1')">BO1</button>
-                                <button type="button" class="series-type-btn" data-series-type="BO3"
-                                    onclick="setOnlineSeriesType('BO3')">BO3</button>
-                                <button type="button" class="series-type-btn" data-series-type="BO5"
-                                    onclick="setOnlineSeriesType('BO5')">BO5</button>
-                                <button type="button" class="series-type-btn" data-series-type="BO7"
-                                    onclick="setOnlineSeriesType('BO7')">BO7</button>
+
+                    <section class="solo-tab-panel" id="solo-tab-profile" data-solo-panel="profile" role="tabpanel"
+                        aria-labelledby="solo-tab-trigger-profile" hidden>
+                        <section class="online-player-stats-card" id="online-player-stats-card"
+                            aria-labelledby="online-player-stats-title">
+                            <div class="online-player-stats-head">
+                                <div>
+                                    <span class="phase-progress">Player Card</span>
+                                    <h2 id="online-player-stats-title">Hồ sơ Solo Ban/Pick</h2>
+                                </div>
+                                <a class="online-player-stats-link" href="/ban-pick/leaderboard">Mở BXH đầy đủ</a>
                             </div>
-                        </div>
-                        <button type="button" class="control-btn primary" id="create-room-btn"
-                            onclick="createOnlineRoom()">Tạo phòng</button>
-                    </article>
-                    <article class="online-action-card">
-                        <span>B</span>
-                        <h2>Tham gia phòng</h2>
-                        <p>Nhập mã phòng hoặc mở link mới.</p>
-                        <div class="online-join-row">
-                            <input type="text" id="join-room-code" placeholder="ABC123" maxlength="12">
-                            <button type="button" class="control-btn primary" id="join-room-btn"
-                                onclick="joinOnlineRoom()">Tham gia</button>
-                        </div>
-                    </article>
+                            <p class="online-player-stats-summary" id="online-player-stats-summary">Đăng nhập để xem thông tin cá nhân.</p>
+                            <div class="online-player-profile-layout">
+                                <section class="online-player-card-module" id="online-player-card-module" hidden aria-label="Player Card">
+                                    <div class="online-player-card-slot" id="solo-player-card"></div>
+                                </section>
+                                <section class="online-player-stats-panel" id="online-player-stats-panel" hidden aria-labelledby="online-player-stats-panel-title">
+                                    <div class="online-player-stats-panel-head">
+                                        <div>
+                                            <span class="phase-progress">Thống kê 50 trận gần nhất</span>
+                                            <h3 id="online-player-stats-panel-title">Solo stats</h3>
+                                        </div>
+                                    </div>
+                                    <div class="online-player-stats-metrics" id="online-player-stats-metrics"></div>
+                                    <div class="online-player-stats-detail" id="online-player-stats-detail">
+                                        <section class="online-player-stats-block">
+                                            <div class="online-player-stats-block-head">
+                                                <h3>Tướng pick nhiều</h3>
+                                                <small>Top 4 trong 50 draft gần nhất</small>
+                                            </div>
+                                            <div class="online-player-pills" id="online-player-pills"></div>
+                                        </section>
+                                        <section class="online-player-stats-block">
+                                            <div class="online-player-stats-block-head">
+                                                <h3>Draft gần đây</h3>
+                                                <small>3 room mới nhất của bạn</small>
+                                            </div>
+                                            <div class="online-player-history" id="online-player-history"></div>
+                                        </section>
+                                    </div>
+                                </section>
+                            </div>
+                        </section>
+                    </section>
+
+                    <section class="solo-tab-panel" id="solo-tab-leaderboard" data-solo-panel="leaderboard"
+                        role="tabpanel" aria-labelledby="solo-tab-trigger-leaderboard" hidden>
+                        <section class="solo-leaderboard-card" aria-labelledby="solo-leaderboard-title">
+                            <div class="solo-leaderboard-head">
+                                <div>
+                                    <span class="phase-progress">Leaderboard</span>
+                                    <h2 id="solo-leaderboard-title">Bảng xếp hạng Solo Ban/Pick</h2>
+                                </div>
+                                <a class="online-player-stats-link" href="/ban-pick/leaderboard">Mở trang riêng</a>
+                            </div>
+                            <p class="solo-leaderboard-summary" id="solo-leaderboard-summary">Xem thứ hạng, rank và phong độ hiện tại của người chơi solo.</p>
+                            <div class="solo-leaderboard-table" id="solo-leaderboard-root" aria-live="polite">
+                                <div class="solo-leaderboard-empty">Mở tab này để tải bảng xếp hạng hiện tại.</div>
+                            </div>
+                        </section>
+                    </section>
                 </div>
-                <div class="online-room-card is-hidden" id="online-room-card">
-                    <div class="online-room-head">
-                        <div>
-                            <span class="phase-progress">Mã phòng</span>
-                            <strong id="online-room-code">-</strong>
-                        </div>
-                        <button type="button" class="control-btn" onclick="copyOnlineRoomLink()">Sao chép link</button>
-                    </div>
-                    <div class="online-room-link" id="online-room-link">-</div>
-                    <div class="online-realtime-indicator" id="online-realtime-indicator">Realtime chưa kết nối
-                    </div>
-                    <div class="online-lobby-grid">
-                        <div class="online-player-card blue">
-                            <span>Chủ phòng</span>
-                            <strong id="online-host-player">Đang chờ</strong>
-                            <small id="online-host-ready">Chưa sẵn sàng</small>
-                            <small id="online-blue-player">Bên Xanh: Chưa xác định</small>
-                        </div>
-                        <div class="online-player-card red">
-                            <span>Người tham gia</span>
-                            <strong id="online-guest-player">Đang chờ đối thủ</strong>
-                            <small id="online-guest-ready">Chưa sẵn sàng</small>
-                            <small id="online-red-player">Bên Đỏ: Chưa xác định</small>
-                        </div>
-                        <div class="online-status-card">
-                            <span>Trạng thái</span>
-                            <strong id="online-room-status">WAITING</strong>
-                            <small id="online-room-message">Đang chờ đối thủ...</small>
-                        </div>
-                    </div>
-                    <div class="draft-controls online-lobby-controls">
-                        <button type="button" class="control-btn" id="online-roll-side-btn"
-                            onclick="rollOnlineSide()">Tung xúc xắc chọn bên</button>
-                        <button type="button" class="control-btn primary" id="online-ready-room-btn"
-                            onclick="readyOnlineRoom()">Sẵn sàng</button>
-                        <button type="button" class="control-btn primary" id="online-start-room-btn"
-                            onclick="startOnlineRoom()">Bắt đầu cấm chọn</button>
-                        <button type="button" class="control-btn" onclick="copyOnlineRoomLink()">Sao chép lời
-                            mời</button>
-                    </div>
-                </div>
-                <div class="online-room-feedback" id="online-room-feedback" aria-live="polite"></div>
             </div>
         </section>
 
@@ -296,6 +365,20 @@
                 <div class="draft-balance-list">
                     <span class="draft-balance-item blue" id="draft-balance-blue">Xanh: 0.00 điểm · 50.0%</span>
                     <span class="draft-balance-item red" id="draft-balance-red">Đỏ: 0.00 điểm · 50.0%</span>
+                </div>
+            </div>
+
+            <div class="ranked-prep-panel is-hidden" id="ranked-prep-panel" aria-live="polite">
+                <div class="ranked-prep-header">
+                    <strong id="ranked-prep-countdown">Prep Phase: 0s</strong>
+                    <small>Chuẩn bị chiến thuật trước khi draft bắt đầu</small>
+                </div>
+                <div class="ranked-strategy-pool">
+                    <span class="ranked-strategy-pool-title">Strategy Pool của bạn</span>
+                    <div class="ranked-strategy-pool-list" id="ranked-strategy-pool-list">
+                        <span class="hero-icon-empty">Chưa có hero trong pool</span>
+                    </div>
+                    <small class="ranked-strategy-pool-hint">Thêm hero vào pool để ưu tiên hiển thị. Click hero trong danh sách rồi dùng nút bên dưới.</small>
                 </div>
             </div>
 
@@ -439,4 +522,3 @@
             <button type="button" class="control-btn danger" id="draft-page-reset-btn" onclick="resetDraft()">Làm lại</button>
         </div>
     </main>
-

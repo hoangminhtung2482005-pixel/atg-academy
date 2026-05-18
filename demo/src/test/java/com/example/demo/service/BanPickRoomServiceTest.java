@@ -6,6 +6,7 @@ import com.example.demo.dto.banpick.BanPickLineupConfirmRequest;
 import com.example.demo.dto.banpick.BanPickLineupReorderRequest;
 import com.example.demo.entity.BanPickAction;
 import com.example.demo.entity.BanPickActionType;
+import com.example.demo.entity.BanPickMatchMode;
 import com.example.demo.entity.BanPickParticipantRole;
 import com.example.demo.entity.BanPickPhaseType;
 import com.example.demo.entity.BanPickRoom;
@@ -15,6 +16,7 @@ import com.example.demo.entity.BanPickSeriesType;
 import com.example.demo.entity.BanPickTeamSide;
 import com.example.demo.entity.DraftHistoryEndReason;
 import com.example.demo.entity.Hero;
+import com.example.demo.entity.HeroRole;
 import com.example.demo.entity.User;
 import com.example.demo.repository.BanPickActionRepository;
 import com.example.demo.repository.BanPickRoomParticipantRepository;
@@ -36,6 +38,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -75,13 +78,17 @@ class BanPickRoomServiceTest {
 
     @BeforeEach
     void setUp() {
+        BanPickRankedRoomContextService rankedRoomContextService =
+                new BanPickRankedRoomContextService(heroRepository, new Random(0));
         service = new BanPickRoomService(
                 roomRepository,
                 participantRepository,
                 actionRepository,
                 userRepository,
                 heroRepository,
-                banPickHistoryService
+                banPickHistoryService,
+                rankedRoomContextService,
+                BanPickRatingSettingsSnapshot::defaults
         );
 
         when(roomRepository.save(any(BanPickRoom.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -95,6 +102,7 @@ class BanPickRoomServiceTest {
             }
             return action;
         });
+        when(heroRepository.findAllByPrimaryRoleIsNotNullOrderByNameAsc()).thenReturn(rankedHeroPool());
         when(participantRepository.findByRoomOrderByJoinedAtAsc(any(BanPickRoom.class))).thenReturn(List.of());
         when(actionRepository.findByRoomOrderByConfirmedAtAsc(any(BanPickRoom.class))).thenReturn(List.of());
         when(banPickHistoryService.findLatestHistoryIdByRoomCode(anyString())).thenReturn(Optional.empty());
@@ -141,6 +149,34 @@ class BanPickRoomServiceTest {
     }
 
     @Test
+    void createRoomDefaultsToSimulationMode() {
+        User host = user(1L, "host@example.com");
+        when(userRepository.findByEmail(host.getEmail())).thenReturn(Optional.of(host));
+
+        var roomState = service.createRoom(principal(host), new BanPickCreateRoomRequest(BanPickSeriesType.BO1));
+
+        assertThat(roomState.mode()).isEqualTo(BanPickMatchMode.SIMULATION);
+        ArgumentCaptor<BanPickRoom> roomCaptor = ArgumentCaptor.forClass(BanPickRoom.class);
+        verify(roomRepository).save(roomCaptor.capture());
+        assertThat(roomCaptor.getValue().getMode()).isEqualTo(BanPickMatchMode.SIMULATION);
+    }
+
+    @Test
+    void createRoomAllowsRankedModeRequest() {
+        User host = user(1L, "host@example.com");
+        when(userRepository.findByEmail(host.getEmail())).thenReturn(Optional.of(host));
+
+        var roomState = service.createRoom(
+                principal(host),
+                new BanPickCreateRoomRequest(BanPickSeriesType.BO3, BanPickMatchMode.RANKED)
+        );
+
+        assertThat(roomState.mode()).isEqualTo(BanPickMatchMode.RANKED);
+        assertThat(roomState.seriesType()).isEqualTo(BanPickSeriesType.BO1);
+        assertThat(roomState.virtualSeriesFormat()).isEqualTo(BanPickSeriesType.BO7);
+    }
+
+    @Test
     void onlyHostCanRollSide() {
         User host = user(1L, "host@example.com");
         User guest = user(2L, "guest@example.com");
@@ -179,6 +215,7 @@ class BanPickRoomServiceTest {
         User host = user(1L, "host@example.com");
         User guest = user(2L, "guest@example.com");
         BanPickRoom room = startedRoom(host, guest);
+        room.setMode(BanPickMatchMode.RANKED);
         room.setPhaseDeadlineAt(LocalDateTime.now().minusSeconds(1));
 
         when(userRepository.findByEmail(host.getEmail())).thenReturn(Optional.of(host));
@@ -203,6 +240,7 @@ class BanPickRoomServiceTest {
         User host = user(1L, "host@example.com");
         User guest = user(2L, "guest@example.com");
         BanPickRoom room = startedRoom(host, guest);
+        room.setMode(BanPickMatchMode.RANKED);
         LocalDateTime disconnectedAt = LocalDateTime.now();
 
         when(roomRepository.findByRoomCodeForUpdate(ROOM_CODE)).thenReturn(Optional.of(room));
@@ -412,6 +450,7 @@ class BanPickRoomServiceTest {
         User host = user(1L, "host@example.com");
         User guest = user(2L, "guest@example.com");
         BanPickRoom room = startedRoom(host, guest);
+        room.setMode(BanPickMatchMode.RANKED);
 
         when(userRepository.findByEmail(host.getEmail())).thenReturn(Optional.of(host));
         when(roomRepository.findByRoomCodeForUpdate(ROOM_CODE)).thenReturn(Optional.of(room));
@@ -474,13 +513,14 @@ class BanPickRoomServiceTest {
         guest.setBanPickCooldownUntil(LocalDateTime.now().plusMinutes(5));
 
         when(userRepository.findByEmail(host.getEmail())).thenReturn(Optional.of(host));
-        assertThatThrownBy(() -> service.createRoom(principal(host), new BanPickCreateRoomRequest(BanPickSeriesType.BO1)))
+        assertThatThrownBy(() -> service.createRoom(principal(host), new BanPickCreateRoomRequest(BanPickSeriesType.BO1, BanPickMatchMode.RANKED)))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
                     assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
                     assertThat(exception.getReason()).contains("cooldown Solo Ban/Pick");
                 });
 
         BanPickRoom joinRoom = waitingRoom(user(3L, "other-host@example.com"));
+        joinRoom.setMode(BanPickMatchMode.RANKED);
         when(userRepository.findByEmail(guest.getEmail())).thenReturn(Optional.of(guest));
         when(roomRepository.findByRoomCodeForUpdate(ROOM_CODE)).thenReturn(Optional.of(joinRoom));
         assertThatThrownBy(() -> service.joinRoom(ROOM_CODE, principal(guest)))
@@ -490,6 +530,7 @@ class BanPickRoomServiceTest {
                 });
 
         BanPickRoom startRoom = readyRoom(host, guest);
+        startRoom.setMode(BanPickMatchMode.RANKED);
         startRoom.setBlueUser(host);
         startRoom.setRedUser(guest);
         startRoom.setHostReady(true);
@@ -514,6 +555,93 @@ class BanPickRoomServiceTest {
 
         assertThat(room.getHostReady()).isTrue();
         assertThat(room.getGuestReady()).isFalse();
+    }
+
+    @Test
+    void rankedRoomGeneratesVirtualContextWhenSecondPlayerReady() {
+        User host = user(1L, "host@example.com");
+        User guest = user(2L, "guest@example.com");
+        BanPickRoom room = readyRoom(host, guest);
+        room.setMode(BanPickMatchMode.RANKED);
+        room.setHostReady(true);
+
+        when(userRepository.findByEmail(guest.getEmail())).thenReturn(Optional.of(guest));
+        when(roomRepository.findByRoomCodeForUpdate(ROOM_CODE)).thenReturn(Optional.of(room));
+
+        var state = service.readyRoom(ROOM_CODE, principal(guest));
+
+        assertThat(state.virtualGameIndex()).isBetween(1, 7);
+        assertThat(state.virtualSeriesFormat()).isEqualTo(BanPickSeriesType.BO7);
+        assertThat(room.getVirtualGameIndex()).isEqualTo(state.virtualGameIndex());
+    }
+
+    @Test
+    void getRoomStateDoesNotRegenerateRankedContext() {
+        User host = user(1L, "host@example.com");
+        User guest = user(2L, "guest@example.com");
+        BanPickRoom room = readyRoom(host, guest);
+        room.setMode(BanPickMatchMode.RANKED);
+        room.setHostReady(true);
+        room.setGuestReady(true);
+        room.setVirtualSeriesFormat(BanPickSeriesType.BO7);
+        room.setVirtualGameIndex(6);
+        room.setPrepDurationSeconds(50);
+        room.setBluePreviousUsedHeroIds("1,2,3,4,5,6,7,8,9,10");
+        room.setRedPreviousUsedHeroIds("11,12,13,14,15,16,17,18,19,20");
+
+        when(userRepository.findByEmail(host.getEmail())).thenReturn(Optional.of(host));
+        when(roomRepository.findByRoomCodeForUpdate(ROOM_CODE)).thenReturn(Optional.of(room));
+
+        var state = service.getRoomState(ROOM_CODE, principal(host));
+
+        assertThat(state.virtualGameIndex()).isEqualTo(6);
+        assertThat(state.bluePreviousUsedHeroIds()).containsExactly(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L);
+        assertThat(state.redPreviousUsedHeroIds()).containsExactly(11L, 12L, 13L, 14L, 15L, 16L, 17L, 18L, 19L, 20L);
+        verify(heroRepository, never()).findAllByPrimaryRoleIsNotNullOrderByNameAsc();
+    }
+
+    @Test
+    void simulationRoomDoesNotGenerateRankedContextWhenPlayersReady() {
+        User host = user(1L, "host@example.com");
+        User guest = user(2L, "guest@example.com");
+        BanPickRoom room = readyRoom(host, guest);
+        room.setMode(BanPickMatchMode.SIMULATION);
+        room.setHostReady(true);
+
+        when(userRepository.findByEmail(guest.getEmail())).thenReturn(Optional.of(guest));
+        when(roomRepository.findByRoomCodeForUpdate(ROOM_CODE)).thenReturn(Optional.of(room));
+
+        var state = service.readyRoom(ROOM_CODE, principal(guest));
+
+        assertThat(state.virtualGameIndex()).isNull();
+        assertThat(state.bluePreviousUsedHeroIds()).isEmpty();
+        assertThat(state.redPreviousUsedHeroIds()).isEmpty();
+        verify(heroRepository, never()).findAllByPrimaryRoleIsNotNullOrderByNameAsc();
+    }
+
+    @Test
+    void rankedUltimateBattleStartsWithPickPhase() {
+        User host = user(1L, "host@example.com");
+        User guest = user(2L, "guest@example.com");
+        BanPickRoom room = readyRoom(host, guest);
+        room.setMode(BanPickMatchMode.RANKED);
+        room.setBlueUser(host);
+        room.setRedUser(guest);
+        room.setHostReady(true);
+        room.setGuestReady(true);
+        room.setVirtualSeriesFormat(BanPickSeriesType.BO7);
+        room.setVirtualGameIndex(7);
+        room.setUltimateBattle(true);
+        room.setPrepDurationSeconds(0);
+
+        when(userRepository.findByEmail(host.getEmail())).thenReturn(Optional.of(host));
+        when(roomRepository.findByRoomCodeForUpdate(ROOM_CODE)).thenReturn(Optional.of(room));
+
+        var state = service.startRoom(ROOM_CODE, principal(host));
+
+        assertThat(state.currentPhase()).isNotNull();
+        assertThat(state.currentPhase().actionType()).isEqualTo(BanPickActionType.PICK);
+        assertThat(state.currentPhase().teamSide()).isEqualTo(BanPickTeamSide.BLUE);
     }
 
     @Test
@@ -825,6 +953,26 @@ class BanPickRoomServiceTest {
         hero.setId(id);
         hero.setName(name);
         return hero;
+    }
+
+    private static List<Hero> rankedHeroPool() {
+        List<Hero> heroes = new java.util.ArrayList<>();
+        long heroId = 1L;
+        for (String roleCode : BanPickRankedRoomContextService.REQUIRED_ROLE_CODES) {
+            for (int index = 1; index <= 12; index += 1) {
+                Hero hero = hero(heroId++, roleCode + "-" + index);
+                hero.setPrimaryRole(role(roleCode));
+                heroes.add(hero);
+            }
+        }
+        return heroes;
+    }
+
+    private static HeroRole role(String code) {
+        HeroRole role = new HeroRole();
+        role.setCode(code);
+        role.setName(code);
+        return role;
     }
 
     private static BanPickAction action(BanPickRoom room,

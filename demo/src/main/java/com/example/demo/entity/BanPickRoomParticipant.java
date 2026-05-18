@@ -55,6 +55,13 @@ public class BanPickRoomParticipant {
     @Column(nullable = false, updatable = false)
     private LocalDateTime joinedAt;
 
+    /**
+     * Strategy pool: comma-separated hero IDs that this participant wants to prioritize.
+     * Scoped to the current room only. Not a pick/ban lock.
+     */
+    @Column(name = "strategy_pool", columnDefinition = "TEXT")
+    private String strategyPool;
+
     @PrePersist
     protected void onCreate() {
         this.joinedAt = LocalDateTime.now();

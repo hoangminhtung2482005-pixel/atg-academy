@@ -146,6 +146,11 @@
                             <h3 class="font-semibold text-slate-900">Bổ trợ &amp; Phù hiệu</h3>
                             <p class="text-xs text-slate-500 mt-1">Quản lý JSON metadata cho Wiki Bổ trợ và Phù hiệu.</p>
                         </a>
+                        <button type="button" onclick="switchPage('ban-pick-rating')" class="rounded-xl border border-slate-200 bg-slate-50 hover:bg-white p-4 text-left transition-all">
+                            <div class="text-2xl mb-3">🎯</div>
+                            <h3 class="font-semibold text-slate-900">Solo Rating Control</h3>
+                            <p class="text-xs text-slate-500 mt-1">Chỉnh Base, Macro, ELO Gap, Anti-trading, Dodge và Seasonal Reset cho Solo Ban/Pick.</p>
+                        </button>
                         <button type="button" onclick="switchPage('aer-data')" class="rounded-xl border border-slate-200 bg-slate-50 hover:bg-white p-4 text-left transition-all">
                             <div class="text-2xl mb-3">🏆</div>
                             <h3 class="font-semibold text-slate-900">AER Data</h3>
@@ -240,6 +245,320 @@
                         Sau
                     </button>
                 </div>
+            </div>
+        </section>
+
+        <section id="page-ban-pick-rating" class="page-section space-y-6">
+            <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-6">
+                <div class="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                    <div class="max-w-3xl">
+                        <p class="text-[0.68rem] text-accent-blue font-bold uppercase tracking-[3px] mb-2">Solo Ban/Pick</p>
+                        <h2 class="font-orbitron text-sm font-bold tracking-widest text-slate-900 uppercase">Rating Control</h2>
+                        <p class="text-sm text-slate-500 mt-2">Điều khiển runtime settings cho Base Rating, Macro Economy, ELO Gap, Anti-win-trading, Dodge Penalty và Seasonal Reset. Các thay đổi chỉ áp dụng cho trận mới sau thời điểm lưu; reset thật vẫn cần confirmation riêng.</p>
+                    </div>
+                    <div class="bp-rating-header-actions">
+                        <button type="button" id="bp-reset-defaults-btn" class="btn-press rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-all hover:bg-slate-50">
+                            Khôi phục mặc định
+                        </button>
+                        <button type="button" id="bp-save-settings-btn" class="btn-press rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-blue-700">
+                            Lưu cấu hình
+                        </button>
+                    </div>
+                </div>
+                <div class="bp-rating-summary-grid mt-6">
+                    <article class="bp-rating-summary-card">
+                        <span class="bp-rating-summary-label">Macro win delta</span>
+                        <strong id="bp-summary-macro-delta" class="bp-rating-summary-value">--</strong>
+                        <p class="bp-rating-summary-note">Snapshot đang áp dụng cho match mới.</p>
+                    </article>
+                    <article class="bp-rating-summary-card">
+                        <span class="bp-rating-summary-label">Active pool</span>
+                        <strong id="bp-summary-active-pool" class="bp-rating-summary-value">--</strong>
+                        <p id="bp-summary-active-pool-note" class="bp-rating-summary-note">Đang tải diagnostics...</p>
+                    </article>
+                    <article class="bp-rating-summary-card">
+                        <span class="bp-rating-summary-label">Next reset</span>
+                        <strong id="bp-summary-next-reset" class="bp-rating-summary-value">--</strong>
+                        <p id="bp-summary-next-reset-note" class="bp-rating-summary-note">Scheduler mặc định đang tắt.</p>
+                    </article>
+                    <article class="bp-rating-summary-card">
+                        <span class="bp-rating-summary-label">Cập nhật gần nhất</span>
+                        <strong id="bp-summary-updated-by" class="bp-rating-summary-value">--</strong>
+                        <p id="bp-summary-updated-at" class="bp-rating-summary-note">Chưa có thay đổi nào.</p>
+                    </article>
+                </div>
+            </div>
+
+            <div id="bp-rating-status" class="bp-status bp-status-info hidden"></div>
+
+            <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
+                <div class="admin-tabs bp-rating-tabs" role="tablist" aria-label="Solo Ban/Pick rating tabs">
+                    <button type="button" class="admin-tab-button active" data-bp-tab="base">Base</button>
+                    <button type="button" class="admin-tab-button" data-bp-tab="macro">Macro</button>
+                    <button type="button" class="admin-tab-button" data-bp-tab="gap">ELO Gap</button>
+                    <button type="button" class="admin-tab-button" data-bp-tab="anti">Anti-trading</button>
+                    <button type="button" class="admin-tab-button" data-bp-tab="dodge">Dodge</button>
+                    <button type="button" class="admin-tab-button" data-bp-tab="seasonal">Seasonal Reset</button>
+                    <button type="button" class="admin-tab-button" data-bp-tab="diagnostics">Diagnostics</button>
+                </div>
+
+                <form id="bp-rating-form" class="space-y-6">
+                    <div class="admin-tab-panel active" data-bp-panel="base">
+                        <div class="section-header">
+                            <div>
+                                <h3 class="font-orbitron text-sm font-bold tracking-widest uppercase">Base Rating Settings</h3>
+                                <p>Thiết lập rating gốc cho người chơi mới và floor cho các trận mới.</p>
+                            </div>
+                        </div>
+                        <div class="form-grid two">
+                            <label class="field">
+                                <span>Initial Rating</span>
+                                <input id="bp-initial-rating" type="number" min="0" step="1">
+                                <small class="field-help">Base rating cho player mới và base rating của seasonal reset.</small>
+                            </label>
+                            <label class="field">
+                                <span>Min Rating</span>
+                                <input id="bp-min-rating" type="number" min="0" step="1">
+                                <small class="field-help">Floor cho các trận mới sau khi trừ điểm.</small>
+                            </label>
+                            <label class="field">
+                                <span>Base Win Delta</span>
+                                <input id="bp-base-win-delta" type="number" min="0" step="1">
+                                <small class="field-help">Điểm thắng gốc trước Macro Economy và ELO Gap.</small>
+                            </label>
+                            <label class="field">
+                                <span>Base Loss Delta</span>
+                                <input id="bp-base-loss-delta" type="number" max="0" step="1">
+                                <small class="field-help">Điểm thua gốc, phải là số âm hoặc 0.</small>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="admin-tab-panel" data-bp-panel="macro">
+                        <div class="section-header">
+                            <div>
+                                <h3 class="font-orbitron text-sm font-bold tracking-widest uppercase">Macro Economy Settings</h3>
+                                <p>Tinh chỉnh active pool 30 ngày và delta thắng theo tình trạng lạm phát/giảm phát rating.</p>
+                            </div>
+                        </div>
+                        <div class="bp-rating-toggle-row">
+                            <label class="checkbox-label">
+                                <input id="bp-macro-enabled" type="checkbox">
+                                <span>Bật Macro Economy cho match mới</span>
+                            </label>
+                        </div>
+                        <div class="form-grid two">
+                            <label class="field">
+                                <span>Active Window Days</span>
+                                <input id="bp-macro-window-days" type="number" min="1" max="365" step="1">
+                            </label>
+                            <label class="field">
+                                <span>Balance Rating</span>
+                                <input id="bp-macro-balance-rating" type="number" min="0" step="1">
+                            </label>
+                            <label class="field">
+                                <span>Active Top Percent</span>
+                                <input id="bp-macro-active-top-percent" type="number" min="1" max="100" step="1">
+                            </label>
+                            <label class="field">
+                                <span>Rating Step</span>
+                                <input id="bp-macro-rating-step" type="number" min="1" step="1">
+                            </label>
+                            <label class="field">
+                                <span>Win Adjustment Per Step</span>
+                                <input id="bp-macro-win-adjustment-step" type="number" min="0" max="1" step="0.01">
+                                <small class="field-help">Nhập theo tỷ lệ thập phân, ví dụ `0.02` = 2%.</small>
+                            </label>
+                            <label class="field">
+                                <span>Min Win Delta</span>
+                                <input id="bp-macro-min-win-delta" type="number" min="0" step="1">
+                            </label>
+                            <label class="field">
+                                <span>Minimum Active Players</span>
+                                <input id="bp-macro-min-active-players" type="number" min="1" step="1">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="admin-tab-panel" data-bp-panel="gap">
+                        <div class="section-header">
+                            <div>
+                                <h3 class="font-orbitron text-sm font-bold tracking-widest uppercase">ELO Gap Modifier Settings</h3>
+                                <p>Điều chỉnh mạnh/yếu khi cửa trên và cửa dưới gặp nhau.</p>
+                            </div>
+                        </div>
+                        <div class="bp-rating-toggle-row">
+                            <label class="checkbox-label">
+                                <input id="bp-gap-enabled" type="checkbox">
+                                <span>Bật ELO Gap Modifier cho match mới</span>
+                            </label>
+                        </div>
+                        <div class="form-grid two">
+                            <label class="field">
+                                <span>Rating Diff Step</span>
+                                <input id="bp-gap-rating-diff-step" type="number" min="1" step="1">
+                            </label>
+                            <label class="field">
+                                <span>Modifier Per Step</span>
+                                <input id="bp-gap-modifier-per-step" type="number" min="0" max="1" step="0.01">
+                                <small class="field-help">Ví dụ `0.02` = 2% cho mỗi bước chênh lệch.</small>
+                            </label>
+                            <label class="field">
+                                <span>Max Modifier</span>
+                                <input id="bp-gap-max-modifier" type="number" min="0" max="1" step="0.01">
+                                <small class="field-help">Không được vượt quá `1.0` tức 100%.</small>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="admin-tab-panel" data-bp-panel="anti">
+                        <div class="section-header">
+                            <div>
+                                <h3 class="font-orbitron text-sm font-bold tracking-widest uppercase">Anti-win-trading Settings</h3>
+                                <p>Giới hạn số trận cùng cặp người chơi được ăn rating trong một cửa sổ thời gian.</p>
+                            </div>
+                        </div>
+                        <div class="bp-rating-toggle-row">
+                            <label class="checkbox-label">
+                                <input id="bp-anti-enabled" type="checkbox">
+                                <span>Bật anti-win-trading cho match mới</span>
+                            </label>
+                            <span id="bp-anti-blocked-delta" class="count-pill">Blocked delta cố định: 0 / 0</span>
+                        </div>
+                        <div class="form-grid two">
+                            <label class="field">
+                                <span>Window Hours</span>
+                                <input id="bp-anti-window-hours" type="number" min="1" max="720" step="1">
+                            </label>
+                            <label class="field">
+                                <span>Allowed Recent Matches</span>
+                                <input id="bp-anti-allowed-recent-matches" type="number" min="0" step="1">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="admin-tab-panel" data-bp-panel="dodge">
+                        <div class="section-header">
+                            <div>
+                                <h3 class="font-orbitron text-sm font-bold tracking-widest uppercase">Dodge Penalty Settings</h3>
+                                <p>Điều chỉnh disconnect grace và cooldown. Guard reset during draft hiện chỉ hiển thị read-only để tránh một setting không thực sự toggle được runtime.</p>
+                            </div>
+                        </div>
+                        <div class="bp-rating-toggle-grid">
+                            <label class="checkbox-label">
+                                <input id="bp-dodge-enabled" type="checkbox">
+                                <span>Bật cooldown / disconnect guard</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input id="bp-dodge-apply-in-draft-only" type="checkbox">
+                                <span>Apply in draft only</span>
+                            </label>
+                            <label id="bp-dodge-reject-reset-during-draft-field" class="checkbox-label disabled">
+                                <input id="bp-dodge-reject-reset-during-draft" type="checkbox" disabled aria-disabled="true">
+                                <span>Reject reset during draft</span>
+                            </label>
+                        </div>
+                        <p id="bp-dodge-readonly-note" class="bp-inline-note">
+                            Read-only: backend vẫn lưu flag này, nhưng reset room đang bị ràng buộc bởi status flow hiện tại nên admin không nên chỉnh ở đây cho đến khi server support rõ ràng.
+                        </p>
+                        <div class="form-grid two">
+                            <label class="field">
+                                <span>Disconnect Grace Seconds</span>
+                                <input id="bp-dodge-disconnect-grace-seconds" type="number" min="0" max="300" step="1">
+                            </label>
+                            <label class="field">
+                                <span>Cooldown Minutes</span>
+                                <input id="bp-dodge-cooldown-minutes" type="number" min="0" max="1440" step="1">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="admin-tab-panel" data-bp-panel="seasonal">
+                        <div class="section-header">
+                            <div>
+                                <h3 class="font-orbitron text-sm font-bold tracking-widest uppercase">Seasonal Reset Settings</h3>
+                                <p>Quản lý lịch reset toàn server, preview soft/hard và trigger reset thủ công có confirmation.</p>
+                            </div>
+                        </div>
+                        <div class="bp-rating-toggle-grid">
+                            <label class="checkbox-label">
+                                <input id="bp-season-scheduler-enabled" type="checkbox">
+                                <span>Bật scheduler reset hằng ngày</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input id="bp-season-hard-priority-over-soft" type="checkbox">
+                                <span>Hard priority over Soft</span>
+                            </label>
+                            <div class="count-pill">Confirmation text: <span id="bp-season-confirmation-text" class="ml-1 font-semibold">RESET SOLO RANK</span></div>
+                        </div>
+                        <div class="bp-rating-month-grid">
+                            <div class="form-card">
+                                <h4>Soft reset months</h4>
+                                <div id="bp-soft-month-grid" class="checkbox-grid"></div>
+                            </div>
+                            <div class="form-card">
+                                <h4>Hard reset months</h4>
+                                <div id="bp-hard-month-grid" class="checkbox-grid"></div>
+                            </div>
+                        </div>
+                        <div class="bp-rating-season-tools">
+                            <div class="form-card">
+                                <h4>Preview reset</h4>
+                                <div class="header-actions">
+                                    <button type="button" id="bp-preview-soft-btn" class="btn btn-light btn-small">Preview Soft</button>
+                                    <button type="button" id="bp-preview-hard-btn" class="btn btn-light btn-small">Preview Hard</button>
+                                </div>
+                                <div id="bp-reset-preview-content" class="bp-preview-shell">
+                                    <p class="text-sm text-slate-500">Chọn `Preview Soft` hoặc `Preview Hard` để xem trước số player bị ảnh hưởng, min/max/avg trước-sau và sample player.</p>
+                                </div>
+                            </div>
+                            <div class="form-card bp-danger-card">
+                                <h4>Execute reset thủ công</h4>
+                                <p class="field-help">Lưu config không tự chạy reset. Reset thật vẫn phải nhập confirmation text riêng.</p>
+                                <div class="form-grid">
+                                    <label class="field">
+                                        <span>Reset Type</span>
+                                        <select id="bp-reset-execute-type">
+                                            <option value="SOFT">SOFT</option>
+                                            <option value="HARD">HARD</option>
+                                        </select>
+                                    </label>
+                                    <label class="field">
+                                        <span>Confirmation Text</span>
+                                        <input id="bp-reset-execute-confirmation" type="text" placeholder="RESET SOLO RANK">
+                                        <small id="bp-reset-execute-confirmation-help" class="field-help">Nhập chính xác confirmation text để bật Execute Reset.</small>
+                                    </label>
+                                    <label class="field">
+                                        <span>Note</span>
+                                        <textarea id="bp-reset-execute-note" rows="4" placeholder="Ghi chú nội bộ cho log reset"></textarea>
+                                    </label>
+                                </div>
+                                <div class="modal-actions">
+                                    <button type="button" id="bp-reset-execute-btn" class="btn btn-danger">Execute Reset</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="admin-tab-panel" data-bp-panel="diagnostics">
+                        <div class="section-header">
+                            <div>
+                                <h3 class="font-orbitron text-sm font-bold tracking-widest uppercase">Read-only Diagnostics</h3>
+                                <p>Theo dõi win delta hiện tại, active pool, lịch reset kế tiếp và lần cập nhật settings gần nhất.</p>
+                            </div>
+                        </div>
+                        <div id="bp-diagnostics-grid" class="bp-diagnostics-grid"></div>
+                        <div id="bp-last-reset-log" class="form-card">
+                            <h4>Last reset log</h4>
+                            <p class="text-sm text-slate-500">Chưa có reset log nào.</p>
+                        </div>
+                    </div>
+
+                    <div class="bp-rating-footer-actions">
+                        <button type="button" id="bp-reset-defaults-btn-bottom" class="btn btn-light">Khôi phục mặc định</button>
+                        <button type="button" id="bp-save-settings-btn-bottom" class="btn btn-primary">Lưu cấu hình</button>
+                    </div>
+                </form>
             </div>
         </section>
 
@@ -525,6 +844,7 @@
 
 <script src="/js/auth.js?v=20260424-account-profile"></script>
 <script src="/js/header-loader.js?v=20260514-layout-partials"></script>
+<script src="/js/admin.js?v=20260518-ban-pick-rating-control"></script>
 <script>
     requireRoleAccess('Admin', '/html/index.html');
 
@@ -538,6 +858,14 @@
         dashboard: { title: 'Tổng quan' },
         guides: { title: 'Quản lý Cẩm nang' },
         users: { title: 'Quản lý người dùng', onEnter: function () { loadUsers(0); } },
+        'ban-pick-rating': {
+            title: 'Solo Ban/Pick Rating Control',
+            onEnter: function () {
+                if (typeof window.loadBanPickRatingControl === 'function') {
+                    window.loadBanPickRatingControl();
+                }
+            }
+        },
         'aer-data': {
             title: 'AER Data',
             onEnter: function () {

@@ -170,7 +170,10 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
         - `?room=CODE` để join room trực tiếp
       - Người dùng được làm gì:
         - Đăng nhập để tạo/join room.
-        - Xem Player Card nhỏ tách riêng Stats Panel ngay trong lobby Solo khi đã đăng nhập.
+        - Dùng sidebar/tab nội bộ để chuyển giữa `Tìm trận`, `Thông tin cá nhân`, và `Bảng xếp hạng`.
+        - Tab `Tìm trận` là tab mặc định; chứa create room, join room, chọn BO1/BO3/BO5/BO7, và hiển thị cooldown/message lỗi room như flow hiện tại.
+        - Tab `Thông tin cá nhân` hiển thị Player Card tách riêng Stats Panel khi đã đăng nhập.
+        - Tab `Bảng xếp hạng` render leaderboard Solo Ban/Pick trực tiếp ngay trong lobby bằng API hiện có.
         - Chọn BO1/BO3/BO5/BO7.
         - Roll side, ready, start.
         - Draft realtime.
@@ -178,7 +181,7 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
         - Chỉ xem `Ban/Pick Score & Win Rate` sau khi draft hoàn tất và cả 2 đội đã confirm lineup cuối.
         - Chuyển ván tiếp theo hoặc reset room.
         - Xem winner được hệ thống tính tự động từ Ban/Pick Score cuối; nếu hòa thì không tự chọn bừa winner.
-        - Nếu chưa đăng nhập, chỉ thấy trạng thái gọn yêu cầu đăng nhập để xem thống kê.
+        - Nếu chưa đăng nhập, tab `Thông tin cá nhân` chỉ hiện trạng thái gọn yêu cầu đăng nhập để xem thống kê.
       - Admin được làm gì:
         - Không thấy quyền admin riêng; module đang theo người chơi đăng nhập.
       - API chính:
@@ -224,9 +227,9 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
         - `/ban-pick-profile.html` -> redirect về `/html/ban-pick-solo.html`
         - `/html/ban-pick-profile.html` -> redirect về `/html/ban-pick-solo.html`
       - Người dùng được làm gì:
-        - Khi đã đăng nhập, xem Player Card riêng gồm avatar Google, IGN/display name, rank, ELO, badge và title.
-        - Xem Stats Panel riêng gồm W/L, win rate, tổng số trận, most picked heroes và 3 draft gần đây.
-        - Guest chỉ thấy trạng thái gọn yêu cầu đăng nhập để xem thống kê.
+        - Khi đã đăng nhập, mở tab `Thông tin cá nhân` để xem Player Card riêng gồm avatar Google, IGN/display name, rank, ELO, badge và title.
+        - Trong cùng tab `Thông tin cá nhân`, xem Stats Panel riêng gồm W/L, win rate, tổng số trận, most picked heroes và 3 draft gần đây.
+        - Guest chỉ thấy trạng thái gọn `Đăng nhập để xem thông tin cá nhân`.
       - Admin được làm gì:
         - Không thấy page admin riêng cho profile solo.
       - API chính:
@@ -236,10 +239,11 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
         - Response `BanPickProfileResponse` trả `user`, `stats`, `playerCard`, `history`.
         - Chỉ trả 50 draft gần nhất của user hiện tại.
         - Player Card được render bằng component dùng chung `demo/src/main/resources/static/js/components/player-card.js` + `demo/src/main/resources/static/css/player-card.css`; hiện được Solo page và Account Center preview dùng lại.
-        - W/L, win rate, rating và most picked heroes đều tính theo 50 draft gần nhất của user.
+        - Player Card và Stats Panel không trộn vào cùng một component; tab `Thông tin cá nhân` chỉ là wrapper UI mới ở frontend.
+        - W/L, win rate, và most picked heroes vẫn tính theo 50 draft gần nhất của user; riêng rating/rank đọc từ replay rolling-50 nhưng sẽ bắt đầu từ `rating_anchor` nếu player đã qua seasonal reset.
         - Rank solo Ban/Pick được backend compute theo percentile của `player_stats.rating` trong pool hiện tại; Player Card nhận `rankCode`/`rankLabel` trực tiếp từ API và frontend chỉ render.
         - Badge/title cua `playerCard` lay tu `users.player_badge_*` va `users.player_title`; neu field null/blank thi backend fallback an toan ve `default / ATG Player / ✦ Tân Binh Ban/Pick ✦`.
-        - `player_stats` aggregate được backend rebuild theo đúng window 50 trận này sau mỗi Solo draft finished.
+        - `player_stats` aggregate được backend rebuild theo đúng window 50 trận này sau mỗi Solo draft finished; nếu user đã có `rating_anchor` + `rating_anchor_at` thì replay rating chỉ bắt đầu từ anchor và chỉ cộng các draft sau mốc reset.
         - Base rating Solo Ban/Pick khởi tạo `1000`; thua vẫn `-20`, rating không xuống dưới `0`, và trận hòa không đổi W/L/rating.
         - Macro Economy Control 30 ngày chạy ở backend theo snapshot ngày `00:00`: lấy pool active là top `50%` người chơi có nhiều completed matches nhất trong 30 ngày gần nhất, expand thêm nếu bằng match count ở mép pool.
         - Average rating của active pool được so với mốc `1500`; mỗi lệch `10` điểm sẽ điều chỉnh `2%` điểm thắng. Winner nhận `currentWinDelta` macro-adjusted, nhưng không thấp hơn `+20`.
@@ -248,12 +252,15 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
         - Anti-win-trading chạy ở backend theo unordered pair `(minUserId, maxUserId)`: trong cửa sổ `48 giờ`, cặp người chơi này vẫn được tính điểm ở 2 lần gặp đầu; từ lần gặp thứ `3` trở đi backend override snapshot thành `0/0`, history vẫn lưu để audit nhưng ELO không đổi. Sau quá `48 giờ` kể từ các lần gặp trước thì pair window được reset.
         - Trận hòa không đổi rating/W/L; win rate tính theo số trận có kết quả thắng/thua để tie không kéo sai thống kê.
         - Percentile rank dùng bucket `S/A/B/C/D` với ngưỡng `>=80 / >=60 / >=40 / >=20 / <20`; tie rating dùng midpoint percentile của nhóm bằng điểm để người cùng rating nhận cùng rank ổn định.
-        - Rating Solo Ban/Pick hiện gồm: base rating, macro economy win delta, ELO gap modifier, và anti-win-trading override `0/0` cho pair spam trong `48 giờ`; chưa gồm dodge penalty hoặc seasonal reset.
+        - Seasonal reset Solo Ban/Pick đã chạy theo đợt toàn server: `01/02 SOFT`, `01/04 SOFT`, `01/06 HARD`, `01/08 SOFT`, `01/10 SOFT`, `01/12 HARD`; tháng `06` và `12` ưu tiên `HARD`, không chạy thêm `SOFT`.
+        - `SOFT reset` dùng công thức `round((currentRating + 1000) / 2)`; `HARD reset` đưa rating về `1000`.
+        - Reset không xóa `draft_histories`; profile/history panel vẫn giữ logic 50 trận gần nhất, còn replay rating sau reset dùng anchor để không cộng lại history cũ trước mùa.
 
     - Bảng xếp hạng
       - Route chính: `/ban-pick/leaderboard`, `/html/ban-pick-leaderboard.html`
       - Người dùng được làm gì:
         - Xem ranking solo Ban/Pick.
+        - Có thể xem trực tiếp ngay trong tab `Bảng xếp hạng` của `/html/ban-pick-solo.html`, hoặc mở page leaderboard riêng.
         - Xem rating, W/L, win rate, most picked heroes.
       - Admin được làm gì:
         - Không thấy page admin riêng.
@@ -262,8 +269,9 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
       - Ghi chú dữ liệu/DB:
         - Dữ liệu chính lấy từ `player_stats`.
         - `player_stats` không còn là all-time aggregate; row được sync theo 50 draft gần nhất của từng user.
-        - Leaderboard dùng cùng snapshot `player_stats.rating` sau rolling-50 replay: khởi tạo `1000`, winner nhận delta cuối cùng sau macro + ELO gap, loser nhận `loss_rating_delta` đã điều chỉnh theo gap, floor `0`, tie không đổi W/L/rating, và match bị anti-win-trading thì replay snapshot `0/0`.
+        - Leaderboard dùng cùng snapshot `player_stats.rating` sau rolling-50 replay: khởi tạo `1000`, winner nhận delta cuối cùng sau macro + ELO gap, loser nhận `loss_rating_delta` đã điều chỉnh theo gap, floor `0`, tie không đổi W/L/rating, match bị anti-win-trading thì replay snapshot `0/0`, và nếu đã qua seasonal reset thì replay bắt đầu từ `rating_anchor`.
         - Leaderboard và Player Card dùng chung percentile rank backend từ `player_stats.rating`; frontend không tự map rank theo ngưỡng ELO.
+        - Audit/idempotency cho reset dùng bảng `ban_pick_rank_resets`; một `scheduled_date` chỉ được chạy một lần, manual reset cần confirmation `RESET SOLO RANK`, và scheduler mặc định disabled qua `banpick.season-reset.scheduler-enabled=false`.
 
     - Kết quả draft
       - Route legacy: `/ban-pick/result/{id}`, `/ban-pick-result.html`, `/html/ban-pick-result.html`
@@ -646,6 +654,30 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
       - Ghi chú dữ liệu/DB:
         - Dùng chung dữ liệu `tier_lists`, `tier_list_admin_ratings`.
 
+    - Solo Ban/Pick Rating Control
+      - Route/UI chính:
+        - Admin panel dùng `demo/src/main/resources/static/html/admin.html#ban-pick-rating`.
+        - Shared nav lấy từ `demo/src/main/resources/static/html/admin-sidebar.html`.
+        - Frontend wiring nằm ở `demo/src/main/resources/static/js/admin.js`; style nằm ở `demo/src/main/resources/static/css/admin.css`.
+      - Admin được làm gì:
+        - Xem và lưu runtime settings cho Base Rating, Macro Economy, ELO Gap, Anti-win-trading, Dodge Penalty, Seasonal Reset.
+        - Reset toàn bộ settings về mặc định.
+        - Preview `SOFT` hoặc `HARD` reset toàn server trước khi chạy thật.
+        - Trigger reset thủ công toàn server với confirmation text `RESET SOLO RANK`.
+        - Bật scheduler nếu muốn chạy tự động lúc `00:00`, nhưng mặc định để `disabled`.
+      - API chính:
+        - `GET /api/admin/ban-pick/rating-settings`
+        - `PUT /api/admin/ban-pick/rating-settings`
+        - `POST /api/admin/ban-pick/rating-settings/reset-defaults`
+        - `GET /api/admin/ban-pick/rank-reset/preview?type=SOFT|HARD`
+        - `POST /api/admin/ban-pick/rank-reset`
+      - Ghi chú dữ liệu/DB:
+        - Runtime config persist ở `ban_pick_rating_config`.
+        - `player_stats` có thêm `rating_anchor`, `rating_anchor_at`, `last_reset_type`.
+        - Log reset/audit/idempotency nằm ở `ban_pick_rank_resets`.
+        - Field `dodgeRejectResetDuringDraft` hiện chỉ render read-only trong UI vì backend chưa support toggle độc lập rõ ràng.
+        - Lịch reset cố định: `01/02 SOFT`, `01/04 SOFT`, `01/06 HARD`, `01/08 SOFT`, `01/10 SOFT`, `01/12 HARD`.
+
     - Quản lý dữ liệu Wiki
       - Route chính: `/html/admin-wiki-data.html`
       - Admin được làm gì:
@@ -728,3 +760,87 @@ Tài liệu này mô tả cấu trúc chức năng hiện tại của ATG Academ
   - `users.ban_pick_cooldown_until`
   - `draft_histories.end_reason`
   - `draft_histories.dodged_user_id`
+
+## Solo Ban/Pick Seasonal Reset (2026-05-17)
+
+- Scope:
+  - Chi ap dung cho Solo Ban/Pick rating/rank.
+  - Reset theo dot toan server, khong reset le tung player.
+  - Khong xoa `draft_histories` va khong doi rule retention 50 tran gan nhat.
+
+- Reset types:
+  - `SOFT`: `round((currentRating + 1000) / 2)`
+  - `HARD`: `1000`
+
+- Fixed schedule:
+  - `01/02` -> `SOFT`
+  - `01/04` -> `SOFT`
+  - `01/06` -> `HARD`
+  - `01/08` -> `SOFT`
+  - `01/10` -> `SOFT`
+  - `01/12` -> `HARD`
+  - Thang `06` va `12` uu tien `HARD`, khong chay them `SOFT`.
+
+- Safety:
+  - Admin reset that can qua `GET /api/admin/ban-pick/rank-reset/preview` va `POST /api/admin/ban-pick/rank-reset`.
+  - Execute thu cong bat buoc confirmation text `RESET SOLO RANK`.
+  - Scheduler mac dinh `banpick.season-reset.scheduler-enabled=false`.
+  - Admin panel `admin.html#ban-pick-rating` co preview/loading/error states rieng; preview va save settings khong duoc mutate DB reset.
+  - Bang `ban_pick_rank_resets` giu audit + idempotency, unique theo `scheduled_date`.
+
+- Replay-safe persistence:
+  - `player_stats.rating_anchor`
+  - `player_stats.rating_anchor_at`
+  - `player_stats.last_reset_type`
+  - Sau reset, replay rating bat dau tu anchor va chi replay `draft_histories` sau `rating_anchor_at`.
+## 2026-05 Ranked Mode Note
+
+- Solo Ban/Pick now has two backend modes: `SIMULATION` and `RANKED`.
+- `RANKED` is still a real BO1 draft for rating, but it stores a virtual `BO7` context on `ban_pick_rooms`.
+- Persisted ranked context fields: `virtual_series_format`, `virtual_game_index`, `ultimate_battle`, `prep_duration_seconds`, `blue_previous_used_hero_ids`, `red_previous_used_hero_ids`, `prep_phase_start_at`, `prep_phase_end_at`.
+- Previous-used hero generation uses `heroes.primary_role_id` as the authoritative role source.
+- Previous-used heroes are side-specific locks only and are not treated as global bans.
+
+## 2026-05-18 Frontend Split: Giả lập Solo vs Rank Mode
+
+- Frontend đã tách thành 2 page riêng:
+  - `/html/ban-pick-solo.html` — Giả lập Solo (mode `SIMULATION`), luyện tập, không tính rank.
+  - `/html/ban-pick-ranked.html` — Rank Mode (mode `RANKED`), xếp hạng thật.
+- Header dropdown `Ban/Pick` có 4 entry: Cấm chọn tự do, Cấm chọn tiêu chuẩn, Giả lập Solo, Rank Mode.
+- Rank Mode frontend hiển thị:
+  - Virtual BO7 context: `Game X / 7` hoặc `Ultimate Battle`.
+  - Previous-used heroes panel chia theo Blue/Red, label rõ "bên bạn" vs "đối thủ".
+  - Prep phase countdown (Game 2-6) với Strategy Pool UI.
+  - Strategy Pool sort hero list: pool heroes lên đầu.
+  - Own locked heroes bị disable trong hero grid.
+  - Opponent locked heroes vẫn chọn được bình thường.
+  - Game 7 Ultimate Battle: ẩn ban slots, chỉ pick.
+- Giả lập Solo frontend:
+  - Không hiển thị virtual context, previous-used, prep phase, strategy pool.
+  - Không tính rating/rank/leaderboard.
+  - Lobby header ghi rõ "Giả lập Solo".
+- Strategy Pool gửi qua WebSocket `/app/ban-pick/{roomCode}/strategy-pool` hoặc REST `POST /api/ban-pick/rooms/{roomCode}/strategy-pool`.
+- Rating không dùng tỷ số BO/series; winner = player có Ban/Pick Score cao hơn.
+
+## 2026-05-18 Rating Integration: RANKED-only enforcement
+
+- Rating pipeline (Macro Economy, ELO Gap, Anti-win-trading, Dodge Penalty, Seasonal Reset) chỉ áp dụng cho mode `RANKED`.
+- `SIMULATION` (Giả lập Solo):
+  - Không tạo/cập nhật `player_stats`.
+  - Không cộng/trừ rating.
+  - Không vào leaderboard.
+  - Không tính macro active pool.
+  - Không tính anti-win-trading streak.
+  - Timeout/disconnect không trigger dodge cooldown.
+  - Reset room giữa draft được phép (không bị reject).
+  - `draft_histories` vẫn lưu với `mode=SIMULATION` và `winRatingDelta=0, lossRatingDelta=0` để audit.
+- `RANKED`:
+  - Tạo `player_stats` từ initial rating 1000 khi player chơi RANKED lần đầu.
+  - Winner = player có Ban/Pick Score cao hơn; tie = không cập nhật W/L/rating.
+  - Dodge penalty (cooldown + forfeit) chỉ áp dụng cho RANKED rooms.
+  - Cooldown chỉ block create/join/start RANKED rooms, không block SIMULATION.
+  - Reset room giữa RANKED draft bị reject (dodge protection).
+  - Seasonal reset chỉ ảnh hưởng `player_stats` (populated by RANKED only).
+- Không có series/BO score modifier trong rating.
+- Không dùng `virtualGameIndex`, `prepDurationSeconds`, hoặc previous-used hero count để nhân rating delta.
+- Player Card cho user chưa ranked: hiển thị `UNRANKED` với ELO fallback 1000.

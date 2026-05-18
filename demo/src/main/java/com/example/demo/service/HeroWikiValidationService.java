@@ -76,12 +76,19 @@ public class HeroWikiValidationService {
     }
 
     private int defaultSortOrder(HeroSkillType skillType) {
-        return switch (skillType) {
-            case PASSIVE -> 0;
-            case SKILL_1 -> 1;
-            case SKILL_2 -> 2;
-            case ULTIMATE -> 3;
-        };
+        if (skillType == HeroSkillType.PASSIVE) {
+            return 0;
+        }
+        if (skillType == HeroSkillType.SKILL_1) {
+            return 1;
+        }
+        if (skillType == HeroSkillType.SKILL_2) {
+            return 2;
+        }
+        if (skillType == HeroSkillType.ULTIMATE) {
+            return 3;
+        }
+        throw badRequest("Unsupported hero skill type");
     }
 
     private ResponseStatusException badRequest(String message) {

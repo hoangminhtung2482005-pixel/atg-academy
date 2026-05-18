@@ -1,5 +1,6 @@
 package com.example.demo.dto.banpick;
 
+import com.example.demo.entity.BanPickMatchMode;
 import com.example.demo.entity.BanPickTeamSide;
 import com.example.demo.entity.DraftHistoryEndReason;
 
@@ -9,6 +10,7 @@ import java.util.List;
 public record DraftHistoryResponse(
         Long id,
         String roomCode,
+        BanPickMatchMode mode,
         BanPickUserSummary blueUser,
         BanPickUserSummary redUser,
         BanPickUserSummary winnerUser,

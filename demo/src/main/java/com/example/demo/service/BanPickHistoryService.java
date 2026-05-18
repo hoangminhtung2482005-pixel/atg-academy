@@ -9,6 +9,7 @@ import com.example.demo.dto.banpick.PlayerStatsResponse;
 import com.example.demo.dto.banpick.RecordDraftWinnerRequest;
 import com.example.demo.entity.BanPickAction;
 import com.example.demo.entity.BanPickActionType;
+import com.example.demo.entity.BanPickMatchMode;
 import com.example.demo.entity.BanPickRoom;
 import com.example.demo.entity.BanPickTeamSide;
 import com.example.demo.entity.DraftHistory;
@@ -22,6 +23,7 @@ import com.example.demo.repository.PlayerStatsRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.security.GoogleUserPrincipal;
 import com.example.demo.support.PlayerCardDefaults;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -53,6 +55,7 @@ public class BanPickHistoryService {
     private final HeroRepository heroRepository;
     private final BanPickRankService banPickRankService;
     private final BanPickMacroEconomyService banPickMacroEconomyService;
+    private final BanPickRatingSettingsAccessor settingsAccessor;
 
     public BanPickHistoryService(DraftHistoryRepository draftHistoryRepository,
                                  PlayerStatsRepository playerStatsRepository,
@@ -60,12 +63,32 @@ public class BanPickHistoryService {
                                  HeroRepository heroRepository,
                                  BanPickRankService banPickRankService,
                                  BanPickMacroEconomyService banPickMacroEconomyService) {
+        this(
+                draftHistoryRepository,
+                playerStatsRepository,
+                userRepository,
+                heroRepository,
+                banPickRankService,
+                banPickMacroEconomyService,
+                BanPickRatingSettingsSnapshot::defaults
+        );
+    }
+
+    @Autowired
+    public BanPickHistoryService(DraftHistoryRepository draftHistoryRepository,
+                                 PlayerStatsRepository playerStatsRepository,
+                                 UserRepository userRepository,
+                                 HeroRepository heroRepository,
+                                 BanPickRankService banPickRankService,
+                                 BanPickMacroEconomyService banPickMacroEconomyService,
+                                 BanPickRatingSettingsAccessor settingsAccessor) {
         this.draftHistoryRepository = draftHistoryRepository;
         this.playerStatsRepository = playerStatsRepository;
         this.userRepository = userRepository;
         this.heroRepository = heroRepository;
         this.banPickRankService = banPickRankService;
         this.banPickMacroEconomyService = banPickMacroEconomyService;
+        this.settingsAccessor = settingsAccessor;
     }
 
     @Transactional
@@ -75,10 +98,12 @@ public class BanPickHistoryService {
 
     @Transactional
     public DraftHistory recordFinishedDraft(BanPickRoom room,
-                                           List<BanPickAction> actions,
-                                           User forcedWinner,
-                                           DraftHistoryEndReason endReason,
-                                           User dodgedUser) {
+                                            List<BanPickAction> actions,
+                                            User forcedWinner,
+                                            DraftHistoryEndReason endReason,
+                                            User dodgedUser) {
+        BanPickRatingSettingsSnapshot settings = settingsAccessor.getCurrentSettings();
+        BanPickMatchMode roomMode = BanPickMatchMode.defaultIfNull(room != null ? room.getMode() : null);
         if (room.getBlueUser() == null || room.getRedUser() == null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot save draft history without assigned sides");
         }
@@ -99,13 +124,17 @@ public class BanPickHistoryService {
         DraftResultEvaluation evaluation = evaluateDraftResult(bluePickIds, redPickIds, heroLookup);
         BanPickTeamSide winnerSide = resolveWinnerSide(room, forcedWinner, evaluation);
         User winnerUser = winnerForSide(room, winnerSide);
-        BanPickRatingRules.RatingDeltaSnapshot ratingDeltaSnapshot = resolveCurrentRatingDeltas(room, winnerSide);
-        if (winnerSide != null && shouldBlockPairRating(room.getBlueUser(), room.getRedUser(), resultRecordedAt)) {
-            ratingDeltaSnapshot = BanPickRatingRules.noRatingChange();
+        BanPickRatingRules.RatingDeltaSnapshot ratingDeltaSnapshot = BanPickRatingRules.noRatingChange();
+        if (roomMode == BanPickMatchMode.RANKED) {
+            ratingDeltaSnapshot = resolveCurrentRatingDeltas(room, winnerSide, settings);
+            if (winnerSide != null && shouldBlockPairRating(room.getBlueUser(), room.getRedUser(), resultRecordedAt, settings)) {
+                ratingDeltaSnapshot = BanPickRatingRules.noRatingChange();
+            }
         }
 
         DraftHistory history = new DraftHistory();
         history.setRoomCode(room.getRoomCode());
+        history.setMode(roomMode);
         history.setBlueUser(room.getBlueUser());
         history.setRedUser(room.getRedUser());
         history.setWinnerUser(winnerUser);
@@ -120,7 +149,9 @@ public class BanPickHistoryService {
         history.setLossRatingDelta(ratingDeltaSnapshot.lossDelta());
 
         DraftHistory savedHistory = draftHistoryRepository.save(history);
-        synchronizeRecentHistoryStats(room.getBlueUser(), room.getRedUser());
+        if (roomMode == BanPickMatchMode.RANKED) {
+            synchronizeRecentHistoryStats(room.getBlueUser(), room.getRedUser());
+        }
         return savedHistory;
     }
 
@@ -146,9 +177,10 @@ public class BanPickHistoryService {
 
     @Transactional(readOnly = true)
     public List<PlayerStatsResponse> getLeaderboard() {
+        int defaultInitialRating = settingsAccessor.getCurrentSettings().initialRating();
         List<PlayerStats> rankedStats = playerStatsRepository.findAll().stream()
                 .filter(this::isRankedLeaderboardPlayer)
-                .sorted(this::compareLeaderboardPlayers)
+                .sorted((left, right) -> compareLeaderboardPlayers(left, right, defaultInitialRating))
                 .toList();
         Map<Long, BanPickRankService.RankProfile> rankProfilesByUserId = banPickRankService.resolveRanks(rankedStats);
         return rankedStats.stream()
@@ -161,7 +193,10 @@ public class BanPickHistoryService {
     public BanPickProfileResponse getProfile(GoogleUserPrincipal principal) {
         User user = findUser(principal);
         List<DraftHistory> recentHistories = findRecentHistories(user);
-        PlayerStats statsSnapshot = buildStatsSnapshot(user, recentHistories);
+        List<DraftHistory> rankedRecentHistories = rankedOnly(recentHistories);
+        PlayerStats existingStats = playerStatsRepository.findByUser(user).orElse(null);
+        BanPickRatingSettingsSnapshot settings = settingsAccessor.getCurrentSettings();
+        PlayerStats statsSnapshot = buildStatsSnapshot(user, rankedRecentHistories, existingStats, settings);
         BanPickRankService.RankProfile rankProfile = banPickRankService.resolveRank(
                 statsSnapshot,
                 playerStatsRepository.findAll()
@@ -178,10 +213,10 @@ public class BanPickHistoryService {
         return stats != null && userIdOf(stats) != null && safeInt(stats.getTotalMatches()) > 0;
     }
 
-    private int compareLeaderboardPlayers(PlayerStats left, PlayerStats right) {
+    private int compareLeaderboardPlayers(PlayerStats left, PlayerStats right, int defaultInitialRating) {
         int ratingCompare = Integer.compare(
-                safeRating(right != null ? right.getRating() : null),
-                safeRating(left != null ? left.getRating() : null)
+                safeStoredRating(right != null ? right.getRating() : null, defaultInitialRating),
+                safeStoredRating(left != null ? left.getRating() : null, defaultInitialRating)
         );
         if (ratingCompare != 0) {
             return ratingCompare;
@@ -325,19 +360,33 @@ public class BanPickHistoryService {
         );
     }
 
+    private List<DraftHistory> findRecentRankedHistories(User user) {
+        return rankedOnly(findRecentHistories(user));
+    }
+
+    private List<DraftHistory> rankedOnly(List<DraftHistory> histories) {
+        if (histories == null || histories.isEmpty()) {
+            return List.of();
+        }
+        return histories.stream()
+                .filter(this::isRankedMode)
+                .toList();
+    }
+
     private void rebuildStatsForUser(User user) {
         if (user == null || user.getId() == null) {
             return;
         }
 
-        List<DraftHistory> recentHistories = findRecentHistories(user);
+        BanPickRatingSettingsSnapshot settings = settingsAccessor.getCurrentSettings();
+        List<DraftHistory> recentHistories = findRecentRankedHistories(user);
         Optional<PlayerStats> existingStats = playerStatsRepository.findByUser(user);
         if (recentHistories.isEmpty()) {
             existingStats.ifPresent(playerStatsRepository::delete);
             return;
         }
 
-        PlayerStats snapshot = buildStatsSnapshot(user, recentHistories);
+        PlayerStats snapshot = buildStatsSnapshot(user, recentHistories, existingStats.orElse(null), settings);
         PlayerStats stats = existingStats.orElseGet(() -> {
             PlayerStats newStats = new PlayerStats();
             newStats.setUser(user);
@@ -347,20 +396,32 @@ public class BanPickHistoryService {
         stats.setWins(snapshot.getWins());
         stats.setLosses(snapshot.getLosses());
         stats.setRating(snapshot.getRating());
+        stats.setRatingAnchor(snapshot.getRatingAnchor());
+        stats.setRatingAnchorAt(snapshot.getRatingAnchorAt());
+        stats.setLastResetType(snapshot.getLastResetType());
         stats.setPickedHeroCounts(snapshot.getPickedHeroCounts());
         playerStatsRepository.save(stats);
     }
 
-    private PlayerStats buildStatsSnapshot(User user, List<DraftHistory> recentHistories) {
+    private PlayerStats buildStatsSnapshot(User user,
+                                           List<DraftHistory> recentHistories,
+                                           PlayerStats existingStats,
+                                           BanPickRatingSettingsSnapshot settings) {
+        List<DraftHistory> rankedHistories = rankedOnly(recentHistories);
         PlayerStats stats = new PlayerStats();
         stats.setUser(user);
+        if (existingStats != null) {
+            stats.setRatingAnchor(existingStats.getRatingAnchor());
+            stats.setRatingAnchorAt(existingStats.getRatingAnchorAt());
+            stats.setLastResetType(existingStats.getLastResetType());
+        }
 
         int totalMatches = 0;
         int wins = 0;
         int losses = 0;
         Map<String, Integer> pickCounts = new LinkedHashMap<>();
 
-        for (DraftHistory history : recentHistories) {
+        for (DraftHistory history : rankedHistories) {
             totalMatches += 1;
             if (isSameUser(history.getWinnerUser(), user)) {
                 wins += 1;
@@ -379,33 +440,38 @@ public class BanPickHistoryService {
         stats.setTotalMatches(totalMatches);
         stats.setWins(wins);
         stats.setLosses(losses);
-        stats.setRating(rebuildRatingFromRecentHistories(user, recentHistories));
+        stats.setRating(rebuildRatingFromRecentHistories(user, rankedHistories, existingStats, settings));
         stats.setPickedHeroCounts(serializePickCounts(pickCounts));
         return stats;
     }
 
-    private int rebuildRatingFromRecentHistories(User user, List<DraftHistory> recentHistories) {
-        int rating = BanPickRatingRules.INITIAL_RATING;
+    private int rebuildRatingFromRecentHistories(User user,
+                                                 List<DraftHistory> recentHistories,
+                                                 PlayerStats existingStats,
+                                                 BanPickRatingSettingsSnapshot settings) {
+        int rating = baseRatingForReplay(existingStats, settings);
+        LocalDateTime anchorAt = anchorAtForReplay(existingStats);
         if (user == null || recentHistories == null || recentHistories.isEmpty()) {
             return rating;
         }
 
         for (int index = recentHistories.size() - 1; index >= 0; index -= 1) {
             DraftHistory history = recentHistories.get(index);
-            if (history == null || history.getWinnerUser() == null) {
+            if (history == null || history.getWinnerUser() == null || !isReplayEligible(history, anchorAt)) {
                 continue;
             }
             if (isSameUser(history.getWinnerUser(), user)) {
                 rating += resolveWinDelta(history);
                 continue;
             }
-            rating = Math.max(BanPickRatingRules.MIN_RATING, rating + resolveLossDelta(history));
+            rating = Math.max(settings.minRating(), rating + resolveLossDelta(history, settings));
         }
-        return Math.max(BanPickRatingRules.MIN_RATING, rating);
+        return Math.max(0, rating);
     }
 
     private BanPickRatingRules.RatingDeltaSnapshot resolveCurrentRatingDeltas(BanPickRoom room,
-                                                                              BanPickTeamSide winnerSide) {
+                                                                              BanPickTeamSide winnerSide,
+                                                                              BanPickRatingSettingsSnapshot settings) {
         if (room == null || winnerSide == null) {
             return BanPickRatingRules.noRatingChange();
         }
@@ -413,11 +479,23 @@ public class BanPickHistoryService {
         int currentWinDelta = banPickMacroEconomyService.getCurrentWinDelta();
         User winner = winnerForSide(room, winnerSide);
         User loser = winnerSide == BanPickTeamSide.BLUE ? room.getRedUser() : room.getBlueUser();
+        if (!settings.gapEnabled()) {
+            return new BanPickRatingRules.RatingDeltaSnapshot(
+                    Math.max(BanPickRatingDefaults.MIN_FINAL_WIN_DELTA, currentWinDelta),
+                    Math.min(0, settings.baseLossDelta()),
+                    0.0,
+                    false
+            );
+        }
         return BanPickRatingRules.applyGapModifier(
-                currentRatingBeforeMatch(winner),
-                currentRatingBeforeMatch(loser),
+                currentRatingBeforeMatch(winner, settings),
+                currentRatingBeforeMatch(loser, settings),
                 currentWinDelta,
-                BanPickRatingRules.BASE_LOSS_DELTA
+                settings.baseLossDelta(),
+                0,
+                settings.gapRatingDiffStep(),
+                settings.gapModifierPerStep(),
+                settings.gapMaxModifier()
         );
     }
 
@@ -456,53 +534,84 @@ public class BanPickHistoryService {
         return winnerSide == BanPickTeamSide.BLUE ? room.getBlueUser() : room.getRedUser();
     }
 
-    private int currentRatingBeforeMatch(User user) {
+    private int currentRatingBeforeMatch(User user, BanPickRatingSettingsSnapshot settings) {
         if (user == null || user.getId() == null) {
-            return BanPickRatingRules.INITIAL_RATING;
+            return settings.initialRating();
         }
 
         Optional<PlayerStats> existingStats = playerStatsRepository.findByUser(user);
         if (existingStats.isPresent()) {
-            return safeRating(existingStats.get().getRating());
+            return safeStoredRating(existingStats.get().getRating(), settings.initialRating());
         }
 
-        List<DraftHistory> recentHistories = findRecentHistories(user);
+        List<DraftHistory> recentHistories = findRecentRankedHistories(user);
         if (recentHistories.isEmpty()) {
-            return BanPickRatingRules.INITIAL_RATING;
+            return settings.initialRating();
         }
-        return rebuildRatingFromRecentHistories(user, recentHistories);
+        return rebuildRatingFromRecentHistories(user, recentHistories, existingStats.orElse(null), settings);
     }
 
-    private boolean shouldBlockPairRating(User firstUser, User secondUser, LocalDateTime resultRecordedAt) {
+    private boolean shouldBlockPairRating(User firstUser,
+                                          User secondUser,
+                                          LocalDateTime resultRecordedAt,
+                                          BanPickRatingSettingsSnapshot settings) {
         if (firstUser == null || secondUser == null || firstUser.getId() == null || secondUser.getId() == null
-                || Objects.equals(firstUser.getId(), secondUser.getId()) || resultRecordedAt == null) {
+                || Objects.equals(firstUser.getId(), secondUser.getId()) || resultRecordedAt == null
+                || !settings.antiTradingEnabled()) {
             return false;
         }
 
         long lowerUserId = Math.min(firstUser.getId(), secondUser.getId());
         long higherUserId = Math.max(firstUser.getId(), secondUser.getId());
-        LocalDateTime windowStart = resultRecordedAt.minusHours(BanPickRatingRules.ANTI_WIN_TRADING_RESET_HOURS);
+        LocalDateTime windowStart = resultRecordedAt.minusHours(settings.antiTradingWindowHours());
         long recentPairMatches = draftHistoryRepository.countCompletedPairMatchesWithinWindow(
                 lowerUserId,
                 higherUserId,
                 windowStart,
                 resultRecordedAt
         );
-        return recentPairMatches >= BanPickRatingRules.MAX_RATED_PAIR_MATCHES_PER_48H;
+        return recentPairMatches >= settings.antiTradingAllowedRecentMatches();
     }
 
     private int resolveWinDelta(DraftHistory history) {
         if (history == null || history.getWinRatingDelta() == null) {
-            return BanPickRatingRules.BASE_WIN_DELTA;
+            return settingsAccessor.getCurrentSettings().baseWinDelta();
         }
         return Math.max(0, history.getWinRatingDelta());
     }
 
-    private int resolveLossDelta(DraftHistory history) {
+    private int resolveLossDelta(DraftHistory history, BanPickRatingSettingsSnapshot settings) {
         if (history == null || history.getLossRatingDelta() == null) {
-            return BanPickRatingRules.BASE_LOSS_DELTA;
+            return settings.baseLossDelta();
         }
         return Math.min(0, history.getLossRatingDelta());
+    }
+
+    private int baseRatingForReplay(PlayerStats existingStats, BanPickRatingSettingsSnapshot settings) {
+        if (existingStats != null
+                && existingStats.getRatingAnchor() != null
+                && existingStats.getRatingAnchorAt() != null) {
+            return safeStoredRating(existingStats.getRatingAnchor(), settings.initialRating());
+        }
+        return settings.initialRating();
+    }
+
+    private LocalDateTime anchorAtForReplay(PlayerStats existingStats) {
+        if (existingStats == null || existingStats.getRatingAnchor() == null) {
+            return null;
+        }
+        return existingStats.getRatingAnchorAt();
+    }
+
+    private boolean isReplayEligible(DraftHistory history, LocalDateTime anchorAt) {
+        if (history == null) {
+            return false;
+        }
+        if (anchorAt == null) {
+            return true;
+        }
+        LocalDateTime recordedAt = history.getResultRecordedAt() != null ? history.getResultRecordedAt() : history.getCreatedAt();
+        return recordedAt != null && recordedAt.isAfter(anchorAt);
     }
 
     private List<String> picksForUser(DraftHistory history, User user) {
@@ -632,6 +741,7 @@ public class BanPickHistoryService {
         return new DraftHistoryResponse(
                 history.getId(),
                 history.getRoomCode(),
+                BanPickMatchMode.defaultIfNull(history.getMode()),
                 toUserSummary(history.getBlueUser()),
                 toUserSummary(history.getRedUser()),
                 toUserSummary(history.getWinnerUser()),
@@ -647,7 +757,12 @@ public class BanPickHistoryService {
         );
     }
 
+    private boolean isRankedMode(DraftHistory history) {
+        return history != null && BanPickMatchMode.defaultIfNull(history.getMode()) == BanPickMatchMode.RANKED;
+    }
+
     private PlayerStatsResponse toStatsResponse(PlayerStats stats, BanPickRankService.RankProfile rankProfile) {
+        int defaultInitialRating = settingsAccessor.getCurrentSettings().initialRating();
         int totalMatches = safeInt(stats.getTotalMatches());
         int wins = safeInt(stats.getWins());
         int losses = safeInt(stats.getLosses());
@@ -660,7 +775,7 @@ public class BanPickHistoryService {
                 wins,
                 losses,
                 winRate,
-                safeRating(stats.getRating()),
+                safeStoredRating(stats.getRating(), defaultInitialRating),
                 safeRankProfile.code(),
                 safeRankProfile.label(),
                 mostPickedHeroes(stats.getPickedHeroCounts())
@@ -670,11 +785,12 @@ public class BanPickHistoryService {
     private BanPickPlayerCardResponse toPlayerCardResponse(User user,
                                                            PlayerStats stats,
                                                            BanPickRankService.RankProfile rankProfile) {
+        int defaultInitialRating = settingsAccessor.getCurrentSettings().initialRating();
         BanPickRankService.RankProfile safeRankProfile = rankProfile != null ? rankProfile : banPickRankService.unranked();
         return new BanPickPlayerCardResponse(
                 user != null ? user.getAvatarUrl() : null,
                 user != null ? user.resolveDisplayName() : "User",
-                safeRating(stats != null ? stats.getRating() : null),
+                safeStoredRating(stats != null ? stats.getRating() : null, defaultInitialRating),
                 safeRankProfile.code(),
                 safeRankProfile.label(),
                 user != null ? user.resolvePlayerBadgeCode() : PlayerCardDefaults.DEFAULT_BADGE_CODE,
@@ -787,10 +903,8 @@ public class BanPickHistoryService {
         return value != null ? value : 0;
     }
 
-    private int safeRating(Integer value) {
-        return value != null
-                ? Math.max(BanPickRatingRules.MIN_RATING, value)
-                : BanPickRatingRules.INITIAL_RATING;
+    private int safeStoredRating(Integer value, int fallbackRating) {
+        return value != null ? Math.max(0, value) : fallbackRating;
     }
 
     private record DraftResultEvaluation(

@@ -26,6 +26,7 @@ public interface BanPickRoomRepository extends JpaRepository<BanPickRoom, Long> 
               and (
                    (room.phaseDeadlineAt is not null and room.phaseDeadlineAt < :now)
                 or (room.lineupDeadlineAt is not null and room.lineupDeadlineAt < :now)
+                or (room.prepPhaseEndAt is not null and room.prepPhaseEndAt < :now)
               )
             """)
     List<String> findExpiredRoomCodes(@Param("status") BanPickRoomStatus status,

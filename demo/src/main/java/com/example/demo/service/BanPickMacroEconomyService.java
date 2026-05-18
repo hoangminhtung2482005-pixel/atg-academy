@@ -23,31 +23,42 @@ public class BanPickMacroEconomyService {
     private final DraftHistoryRepository draftHistoryRepository;
     private final PlayerStatsRepository playerStatsRepository;
     private final Clock clock;
+    private final BanPickRatingSettingsAccessor settingsAccessor;
 
     @Autowired
     public BanPickMacroEconomyService(DraftHistoryRepository draftHistoryRepository,
-                                      PlayerStatsRepository playerStatsRepository) {
-        this(draftHistoryRepository, playerStatsRepository, Clock.systemDefaultZone());
+                                      PlayerStatsRepository playerStatsRepository,
+                                      BanPickRatingSettingsAccessor settingsAccessor) {
+        this(draftHistoryRepository, playerStatsRepository, Clock.systemDefaultZone(), settingsAccessor);
     }
 
     BanPickMacroEconomyService(DraftHistoryRepository draftHistoryRepository,
                                PlayerStatsRepository playerStatsRepository,
                                Clock clock) {
+        this(draftHistoryRepository, playerStatsRepository, clock, BanPickRatingSettingsSnapshot::defaults);
+    }
+
+    BanPickMacroEconomyService(DraftHistoryRepository draftHistoryRepository,
+                               PlayerStatsRepository playerStatsRepository,
+                               Clock clock,
+                               BanPickRatingSettingsAccessor settingsAccessor) {
         this.draftHistoryRepository = draftHistoryRepository;
         this.playerStatsRepository = playerStatsRepository;
         this.clock = clock;
+        this.settingsAccessor = settingsAccessor;
     }
 
     @Transactional(readOnly = true)
     public MacroEconomySnapshot getCurrentSnapshot() {
+        BanPickRatingSettingsSnapshot settings = settingsAccessor.getCurrentSettings();
         LocalDate snapshotDate = LocalDate.now(clock);
         LocalDateTime windowEnd = snapshotDate.atStartOfDay();
-        LocalDateTime windowStart = windowEnd.minusDays(BanPickRatingRules.ACTIVE_WINDOW_DAYS);
+        LocalDateTime windowStart = windowEnd.minusDays(settings.macroActiveWindowDays());
 
         List<DraftHistory> completedHistories = draftHistoryRepository.findCompletedBetween(windowStart, windowEnd);
         Map<Long, Integer> completedMatchesByUserId = countCompletedMatchesByUser(completedHistories);
-        if (completedMatchesByUserId.size() < BanPickRatingRules.MIN_ACTIVE_PLAYERS) {
-            return MacroEconomySnapshot.fallback(snapshotDate, completedMatchesByUserId.size());
+        if (completedMatchesByUserId.size() < settings.macroMinimumActivePlayers()) {
+            return MacroEconomySnapshot.fallback(snapshotDate, completedMatchesByUserId.size(), settings.baseWinDelta());
         }
 
         List<Map.Entry<Long, Integer>> sortedPlayers = completedMatchesByUserId.entrySet().stream()
@@ -55,7 +66,7 @@ public class BanPickMacroEconomyService {
                         .thenComparing(Map.Entry.comparingByKey()))
                 .toList();
 
-        int basePoolSize = Math.max(1, (sortedPlayers.size() + 1) / 2);
+        int basePoolSize = Math.max(1, (int) Math.ceil(sortedPlayers.size() * (settings.macroActiveTopPercent() / 100.0)));
         int cutoffMatchCount = sortedPlayers.get(basePoolSize - 1).getValue();
         List<Long> activePoolUserIds = sortedPlayers.stream()
                 .filter(entry -> entry.getValue() >= cutoffMatchCount)
@@ -63,21 +74,21 @@ public class BanPickMacroEconomyService {
                 .toList();
 
         if (activePoolUserIds.isEmpty()) {
-            return MacroEconomySnapshot.fallback(snapshotDate, completedMatchesByUserId.size());
+            return MacroEconomySnapshot.fallback(snapshotDate, completedMatchesByUserId.size(), settings.baseWinDelta());
         }
 
-        Map<Long, Integer> ratingsByUserId = currentRatingsByUserId();
+        Map<Long, Integer> ratingsByUserId = currentRatingsByUserId(settings);
         double averageRating = activePoolUserIds.stream()
-                .mapToInt(userId -> ratingsByUserId.getOrDefault(userId, BanPickRatingRules.INITIAL_RATING))
+                .mapToInt(userId -> ratingsByUserId.getOrDefault(userId, settings.initialRating()))
                 .average()
-                .orElse(BanPickRatingRules.BALANCE_RATING);
+                .orElse(settings.macroBalanceRating());
 
         return new MacroEconomySnapshot(
                 snapshotDate,
                 completedMatchesByUserId.size(),
                 activePoolUserIds.size(),
                 averageRating,
-                resolveWinDelta(averageRating)
+                resolveWinDelta(settings, averageRating)
         );
     }
 
@@ -104,33 +115,37 @@ public class BanPickMacroEconomyService {
         countsByUserId.merge(user.getId(), 1, Integer::sum);
     }
 
-    private Map<Long, Integer> currentRatingsByUserId() {
+    private Map<Long, Integer> currentRatingsByUserId(BanPickRatingSettingsSnapshot settings) {
         Map<Long, Integer> ratingsByUserId = new LinkedHashMap<>();
         for (PlayerStats stats : playerStatsRepository.findAll()) {
             if (stats == null || stats.getUser() == null || stats.getUser().getId() == null) {
                 continue;
             }
-            ratingsByUserId.put(stats.getUser().getId(), safeRating(stats.getRating()));
+            ratingsByUserId.put(stats.getUser().getId(), safeRating(stats.getRating(), settings.initialRating()));
         }
         return ratingsByUserId;
     }
 
-    private int resolveWinDelta(double averageRating) {
-        double difference = averageRating - BanPickRatingRules.BALANCE_RATING;
-        double adjustmentRatio = (difference / BanPickRatingRules.RATING_STEP)
-                * BanPickRatingRules.WIN_ADJUSTMENT_PER_STEP;
-        double rawWinDelta = BanPickRatingRules.BASE_WIN_DELTA * (1.0 - adjustmentRatio);
+    private int resolveWinDelta(BanPickRatingSettingsSnapshot settings, double averageRating) {
+        if (!settings.macroEnabled()) {
+            return settings.baseWinDelta();
+        }
+
+        double difference = averageRating - settings.macroBalanceRating();
+        double adjustmentRatio = (difference / settings.macroRatingStep())
+                * settings.macroWinAdjustmentPerStep();
+        double rawWinDelta = settings.baseWinDelta() * (1.0 - adjustmentRatio);
 
         if (!Double.isFinite(rawWinDelta)) {
-            return BanPickRatingRules.BASE_WIN_DELTA;
+            return settings.baseWinDelta();
         }
 
         int roundedWinDelta = (int) Math.round(rawWinDelta);
-        return Math.max(BanPickRatingRules.MIN_WIN_DELTA, roundedWinDelta);
+        return Math.max(settings.macroMinWinDelta(), roundedWinDelta);
     }
 
-    private int safeRating(Integer rating) {
-        return rating != null ? Math.max(BanPickRatingRules.MIN_RATING, rating) : BanPickRatingRules.INITIAL_RATING;
+    private int safeRating(Integer rating, int fallbackRating) {
+        return rating != null ? Math.max(0, rating) : fallbackRating;
     }
 
     public record MacroEconomySnapshot(
@@ -140,13 +155,13 @@ public class BanPickMacroEconomyService {
             Double averageRating,
             int winDelta
     ) {
-        private static MacroEconomySnapshot fallback(LocalDate snapshotDate, int activePlayerCount) {
+        private static MacroEconomySnapshot fallback(LocalDate snapshotDate, int activePlayerCount, int baseWinDelta) {
             return new MacroEconomySnapshot(
                     snapshotDate,
                     activePlayerCount,
                     0,
                     null,
-                    BanPickRatingRules.BASE_WIN_DELTA
+                    baseWinDelta
             );
         }
     }

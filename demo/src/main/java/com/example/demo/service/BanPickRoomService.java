@@ -8,10 +8,12 @@ import com.example.demo.dto.banpick.BanPickLineupReorderRequest;
 import com.example.demo.dto.banpick.BanPickParticipantResponse;
 import com.example.demo.dto.banpick.BanPickPhaseResponse;
 import com.example.demo.dto.banpick.BanPickRoomStateResponse;
+import com.example.demo.dto.banpick.BanPickStrategyPoolRequest;
 import com.example.demo.dto.banpick.BanPickUserSummary;
 import com.example.demo.dto.wiki.HeroSummaryDto;
 import com.example.demo.entity.BanPickAction;
 import com.example.demo.entity.BanPickActionType;
+import com.example.demo.entity.BanPickMatchMode;
 import com.example.demo.entity.BanPickParticipantRole;
 import com.example.demo.entity.BanPickPhaseType;
 import com.example.demo.entity.BanPickRoom;
@@ -28,6 +30,7 @@ import com.example.demo.repository.BanPickRoomRepository;
 import com.example.demo.repository.HeroRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.security.GoogleUserPrincipal;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -55,12 +58,11 @@ public class BanPickRoomService {
 
     private static final int DEFAULT_PHASE_DURATION_SECONDS = 60;
     private static final int LINEUP_ADJUSTMENT_DURATION_SECONDS = 30;
-    private static final int DISCONNECT_GRACE_SECONDS = 10;
-    private static final int SOLO_DODGE_COOLDOWN_MINUTES = 5;
     private static final DateTimeFormatter COOLDOWN_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy");
     private static final String ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private static final int ROOM_CODE_LENGTH = 6;
     private static final SecureRandom RANDOM = new SecureRandom();
+    private static final String PREP_PHASE_MESSAGE = "Rank Mode đang ở giai đoạn chuẩn bị trước draft.";
     private static final String SERIES_REUSED_HERO_MESSAGE = "Tướng này đã được đội của bạn sử dụng ở ván trước.";
     private static final String DUPLICATE_HERO_MESSAGE = "Tướng này đã được chọn hoặc cấm.";
 
@@ -81,6 +83,18 @@ public class BanPickRoomService {
             new DraftPhase(BanPickTeamSide.BLUE, BanPickActionType.PICK, 2, "Xanh chọn 3-4"),
             new DraftPhase(BanPickTeamSide.RED, BanPickActionType.PICK, 1, "Đỏ chọn 4")
     );
+    private static final List<DraftPhase> ULTIMATE_BATTLE_PHASES = List.of(
+            new DraftPhase(BanPickTeamSide.BLUE, BanPickActionType.PICK, 1, "Ultimate Battle Xanh chon 1"),
+            new DraftPhase(BanPickTeamSide.RED, BanPickActionType.PICK, 1, "Ultimate Battle Do chon 1"),
+            new DraftPhase(BanPickTeamSide.BLUE, BanPickActionType.PICK, 1, "Ultimate Battle Xanh chon 2"),
+            new DraftPhase(BanPickTeamSide.RED, BanPickActionType.PICK, 1, "Ultimate Battle Do chon 2"),
+            new DraftPhase(BanPickTeamSide.BLUE, BanPickActionType.PICK, 1, "Ultimate Battle Xanh chon 3"),
+            new DraftPhase(BanPickTeamSide.RED, BanPickActionType.PICK, 1, "Ultimate Battle Do chon 3"),
+            new DraftPhase(BanPickTeamSide.BLUE, BanPickActionType.PICK, 1, "Ultimate Battle Xanh chon 4"),
+            new DraftPhase(BanPickTeamSide.RED, BanPickActionType.PICK, 1, "Ultimate Battle Do chon 4"),
+            new DraftPhase(BanPickTeamSide.BLUE, BanPickActionType.PICK, 1, "Ultimate Battle Xanh chon 5"),
+            new DraftPhase(BanPickTeamSide.RED, BanPickActionType.PICK, 1, "Ultimate Battle Do chon 5")
+    );
 
     private final BanPickRoomRepository roomRepository;
     private final BanPickRoomParticipantRepository participantRepository;
@@ -88,6 +102,8 @@ public class BanPickRoomService {
     private final UserRepository userRepository;
     private final HeroRepository heroRepository;
     private final BanPickHistoryService banPickHistoryService;
+    private final BanPickRankedRoomContextService rankedRoomContextService;
+    private final BanPickRatingSettingsAccessor settingsAccessor;
     private final Map<String, PendingDisconnectState> pendingDisconnects = new ConcurrentHashMap<>();
 
     public BanPickRoomService(BanPickRoomRepository roomRepository,
@@ -96,27 +112,55 @@ public class BanPickRoomService {
                               UserRepository userRepository,
                               HeroRepository heroRepository,
                               BanPickHistoryService banPickHistoryService) {
+        this(
+                roomRepository,
+                participantRepository,
+                actionRepository,
+                userRepository,
+                heroRepository,
+                banPickHistoryService,
+                new BanPickRankedRoomContextService(heroRepository),
+                BanPickRatingSettingsSnapshot::defaults
+        );
+    }
+
+    @Autowired
+    BanPickRoomService(BanPickRoomRepository roomRepository,
+                       BanPickRoomParticipantRepository participantRepository,
+                       BanPickActionRepository actionRepository,
+                       UserRepository userRepository,
+                       HeroRepository heroRepository,
+                       BanPickHistoryService banPickHistoryService,
+                       BanPickRankedRoomContextService rankedRoomContextService,
+                       BanPickRatingSettingsAccessor settingsAccessor) {
         this.roomRepository = roomRepository;
         this.participantRepository = participantRepository;
         this.actionRepository = actionRepository;
         this.userRepository = userRepository;
         this.heroRepository = heroRepository;
         this.banPickHistoryService = banPickHistoryService;
+        this.rankedRoomContextService = rankedRoomContextService;
+        this.settingsAccessor = settingsAccessor;
     }
 
     @Transactional
     public BanPickRoomStateResponse createRoom(GoogleUserPrincipal principal, BanPickCreateRoomRequest request) {
         User host = findOrCreateUser(principal);
-        ensureSoloCooldownInactive(host, true);
+        BanPickMatchMode requestedMode = BanPickMatchMode.defaultIfNull(request != null ? request.mode() : null);
+        if (requestedMode == BanPickMatchMode.RANKED) {
+            ensureSoloCooldownInactive(host, true);
+        }
 
         BanPickRoom room = new BanPickRoom();
         room.setRoomCode(generateRoomCode());
+        room.setMode(requestedMode);
         room.setStatus(BanPickRoomStatus.WAITING);
         room.setPhaseType(BanPickPhaseType.DRAFT);
         room.setSeriesType(BanPickSeriesType.defaultIfNull(request != null ? request.seriesType() : null));
         room.setCurrentGameNumber(1);
         room.setHostUser(host);
         room.setPhaseDurationSeconds(DEFAULT_PHASE_DURATION_SECONDS);
+        rankedRoomContextService.prepareRankedRoom(room);
         resetLineupState(room);
         BanPickRoom savedRoom = roomRepository.save(room);
 
@@ -146,8 +190,12 @@ public class BanPickRoomService {
     @Transactional
     public BanPickRoomStateResponse joinRoom(String roomCode, GoogleUserPrincipal principal) {
         User guest = findOrCreateUser(principal);
-        ensureSoloCooldownInactive(guest, true);
         BanPickRoom room = findRoomForUpdate(roomCode);
+
+        // Only enforce cooldown for RANKED rooms
+        if (BanPickMatchMode.defaultIfNull(room.getMode()) == BanPickMatchMode.RANKED) {
+            ensureSoloCooldownInactive(guest, true);
+        }
 
         if (isRoomParticipant(room, guest)) {
             return buildState(room, guest);
@@ -184,6 +232,9 @@ public class BanPickRoomService {
         } else if (isSameUser(room.getGuestUser(), user)) {
             room.setGuestReady(true);
         }
+        if (Boolean.TRUE.equals(room.getHostReady()) && Boolean.TRUE.equals(room.getGuestReady())) {
+            rankedRoomContextService.initializeContextIfMissing(room);
+        }
 
         return buildState(roomRepository.save(room), user);
     }
@@ -202,6 +253,9 @@ public class BanPickRoomService {
         boolean hostBlue = RANDOM.nextBoolean();
         room.setBlueUser(hostBlue ? room.getHostUser() : room.getGuestUser());
         room.setRedUser(hostBlue ? room.getGuestUser() : room.getHostUser());
+        if (Boolean.TRUE.equals(room.getHostReady()) && Boolean.TRUE.equals(room.getGuestReady())) {
+            rankedRoomContextService.initializeContextIfMissing(room);
+        }
         room.setStatus(BanPickRoomStatus.READY);
         BanPickRoom savedRoom = roomRepository.save(room);
         syncParticipantSides(savedRoom);
@@ -218,16 +272,22 @@ public class BanPickRoomService {
         ensureSidesAssigned(room);
         ensureBothPlayersReady(room);
         ensureStatus(room, BanPickRoomStatus.READY);
-        ensureSoloCooldownInactive(room.getHostUser(), isSameUser(room.getHostUser(), user));
-        ensureSoloCooldownInactive(room.getGuestUser(), isSameUser(room.getGuestUser(), user));
+        if (BanPickMatchMode.defaultIfNull(room.getMode()) == BanPickMatchMode.RANKED) {
+            ensureSoloCooldownInactive(room.getHostUser(), isSameUser(room.getHostUser(), user));
+            ensureSoloCooldownInactive(room.getGuestUser(), isSameUser(room.getGuestUser(), user));
+        }
 
         LocalDateTime now = LocalDateTime.now();
+        rankedRoomContextService.initializeContextIfMissing(room);
         room.setStatus(BanPickRoomStatus.IN_PROGRESS);
         room.setCurrentPhaseIndex(0);
         room.setCurrentPhaseSelectedCount(0);
         room.setPhaseType(BanPickPhaseType.DRAFT);
         room.setTimerStartedAt(now);
-        room.setPhaseDeadlineAt(calculatePhaseDeadline(now, room));
+        rankedRoomContextService.startPrepWindowIfNeeded(room, now);
+        room.setPhaseDeadlineAt(room.getPrepPhaseEndAt() != null
+                ? room.getPrepPhaseEndAt()
+                : calculatePhaseDeadline(now, room));
         room.setLineupDeadlineAt(null);
         room.setBlueLineupConfirmed(false);
         room.setRedLineupConfirmed(false);
@@ -258,7 +318,10 @@ public class BanPickRoomService {
             recordHistoryIfFinished(savedRoom);
             return buildState(savedRoom, user, newActionIds);
         }
-        DraftPhase phase = getDraftPhase(room.getCurrentPhaseIndex());
+        if (rankedRoomContextService.isPrepPhaseActive(room, now)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, PREP_PHASE_MESSAGE);
+        }
+        DraftPhase phase = getDraftPhase(room, room.getCurrentPhaseIndex());
         if (phase == null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Draft is already complete");
         }
@@ -397,7 +460,11 @@ public class BanPickRoomService {
         User user = findUser(principal);
         BanPickRoom room = findRoomForUpdate(roomCode);
         ensureHost(room, user);
-        if (room.getStatus() == BanPickRoomStatus.IN_PROGRESS) {
+        BanPickRatingSettingsSnapshot settings = settingsAccessor.getCurrentSettings();
+        // Only block reset during draft for RANKED mode (dodge protection)
+        if (room.getStatus() == BanPickRoomStatus.IN_PROGRESS
+                && settings.dodgeRejectResetDuringDraft()
+                && BanPickMatchMode.defaultIfNull(room.getMode()) == BanPickMatchMode.RANKED) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Không thể reset khi phòng solo đang diễn ra. Hãy chờ trận kết thúc rồi reset."
@@ -420,6 +487,8 @@ public class BanPickRoomService {
         room.setRedUsedPicksByGame(null);
         room.setBlueSeriesUsedHeroIds(null);
         room.setRedSeriesUsedHeroIds(null);
+        rankedRoomContextService.clearGeneratedContext(room);
+        rankedRoomContextService.prepareRankedRoom(room);
         room.setBlueLineupConfirmed(false);
         room.setRedLineupConfirmed(false);
         room.setBluePickOrder(null);
@@ -465,6 +534,7 @@ public class BanPickRoomService {
         room.setPhaseType(BanPickPhaseType.DRAFT);
         room.setStatus(BanPickRoomStatus.IN_PROGRESS);
         room.setTimerStartedAt(now);
+        rankedRoomContextService.clearPrepWindow(room);
         room.setPhaseDeadlineAt(calculatePhaseDeadline(now, room));
         room.setLineupDeadlineAt(null);
         room.setBlueLineupConfirmed(false);
@@ -480,6 +550,72 @@ public class BanPickRoomService {
     @Transactional(readOnly = true)
     public List<String> findExpiredRoomCodes(LocalDateTime now) {
         return roomRepository.findExpiredRoomCodes(BanPickRoomStatus.IN_PROGRESS, now);
+    }
+
+    /**
+     * Update the current user's strategy pool for the current room.
+     * <p>
+     * Rules:
+     * - Pool is per-participant and scoped to the current room only.
+     * - Player cannot add heroes that are in their own previous-used (locked) hero list.
+     * - Player CAN add heroes that are in the opponent's previous-used hero list.
+     * - Pool does not lock or ban heroes; it only affects display priority on the frontend.
+     * - Can be updated during prep phase or at any time before/during draft.
+     * - Reconnect restores the pool from the participant record.
+     * </p>
+     */
+    @Transactional
+    public BanPickRoomStateResponse updateStrategyPool(String roomCode,
+                                                       BanPickStrategyPoolRequest request,
+                                                       GoogleUserPrincipal principal) {
+        User user = findUser(principal);
+        BanPickRoom room = findRoomForUpdate(roomCode);
+        ensureParticipant(room, user);
+        ensureStatus(room, BanPickRoomStatus.WAITING, BanPickRoomStatus.READY, BanPickRoomStatus.IN_PROGRESS);
+
+        List<Long> requestedHeroIds = request != null && request.heroIds() != null
+                ? request.heroIds().stream().filter(Objects::nonNull).distinct().toList()
+                : List.of();
+
+        // Validate: player cannot add own locked heroes to pool
+        Set<Long> ownLockedHeroIds = getOwnLockedHeroIds(room, user);
+        List<Long> invalidHeroIds = requestedHeroIds.stream()
+                .filter(ownLockedHeroIds::contains)
+                .toList();
+        if (!invalidHeroIds.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Không thể thêm tướng đã bị khóa bởi đội của bạn vào strategy pool.");
+        }
+
+        // Find and update participant's strategy pool
+        List<BanPickRoomParticipant> participants = participantRepository.findByRoomOrderByJoinedAtAsc(room);
+        BanPickRoomParticipant participant = participants.stream()
+                .filter(p -> isSameUser(p.getUser(), user))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a room participant"));
+
+        participant.setStrategyPool(serializeHeroIds(requestedHeroIds));
+        participantRepository.save(participant);
+
+        return buildState(room, user);
+    }
+
+    /**
+     * Returns the set of hero IDs that are locked for the given user's side (own previous-used locks).
+     * These heroes cannot be added to the strategy pool or picked in RANKED mode.
+     */
+    private Set<Long> getOwnLockedHeroIds(BanPickRoom room, User user) {
+        if (BanPickMatchMode.defaultIfNull(room.getMode()) != BanPickMatchMode.RANKED) {
+            return Set.of();
+        }
+        BanPickTeamSide side = resolveUserSide(room, user);
+        if (side == null) {
+            return Set.of();
+        }
+        String encoded = side == BanPickTeamSide.BLUE
+                ? room.getBluePreviousUsedHeroIds()
+                : room.getRedPreviousUsedHeroIds();
+        return new LinkedHashSet<>(parseHeroIdList(encoded));
     }
 
     @Transactional
@@ -511,6 +647,10 @@ public class BanPickRoomService {
         if (!StringUtils.hasText(roomCode) || !StringUtils.hasText(email) || now == null) {
             return;
         }
+        BanPickRatingSettingsSnapshot settings = settingsAccessor.getCurrentSettings();
+        if (!settings.dodgeEnabled()) {
+            return;
+        }
 
         BanPickRoom room;
         try {
@@ -521,7 +661,7 @@ public class BanPickRoomService {
             }
             throw exception;
         }
-        if (!isDraftDodgeWindow(room)) {
+        if (!isDraftDodgeWindow(room, settings)) {
             clearPendingDisconnect(room.getRoomCode());
             return;
         }
@@ -547,13 +687,18 @@ public class BanPickRoomService {
         if (now == null || pendingDisconnects.isEmpty()) {
             return List.of();
         }
+        BanPickRatingSettingsSnapshot settings = settingsAccessor.getCurrentSettings();
+        if (!settings.dodgeEnabled()) {
+            pendingDisconnects.clear();
+            return List.of();
+        }
 
         List<BanPickRoomStateResponse> updatedRooms = new ArrayList<>();
         for (PendingDisconnectState pendingDisconnect : List.copyOf(pendingDisconnects.values())) {
-            if (pendingDisconnect == null || !pendingDisconnect.isExpiredAt(now)) {
+            if (pendingDisconnect == null || !pendingDisconnect.isExpiredAt(now, settings.dodgeDisconnectGraceSeconds())) {
                 continue;
             }
-            resolveExpiredDisconnectGraceWindow(pendingDisconnect, now).ifPresent(updatedRooms::add);
+            resolveExpiredDisconnectGraceWindow(pendingDisconnect, now, settings).ifPresent(updatedRooms::add);
         }
         return updatedRooms;
     }
@@ -664,6 +809,9 @@ public class BanPickRoomService {
         if (user == null) {
             return;
         }
+        if (!settingsAccessor.getCurrentSettings().dodgeEnabled()) {
+            return;
+        }
         LocalDateTime cooldownUntil = user.getBanPickCooldownUntil();
         if (cooldownUntil == null || !cooldownUntil.isAfter(LocalDateTime.now())) {
             return;
@@ -688,6 +836,16 @@ public class BanPickRoomService {
             return false;
         }
 
+        if (room.getPrepPhaseEndAt() != null) {
+            if (rankedRoomContextService.isPrepPhaseActive(room, now)) {
+                return false;
+            }
+            rankedRoomContextService.clearPrepWindow(room);
+            room.setTimerStartedAt(now);
+            room.setPhaseDeadlineAt(calculatePhaseDeadline(now, room));
+            return true;
+        }
+
         if (room.getPhaseType() == BanPickPhaseType.LINEUP_ADJUSTMENT) {
             LocalDateTime lineupDeadline = room.getLineupDeadlineAt();
             if (lineupDeadline == null && room.getTimerStartedAt() != null) {
@@ -708,7 +866,7 @@ public class BanPickRoomService {
             return false;
         }
 
-        DraftPhase phase = getDraftPhase(room.getCurrentPhaseIndex());
+        DraftPhase phase = getDraftPhase(room, room.getCurrentPhaseIndex());
         if (phase == null) {
             startLineupAdjustment(room, now);
             return true;
@@ -717,7 +875,13 @@ public class BanPickRoomService {
         if (dodgedUser == null) {
             return false;
         }
-        finishByForfeit(room, dodgedUser, DraftHistoryEndReason.DODGE_TIMEOUT, now);
+        // For RANKED: forfeit with dodge penalty
+        // For SIMULATION: just finish the draft normally (no penalty)
+        if (BanPickMatchMode.defaultIfNull(room.getMode()) == BanPickMatchMode.RANKED) {
+            finishByForfeit(room, dodgedUser, DraftHistoryEndReason.DODGE_TIMEOUT, now);
+        } else {
+            finishDraft(room);
+        }
         return true;
     }
 
@@ -768,6 +932,12 @@ public class BanPickRoomService {
     }
 
     private Set<Long> getSeriesRestrictedHeroIds(BanPickRoom room, BanPickTeamSide teamSide) {
+        if (BanPickMatchMode.defaultIfNull(room.getMode()) == BanPickMatchMode.RANKED) {
+            String encoded = teamSide == BanPickTeamSide.BLUE
+                    ? room.getBluePreviousUsedHeroIds()
+                    : room.getRedPreviousUsedHeroIds();
+            return new LinkedHashSet<>(parseHeroIdList(encoded));
+        }
         if (!isSeriesRestrictionActive(room)) {
             return Set.of();
         }
@@ -831,7 +1001,7 @@ public class BanPickRoomService {
 
     private void startLineupAdjustment(BanPickRoom room, LocalDateTime now) {
         List<BanPickAction> actions = actionRepository.findByRoomOrderByConfirmedAtAsc(room);
-        room.setCurrentPhaseIndex(DRAFT_PHASES.size());
+        room.setCurrentPhaseIndex(draftPhasesForRoom(room).size());
         room.setCurrentPhaseSelectedCount(0);
         room.setPhaseType(BanPickPhaseType.LINEUP_ADJUSTMENT);
         room.setTimerStartedAt(now);
@@ -856,20 +1026,21 @@ public class BanPickRoomService {
                                  User dodgedUser,
                                  DraftHistoryEndReason endReason,
                                  LocalDateTime now) {
-        if (!isDraftDodgeWindow(room) || dodgedUser == null) {
+        BanPickRatingSettingsSnapshot settings = settingsAccessor.getCurrentSettings();
+        if (!isDraftDodgeWindow(room, settings) || dodgedUser == null) {
             return;
         }
         room.setFinishedEndReason(endReason);
         room.setDodgedUserEmail(dodgedUser.getEmail());
-        applySoloDodgeCooldown(dodgedUser, now);
+        applySoloDodgeCooldown(dodgedUser, now, settings);
         finishDraft(room);
     }
 
-    private void applySoloDodgeCooldown(User user, LocalDateTime now) {
-        if (user == null || now == null) {
+    private void applySoloDodgeCooldown(User user, LocalDateTime now, BanPickRatingSettingsSnapshot settings) {
+        if (user == null || now == null || settings == null || !settings.dodgeEnabled()) {
             return;
         }
-        LocalDateTime nextCooldownUntil = now.plusMinutes(SOLO_DODGE_COOLDOWN_MINUTES);
+        LocalDateTime nextCooldownUntil = now.plusMinutes(settings.dodgeCooldownMinutes());
         LocalDateTime currentCooldownUntil = user.getBanPickCooldownUntil();
         if (currentCooldownUntil == null || currentCooldownUntil.isBefore(nextCooldownUntil)) {
             user.setBanPickCooldownUntil(nextCooldownUntil);
@@ -967,7 +1138,7 @@ public class BanPickRoomService {
         int nextPhaseIndex = (room.getCurrentPhaseIndex() != null ? room.getCurrentPhaseIndex() : 0) + 1;
         room.setCurrentPhaseIndex(nextPhaseIndex);
         room.setCurrentPhaseSelectedCount(0);
-        if (nextPhaseIndex >= DRAFT_PHASES.size()) {
+        if (nextPhaseIndex >= draftPhasesForRoom(room).size()) {
             startLineupAdjustment(room, now);
             return;
         }
@@ -1005,8 +1176,11 @@ public class BanPickRoomService {
     }
 
     private User resolveCurrentDraftUser(BanPickRoom room) {
-        DraftPhase currentPhase = getDraftPhase(room != null ? room.getCurrentPhaseIndex() : null);
-        if (room == null || currentPhase == null) {
+        if (room == null || room.getPrepPhaseEndAt() != null) {
+            return null;
+        }
+        DraftPhase currentPhase = getDraftPhase(room, room.getCurrentPhaseIndex());
+        if (currentPhase == null) {
             return null;
         }
         return currentPhase.teamSide() == BanPickTeamSide.BLUE ? room.getBlueUser() : room.getRedUser();
@@ -1038,10 +1212,22 @@ public class BanPickRoomService {
         return null;
     }
 
-    private boolean isDraftDodgeWindow(BanPickRoom room) {
-        return room != null
-                && room.getStatus() == BanPickRoomStatus.IN_PROGRESS
-                && room.getPhaseType() == BanPickPhaseType.DRAFT;
+    private boolean isDraftDodgeWindow(BanPickRoom room, BanPickRatingSettingsSnapshot settings) {
+        if (room == null || room.getStatus() != BanPickRoomStatus.IN_PROGRESS) {
+            return false;
+        }
+        // Dodge penalty only applies to RANKED mode
+        if (BanPickMatchMode.defaultIfNull(room.getMode()) != BanPickMatchMode.RANKED) {
+            return false;
+        }
+        if (room.getPrepPhaseEndAt() != null) {
+            return false;
+        }
+        if (settings == null || settings.dodgeApplyInDraftOnly()) {
+            return room.getPhaseType() == BanPickPhaseType.DRAFT;
+        }
+        return room.getPhaseType() == BanPickPhaseType.DRAFT
+                || room.getPhaseType() == BanPickPhaseType.LINEUP_ADJUSTMENT;
     }
 
     private void clearPendingDisconnect(String roomCode) {
@@ -1052,14 +1238,15 @@ public class BanPickRoomService {
     }
 
     private Optional<BanPickRoomStateResponse> resolveExpiredDisconnectGraceWindow(PendingDisconnectState pendingDisconnect,
-                                                                                   LocalDateTime now) {
+                                                                                   LocalDateTime now,
+                                                                                   BanPickRatingSettingsSnapshot settings) {
         PendingDisconnectState currentPendingDisconnect = pendingDisconnects.get(pendingDisconnect.roomCode());
         if (currentPendingDisconnect == null || !currentPendingDisconnect.equals(pendingDisconnect)) {
             return Optional.empty();
         }
 
         BanPickRoom room = findRoomForUpdate(pendingDisconnect.roomCode());
-        if (!isDraftDodgeWindow(room)) {
+        if (!isDraftDodgeWindow(room, settings)) {
             clearPendingDisconnect(room.getRoomCode());
             return Optional.empty();
         }
@@ -1071,7 +1258,7 @@ public class BanPickRoomService {
             clearPendingDisconnect(room.getRoomCode());
             return Optional.empty();
         }
-        if (!pendingDisconnect.isExpiredAt(now)) {
+        if (!pendingDisconnect.isExpiredAt(now, settings.dodgeDisconnectGraceSeconds())) {
             return Optional.empty();
         }
 
@@ -1134,11 +1321,14 @@ public class BanPickRoomService {
 
     private void resetLineupState(BanPickRoom room) {
         room.setPhaseType(BanPickPhaseType.DRAFT);
+        room.setTimerStartedAt(null);
+        room.setPhaseDeadlineAt(null);
         room.setLineupDeadlineAt(null);
         room.setBlueLineupConfirmed(false);
         room.setRedLineupConfirmed(false);
         room.setBluePickOrder(null);
         room.setRedPickOrder(null);
+        rankedRoomContextService.clearPrepWindow(room);
         clearFinishedDraftMetadata(room);
     }
 
@@ -1162,9 +1352,14 @@ public class BanPickRoomService {
         }
     }
 
-    private DraftPhase getDraftPhase(Integer phaseIndex) {
+    private List<DraftPhase> draftPhasesForRoom(BanPickRoom room) {
+        return Boolean.TRUE.equals(room.getUltimateBattle()) ? ULTIMATE_BATTLE_PHASES : DRAFT_PHASES;
+    }
+
+    private DraftPhase getDraftPhase(BanPickRoom room, Integer phaseIndex) {
         int index = phaseIndex != null ? phaseIndex : 0;
-        return index >= 0 && index < DRAFT_PHASES.size() ? DRAFT_PHASES.get(index) : null;
+        List<DraftPhase> phases = draftPhasesForRoom(room);
+        return index >= 0 && index < phases.size() ? phases.get(index) : null;
     }
 
     private Long resolveHeroId(BanPickConfirmRequest request) {
@@ -1199,12 +1394,11 @@ public class BanPickRoomService {
 
     private BanPickRoomStateResponse buildState(BanPickRoom room, User currentUser) {
         return buildState(room, currentUser, Set.of());
-    }
-
-    private BanPickRoomStateResponse buildState(BanPickRoom room, User currentUser, Set<Long> newActionIds) {
-        List<BanPickParticipantResponse> participants = participantRepository.findByRoomOrderByJoinedAtAsc(room)
+    }    private BanPickRoomStateResponse buildState(BanPickRoom room, User currentUser, Set<Long> newActionIds) {
+        List<BanPickRoomParticipant> participantEntities = participantRepository.findByRoomOrderByJoinedAtAsc(room);
+        List<BanPickParticipantResponse> participants = participantEntities
                 .stream()
-                .map(this::toParticipantResponse)
+                .map(p -> toParticipantResponse(p, currentUser))
                 .toList();
         List<BanPickActionResponse> actions = actionRepository.findByRoomOrderByConfirmedAtAsc(room)
                 .stream()
@@ -1212,22 +1406,43 @@ public class BanPickRoomService {
                 .toList();
         DraftPhase currentPhase = room.getStatus() == BanPickRoomStatus.IN_PROGRESS
                 && room.getPhaseType() == BanPickPhaseType.DRAFT
-                ? getDraftPhase(room.getCurrentPhaseIndex())
+                ? getDraftPhase(room, room.getCurrentPhaseIndex())
                 : null;
         Long draftHistoryId = room.getStatus() == BanPickRoomStatus.FINISHED
                 ? banPickHistoryService.findLatestHistoryIdByRoomCode(room.getRoomCode()).orElse(null)
                 : null;
         Map<Integer, List<Long>> blueUsedPicksByGame = parsePickHistory(room.getBlueUsedPicksByGame());
         Map<Integer, List<Long>> redUsedPicksByGame = parsePickHistory(room.getRedUsedPicksByGame());
+        List<Long> bluePreviousUsedHeroIds = parseHeroIdList(room.getBluePreviousUsedHeroIds());
+        List<Long> redPreviousUsedHeroIds = parseHeroIdList(room.getRedPreviousUsedHeroIds());
         List<Long> blueUsedPicks = activeUsedHeroIds(room, BanPickTeamSide.BLUE);
         List<Long> redUsedPicks = activeUsedHeroIds(room, BanPickTeamSide.RED);
         List<Long> bluePickOrder = currentPickOrderForSide(room, BanPickTeamSide.BLUE);
         List<Long> redPickOrder = currentPickOrderForSide(room, BanPickTeamSide.RED);
         BanPickTeamSide currentUserSide = currentUser != null ? resolveUserSide(room, currentUser) : null;
 
+        // Resolve current user's strategy pool from their participant record
+        List<Long> myStrategyPool = null;
+        if (currentUser != null) {
+            myStrategyPool = participantEntities.stream()
+                    .filter(p -> isSameUser(p.getUser(), currentUser))
+                    .findFirst()
+                    .map(p -> parseHeroIdList(p.getStrategyPool()))
+                    .orElse(null);
+        }
+
         return new BanPickRoomStateResponse(
                 room.getId(),
                 room.getRoomCode(),
+                BanPickMatchMode.defaultIfNull(room.getMode()),
+                room.getVirtualSeriesFormat(),
+                room.getVirtualGameIndex(),
+                room.getUltimateBattle(),
+                room.getPrepDurationSeconds(),
+                room.getPrepPhaseStartAt(),
+                room.getPrepPhaseEndAt(),
+                bluePreviousUsedHeroIds,
+                redPreviousUsedHeroIds,
                 room.getStatus(),
                 room.getPhaseType(),
                 seriesType(room),
@@ -1257,6 +1472,7 @@ public class BanPickRoomService {
                 bluePickOrder,
                 redPickOrder,
                 currentUserSide,
+                myStrategyPool,
                 room.getCreatedAt(),
                 room.getUpdatedAt(),
                 draftHistoryId,
@@ -1275,15 +1491,24 @@ public class BanPickRoomService {
             return StringUtils.hasText(currentEmail) && email.equalsIgnoreCase(currentEmail.trim());
         }
 
-        private boolean isExpiredAt(LocalDateTime now) {
+        private boolean isExpiredAt(LocalDateTime now, int graceSeconds) {
             return disconnectedAt != null
                     && now != null
-                    && !disconnectedAt.plusSeconds(DISCONNECT_GRACE_SECONDS).isAfter(now);
+                    && !disconnectedAt.plusSeconds(Math.max(0, graceSeconds)).isAfter(now);
         }
     }
 
 
     private List<Long> activeUsedHeroIds(BanPickRoom room, BanPickTeamSide teamSide) {
+        if (BanPickMatchMode.defaultIfNull(room.getMode()) == BanPickMatchMode.RANKED) {
+            return parseHeroIdList(teamSide == BanPickTeamSide.BLUE
+                    ? room.getBluePreviousUsedHeroIds()
+                    : room.getRedPreviousUsedHeroIds());
+        }
+        return activeSimulationUsedHeroIds(room, teamSide);
+    }
+
+    private List<Long> activeSimulationUsedHeroIds(BanPickRoom room, BanPickTeamSide teamSide) {
         return new ArrayList<>(getSeriesRestrictedHeroIds(room, teamSide));
     }
 
@@ -1294,12 +1519,18 @@ public class BanPickRoomService {
         return usedHeroesByTeam;
     }
 
-    private BanPickParticipantResponse toParticipantResponse(BanPickRoomParticipant participant) {
+    private BanPickParticipantResponse toParticipantResponse(BanPickRoomParticipant participant, User currentUser) {
+        // Only include strategy pool for the current user's own participant entry (keep opponent pool private)
+        List<Long> strategyPool = null;
+        if (currentUser != null && isSameUser(participant.getUser(), currentUser)) {
+            strategyPool = parseHeroIdList(participant.getStrategyPool());
+        }
         return new BanPickParticipantResponse(
                 toUserSummary(participant.getUser()),
                 participant.getRole(),
                 participant.getTeamSide(),
-                participant.getJoinedAt()
+                participant.getJoinedAt(),
+                strategyPool
         );
     }
 

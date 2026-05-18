@@ -1,6 +1,6 @@
 (function () {
-    const SHELL_URL = '/html/ban-pick-shell.html?v=20260516-player-card-component';
-    const APP_SCRIPT_URL = '/js/ban-pick.js?v=20260516-player-card-component';
+    const SHELL_URL = '/html/ban-pick-shell.html?v=20260518-rank-mode';
+    const APP_SCRIPT_URL = '/js/ban-pick.js?v=20260518-rank-mode';
 
     async function loadBanPickShell() {
         const root = document.getElementById('ban-pick-page-root');
